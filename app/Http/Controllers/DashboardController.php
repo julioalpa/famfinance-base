@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\ExchangeRate;
 use App\Models\Installment;
+use App\Models\RecurringExpense;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -65,6 +66,13 @@ class DashboardController extends Controller
         // ── Tipo de cambio vigente ───────────────────────────────────────────
         $exchangeRate = $group->latestExchangeRate();
 
+        // ── Débitos fijos activos del grupo ──────────────────────────────────
+        $recurringExpenses = RecurringExpense::with(['account', 'category'])
+            ->where('family_group_id', $groupId)
+            ->where('is_active', true)
+            ->orderBy('day_of_month')
+            ->get();
+
         return view('dashboard', compact(
             'group',
             'accounts',
@@ -76,6 +84,7 @@ class DashboardController extends Controller
             'installmentSummary',
             'recentTransactions',
             'exchangeRate',
+            'recurringExpenses',
         ));
     }
 }

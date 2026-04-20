@@ -9,13 +9,17 @@
 --}}
 
 @php
-    $tx = $transaction ?? null;
-    $isEdit = $tx !== null;
+    $tx               = $transaction ?? null;
+    $isEdit           = $tx !== null;
+    $bulk             = $bulk ?? false;
+    $defaultDate      = $defaultDate ?? null;
+    $defaultAccountId = $defaultAccountId ?? null;
 @endphp
 
 <form method="POST" action="{{ $action }}">
     @csrf
     @if($isEdit) @method('PUT') @endif
+    @if($bulk) <input type="hidden" name="bulk" value="1"> @endif
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
 
@@ -48,7 +52,7 @@
                 <label class="form-label" for="date">Fecha *</label>
                 <input type="date" name="date" id="date"
                        class="form-input"
-                       value="{{ old('date', $tx?->date?->format('Y-m-d') ?? today()->format('Y-m-d')) }}"
+                       value="{{ old('date', $tx?->date?->format('Y-m-d') ?? $defaultDate ?? today()->format('Y-m-d')) }}"
                        required>
                 @error('date') <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div> @enderror
             </div>
@@ -81,7 +85,7 @@
                             @foreach($group as $account)
                                 <option value="{{ $account->id }}"
                                     data-type="{{ $account->type }}"
-                                    {{ old('account_id', $tx?->account_id) == $account->id ? 'selected' : '' }}>
+                                    {{ old('account_id', $tx?->account_id ?? $defaultAccountId) == $account->id ? 'selected' : '' }}>
                                     {{ $account->name }} ({{ $account->currency }})
                                 </option>
                             @endforeach
@@ -189,10 +193,18 @@
 
     {{-- Botones --}}
     <div style="display: flex; gap: 10px; justify-content: flex-end; padding-top: 20px; border-top: 1px solid var(--border); margin-top: 4px;">
-        <a href="{{ route('transactions.index') }}" class="btn btn-ghost">Cancelar</a>
-        <button type="submit" class="btn btn-primary">
-            {{ $isEdit ? 'Guardar cambios' : 'Registrar movimiento' }}
-        </button>
+        @if($bulk)
+            <a href="{{ route('transactions.index') }}" class="btn btn-ghost">Finalizar</a>
+            <button type="submit" class="btn btn-primary">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Guardar y continuar
+            </button>
+        @else
+            <a href="{{ route('transactions.index') }}" class="btn btn-ghost">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                {{ $isEdit ? 'Guardar cambios' : 'Registrar movimiento' }}
+            </button>
+        @endif
     </div>
 </form>
 

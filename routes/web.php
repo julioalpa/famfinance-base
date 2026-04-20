@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\FamilyGroupController;
+use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -93,5 +94,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/tipo-de-cambio',           [ExchangeRateController::class, 'index'])->name('exchange-rates.index');
         Route::post('/tipo-de-cambio',           [ExchangeRateController::class, 'store'])->name('exchange-rates.store');
         Route::delete('/tipo-de-cambio/{exchangeRate}', [ExchangeRateController::class, 'destroy'])->name('exchange-rates.destroy');
+
+        // Débitos fijos / gastos recurrentes
+        Route::post('/debitos/{recurringExpense}/toggle', [RecurringExpenseController::class, 'toggle'])->name('recurring-expenses.toggle');
+        Route::resource('debitos', RecurringExpenseController::class)->names([
+            'index'   => 'recurring-expenses.index',
+            'create'  => 'recurring-expenses.create',
+            'store'   => 'recurring-expenses.store',
+            'edit'    => 'recurring-expenses.edit',
+            'update'  => 'recurring-expenses.update',
+            'destroy' => 'recurring-expenses.destroy',
+        ])->except(['show']);
     });
 });

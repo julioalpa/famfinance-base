@@ -47,25 +47,50 @@ class TransactionController extends Controller
         return view('transactions.index', compact('transactions', 'categories', 'accounts'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $groupId    = session('active_family_group_id');
         $group      = auth()->user()->familyGroups()->find($groupId);
         $categories = Category::availableFor($groupId);
         $accounts   = $group->accounts()->where('is_active', true)->get();
 
-        return view('transactions.create', compact('categories', 'accounts'));
+        $bulk             = $request->boolean('bulk');
+        $bulkCount        = $bulk ? session('bulk_count', 0) : 0;
+        $defaultDate      = $request->input('date');
+        $defaultAccountId = $request->input('account_id');
+
+        if (! $bulk) {
+            session()->forget('bulk_count');
+        }
+
+        return view('transactions.create', compact(
+            'categories', 'accounts', 'bulk', 'bulkCount', 'defaultDate', 'defaultAccountId'
+        ));
     }
 
     public function store(StoreTransactionRequest $request)
     {
         $groupId = session('active_family_group_id');
 
-        $transaction = $this->service->create(
+        $this->service->create(
             $request->validated(),
             $groupId,
             auth()->id()
         );
+
+        if ($request->boolean('bulk')) {
+            session(['bulk_count' => session('bulk_count', 0) + 1]);
+
+            return redirect()
+                ->route('transactions.create', [
+                    'bulk'       => 1,
+                    'date'       => $request->input('date'),
+                    'account_id' => $request->input('account_id'),
+                ])
+                ->with('bulk_success', true);
+        }
+
+        session()->forget('bulk_count');
 
         return redirect()
             ->route('transactions.index')
