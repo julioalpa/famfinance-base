@@ -480,6 +480,14 @@
             Dashboard
         </a>
 
+        <a href="{{ route('reports.index') }}"
+           class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+            Reportes
+        </a>
+
         <a href="{{ route('transactions.index') }}"
            class="nav-link {{ request()->routeIs('transactions.*') ? 'active' : '' }}">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">

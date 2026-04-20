@@ -8,6 +8,7 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\FamilyGroupController;
 use App\Http\Controllers\RecurringExpenseController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +42,9 @@ Route::middleware('auth')->group(function () {
 
         // Dashboard
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Reportes
+        Route::get('/reportes', [ReportController::class, 'index'])->name('reports.index');
 
         // Cuentas
         Route::resource('cuentas', AccountController::class)->names([

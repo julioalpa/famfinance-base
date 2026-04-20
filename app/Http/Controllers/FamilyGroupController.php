@@ -40,9 +40,9 @@ class FamilyGroupController extends Controller
             ->with('success', "Grupo \"{$group->name}\" creado. ¡Invitá a tu familia!");
     }
 
-    public function show(FamilyGroup $familyGroup)
+    public function show()
     {
-        $this->authorizeGroup($familyGroup);
+        $familyGroup = $this->activeGroup();
 
         $familyGroup->load(['members', 'invitations' => fn($q) => $q->where('status', 'pending')]);
 
@@ -64,9 +64,9 @@ class FamilyGroupController extends Controller
 
     // ─── Invitaciones ────────────────────────────────────────────────────────
 
-    public function invite(InviteMemberRequest $request, FamilyGroup $familyGroup)
+    public function invite(InviteMemberRequest $request)
     {
-        $this->authorizeGroup($familyGroup);
+        $familyGroup = $this->activeGroup();
 
         // Verificar que no esté ya en el grupo
         $alreadyMember = $familyGroup->members()
@@ -134,9 +134,9 @@ class FamilyGroupController extends Controller
             ->with('success', "Te uniste al grupo \"{$group->name}\".");
     }
 
-    public function removeMember(FamilyGroup $familyGroup, int $userId)
+    public function removeMember(int $userId)
     {
-        $this->authorizeGroup($familyGroup);
+        $familyGroup = $this->activeGroup();
 
         // Solo el owner puede remover miembros, y no puede removerse a sí mismo
         abort_if($familyGroup->owner_id !== auth()->id(), 403);
@@ -147,12 +147,14 @@ class FamilyGroupController extends Controller
         return back()->with('success', 'Miembro removido del grupo.');
     }
 
-    private function authorizeGroup(FamilyGroup $group): void
+    private function activeGroup(): FamilyGroup
     {
-        $belongs = auth()->user()->familyGroups()
-            ->where('family_groups.id', $group->id)
-            ->exists();
+        $groupId = session('active_family_group_id');
 
-        abort_if(! $belongs, 403);
+        $group = auth()->user()->familyGroups()
+            ->where('family_groups.id', $groupId)
+            ->firstOrFail();
+
+        return $group;
     }
 }
