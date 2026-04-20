@@ -20,7 +20,7 @@ class ReportController extends Controller
         $monthlyRaw = Transaction::where('family_group_id', $groupId)
             ->where('date', '>=', $startDate)
             ->whereIn('type', ['income', 'expense'])
-            ->selectRaw('YEAR(date) as year, MONTH(date) as month, type, SUM(amount) as total')
+            ->selectRaw('EXTRACT(YEAR FROM date) as year, EXTRACT(MONTH FROM date) as month, type, SUM(amount) as total')
             ->groupBy('year', 'month', 'type')
             ->get();
 
@@ -71,7 +71,7 @@ class ReportController extends Controller
             ->where('type', 'expense')
             ->whereYear('date', now()->year)
             ->whereMonth('date', now()->month)
-            ->selectRaw('DAY(date) as day, SUM(amount) as total')
+            ->selectRaw('EXTRACT(DAY FROM date) as day, SUM(amount) as total')
             ->groupBy('day')
             ->orderBy('day')
             ->get()
