@@ -1,0 +1,83 @@
+
+services:
+
+ finance:
+  build:
+    args:
+      user: sammy
+      uid: 1000
+    context: ./
+    dockerfile: Dockerfile
+  image: famfinance
+  deploy:
+    resources:
+      limits:
+        cpus: '2.0'
+        memory: 512M
+      reservations:
+        cpus: '0.5'
+        memory: 256M
+  container_name: famfinance-app
+  restart: unless-stopped
+  working_dir: /var/www/
+  volumes:
+    # Bind mount con opción cached para mejor rendimiento I/O
+    - ./:/var/www:z
+  networks:
+    - finance
+    - shared
+
+ db:
+  #platform: linux/amd64
+  image: mysql:8.0
+  container_name: famfinance-db
+  restart: unless-stopped
+  command: --skip-name-resolve
+  tty: true
+  ports:
+    - 33068:3306 
+  environment: 
+    MYSQL_DATABASE: 'homestead'
+    MYSQL_USER: 'homestead'
+    MYSQL_PASSWORD: 'secret'
+    MYSQL_ROOT_PASSWORD: 'secret.root'
+    SERVICE_TAGS: dev
+    SERVICE_NAME: mysql  
+  volumes:
+    - mysql_data:/var/lib/mysql
+    - ./docker-compose/mysql:/docker-entrypoint-initdb.d
+  networks:
+    - finance
+
+ nginx:
+  image: nginx:1.17-alpine
+  container_name: famfinance-nginx
+  restart: unless-stopped
+  ports:
+    - 8000:80
+  volumes:
+    - ./:/var/www:cached
+    - ./docker-compose/nginx:/etc/nginx/conf.d:ro
+  networks:
+    - finance
+    - shared
+
+ redis:
+  image: redis:alpine
+  container_name: famfinance-redis
+  command: redis-server --appendonly yes --requirepass "123"
+  volumes:
+    - ./docker-compose/data:/data/redis
+  ports:
+    - "8002:6379"
+  networks:
+    - finance
+
+networks:
+  finance:
+    driver: bridge
+  shared:
+    external: false
+
+volumes:
+  mysql_data:

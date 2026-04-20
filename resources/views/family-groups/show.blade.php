@@ -1,0 +1,97 @@
+@extends('layouts.app')
+
+@section('title', 'Grupo familiar')
+
+@section('content')
+
+<div style="max-width: 720px;">
+    <div style="margin-bottom: 28px;">
+        <h1 class="font-display" style="font-size: 24px; font-weight: 700;">{{ $familyGroup->name }}</h1>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+            Administrado por {{ $familyGroup->owner->name }}
+        </div>
+    </div>
+
+    {{-- Miembros --}}
+    <div class="card" style="margin-bottom: 20px;">
+        <h2 class="font-display" style="font-size: 14px; font-weight: 600; margin-bottom: 18px;">
+            Miembros ({{ $familyGroup->members->count() }})
+        </h2>
+
+        @foreach($familyGroup->members as $member)
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                @if($member->avatar)
+                    <img src="{{ $member->avatar }}" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);">
+                @else
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--accent);">
+                        {{ strtoupper(substr($member->name, 0, 1)) }}
+                    </div>
+                @endif
+                <div>
+                    <div style="font-size: 13px; color: var(--text);">
+                        {{ $member->name }}
+                        @if($member->id === auth()->id())
+                            <span style="font-size: 10px; color: var(--muted);">(vos)</span>
+                        @endif
+                    </div>
+                    <div style="font-size: 11px; color: var(--muted);">{{ $member->email }}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="badge {{ $member->pivot->role === 'owner' ? 'badge-income' : '' }}"
+                      style="{{ $member->pivot->role !== 'owner' ? 'color:var(--muted);' : '' }}">
+                    {{ $member->pivot->role === 'owner' ? 'Admin' : 'Miembro' }}
+                </span>
+                @if($familyGroup->owner_id === auth()->id() && $member->id !== auth()->id())
+                <form method="POST" action="{{ route('family-groups.remove-member', $member->id) }}"
+                      onsubmit="return confirm('¿Remover a {{ $member->name }} del grupo?')">
+                    @csrf @method('DELETE')
+                    <button type="submit" style="background: none; border: none; color: var(--danger); font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace;">
+                        Remover
+                    </button>
+                </form>
+                @endif
+            </div>
+        </div>
+        @endforeach
+    </div>
+
+    {{-- Invitar --}}
+    <div class="card" style="margin-bottom: 20px;">
+        <h2 class="font-display" style="font-size: 14px; font-weight: 600; margin-bottom: 16px;">Invitar a alguien</h2>
+        <form method="POST" action="{{ route('family-groups.invite', $familyGroup) }}" style="display: flex; gap: 10px;">
+            @csrf
+            <input type="email" name="email" class="form-input"
+                   placeholder="email@ejemplo.com"
+                   value="{{ old('email') }}"
+                   required>
+            <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Enviar invitación</button>
+        </form>
+        @error('email')
+            <div style="font-size:12px; color:var(--danger); margin-top:6px;">{{ $message }}</div>
+        @enderror
+        <div style="margin-top: 10px; font-size: 11px; color: var(--muted);">
+            La persona recibirá un email con un link para unirse. El link expira en 7 días.
+        </div>
+    </div>
+
+    {{-- Invitaciones pendientes --}}
+    @if($familyGroup->invitations->isNotEmpty())
+    <div class="card">
+        <h2 class="font-display" style="font-size: 14px; font-weight: 600; margin-bottom: 16px;">
+            Invitaciones pendientes ({{ $familyGroup->invitations->count() }})
+        </h2>
+        @foreach($familyGroup->invitations as $inv)
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
+            <span>{{ $inv->email }}</span>
+            <span style="font-size: 11px; color: var(--muted);">
+                Enviada por {{ $inv->invitedBy->name }} · vence {{ $inv->expires_at->format('d/m/Y') }}
+            </span>
+        </div>
+        @endforeach
+    </div>
+    @endif
+</div>
+
+@endsection
