@@ -24,10 +24,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                 <div>
                     <label class="form-label">Tipo</label>
-                    <select name="type" id="account-type" class="form-select" onchange="toggleCreditFields()">
+                    <select name="type" id="account-type" class="form-select" onchange="toggleTypeFields()">
                         <option value="cash"    {{ old('type',$account->type) === 'cash'    ? 'selected' : '' }}>Efectivo</option>
                         <option value="digital" {{ old('type',$account->type) === 'digital' ? 'selected' : '' }}>Digital</option>
                         <option value="credit"  {{ old('type',$account->type) === 'credit'  ? 'selected' : '' }}>Tarjeta de crédito</option>
+                        <option value="loan"    {{ old('type',$account->type) === 'loan'    ? 'selected' : '' }}>Préstamo</option>
                     </select>
                 </div>
                 <div>
@@ -36,6 +37,21 @@
                         <option value="ARS" {{ old('currency',$account->currency) === 'ARS' ? 'selected' : '' }}>ARS</option>
                         <option value="USD" {{ old('currency',$account->currency) === 'USD' ? 'selected' : '' }}>USD</option>
                     </select>
+                </div>
+            </div>
+
+            {{-- Campos exclusivos de préstamo --}}
+            <div id="loan-fields" style="{{ old('type',$account->type) === 'loan' ? '' : 'display:none' }}">
+                <div style="background: var(--surface2); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                    <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px;">Configuración del préstamo</div>
+                    <div>
+                        <label class="form-label">Monto total de la deuda *</label>
+                        <input type="number" name="initial_balance" class="form-input"
+                               placeholder="Ej: 500000" min="0.01" step="0.01"
+                               value="{{ old('initial_balance', $account->initial_balance) }}">
+                        <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">El saldo inicial que pediste y debés devolver. Cada pago lo irá reduciendo.</div>
+                        @error('initial_balance') <div style="font-size:11px;color:var(--danger);margin-top:3px;">{{ $message }}</div> @enderror
+                    </div>
                 </div>
             </div>
 
@@ -65,26 +81,27 @@
             </div>
 
             <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
-                <form method="POST" action="{{ route('accounts.destroy', $account) }}"
-                      onsubmit="return confirm('¿Eliminar esta cuenta? Las transacciones históricas se conservan.')">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="btn btn-danger" style="font-size: 12px;">Eliminar cuenta</button>
-                </form>
-
                 <div style="display: flex; gap: 10px;">
                     <a href="{{ route('accounts.show', $account) }}" class="btn btn-ghost">Cancelar</a>
-                    <button type="submit" form="" class="btn btn-primary"
-                            onclick="this.form.submit()">Guardar cambios</button>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
                 </div>
             </div>
+        </form>
+
+        <form method="POST" action="{{ route('accounts.destroy', $account) }}"
+              style="margin-top: 16px;"
+              onsubmit="return confirm('¿Eliminar esta cuenta? Las transacciones históricas se conservan.')">
+            @csrf @method('DELETE')
+            <button type="submit" class="btn btn-danger" style="font-size: 12px;">Eliminar cuenta</button>
         </form>
     </div>
 </div>
 
 <script>
-function toggleCreditFields() {
+function toggleTypeFields() {
     const type = document.getElementById('account-type').value;
     document.getElementById('credit-fields').style.display = type === 'credit' ? '' : 'none';
+    document.getElementById('loan-fields').style.display   = type === 'loan'   ? '' : 'none';
 }
 </script>
 

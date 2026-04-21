@@ -57,6 +57,34 @@
     </div>
 </div>
 
+{{-- ── Patrimonio neto ──────────────────────────────────────────────────────── --}}
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;">
+
+    <div class="stat-card income">
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Activos</div>
+        <div class="font-display" style="font-size: 26px; font-weight: 800; color: var(--income); letter-spacing: -0.03em; line-height: 1;">
+            $ {{ number_format($totalAssets, 2, ',', '.') }}
+        </div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">Efectivo + Digital</div>
+    </div>
+
+    <div class="stat-card expense">
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Pasivos</div>
+        <div class="font-display" style="font-size: 26px; font-weight: 800; color: var(--expense); letter-spacing: -0.03em; line-height: 1;">
+            $ {{ number_format($totalLiabilities, 2, ',', '.') }}
+        </div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">Crédito + Préstamos</div>
+    </div>
+
+    <div class="stat-card {{ $netWorth >= 0 ? 'balance' : 'expense' }}">
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Patrimonio neto</div>
+        <div class="font-display" style="font-size: 26px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: {{ $netWorth >= 0 ? 'var(--income)' : 'var(--expense)' }};">
+            {{ $netWorth >= 0 ? '+' : '' }}$ {{ number_format($netWorth, 2, ',', '.') }}
+        </div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">Activos − Pasivos</div>
+    </div>
+</div>
+
 {{-- ── Fila principal: Categorías + Cuotas ────────────────────────────────── --}}
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
 
@@ -209,6 +237,70 @@
             </div>
         </div>
         @endforeach
+    </div>
+</div>
+@endif
+
+{{-- ── Pendientes del mes ───────────────────────────────────────────────── --}}
+@if($pendingTotalCount > 0)
+@php
+    $pendingPct = $pendingTotalCount > 0 ? round(($pendingPaidCount / $pendingTotalCount) * 100) : 0;
+@endphp
+<div class="card" style="margin-bottom: 24px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+        <div>
+            <h2 class="font-display" style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">Pendientes del mes</h2>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500;">
+                <span style="color: {{ $pendingPaidCount === $pendingTotalCount ? 'var(--income)' : 'var(--text)' }}; font-weight: 700;">{{ $pendingPaidCount }}/{{ $pendingTotalCount }}</span> pagados
+            </div>
+        </div>
+        <a href="{{ route('monthly-payments.index') }}" style="font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600;">Ver todos →</a>
+    </div>
+
+    <div style="height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-bottom: 16px;">
+        <div style="height: 100%; width: {{ $pendingPct }}%; background: {{ $pendingPct === 100 ? 'var(--income)' : 'linear-gradient(90deg, var(--accent), #f5c842)' }}; border-radius: 2px; transition: width 0.6s ease;"></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        @foreach($pendingPayments->take(6) as $mp)
+        @php
+            $pItem    = $mp->paymentItem;
+            $isPaid   = $mp->is_paid;
+            $dueDay   = $pItem?->day_of_month;
+            $isOverdue = !$isPaid && $dueDay && $dueDay < now()->day;
+        @endphp
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface2); border-radius: 9px; border: 1px solid {{ $isOverdue ? 'rgba(240,64,96,0.2)' : 'transparent' }};">
+            <div style="
+                width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+                background: {{ $isPaid ? 'rgba(45,216,112,0.15)' : 'transparent' }};
+                border: 2px solid {{ $isPaid ? 'var(--income)' : 'var(--border)' }};
+                display: flex; align-items: center; justify-content: center;
+            ">
+                @if($isPaid)
+                    <svg width="10" height="10" fill="none" stroke="var(--income)" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                @endif
+            </div>
+            <span style="flex: 1; font-size: 13px; font-weight: 600; color: {{ $isPaid ? 'var(--muted)' : 'var(--text)' }}; {{ $isPaid ? 'text-decoration: line-through;' : '' }}">
+                {{ $pItem?->description }}
+            </span>
+            @if($dueDay && !$isPaid)
+                <span style="font-size: 11px; color: {{ $isOverdue ? 'var(--expense)' : 'var(--muted)' }}; font-weight: {{ $isOverdue ? '700' : '500' }};">día {{ $dueDay }}</span>
+            @endif
+            @if($isPaid && $mp->amount)
+                <span style="font-size: 12px; color: var(--income); font-weight: 700;">
+                    {{ $pItem?->currency === 'USD' ? 'US$' : '$' }} {{ number_format($mp->amount, 0, ',', '.') }}
+                </span>
+            @endif
+        </div>
+        @endforeach
+
+        @if($pendingPayments->count() > 6)
+        <div style="text-align: center; padding: 4px 0;">
+            <a href="{{ route('monthly-payments.index') }}" style="font-size: 12px; color: var(--muted); text-decoration: none;">
+                + {{ $pendingPayments->count() - 6 }} más →
+            </a>
+        </div>
+        @endif
     </div>
 </div>
 @endif

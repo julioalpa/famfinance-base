@@ -225,6 +225,11 @@
             Continuar con Google
         </a>
 
+        <a href="{{ route('auth.google.switch') }}" class="btn-google" style="margin-top: 10px; opacity: 0.65; font-size: 13px;">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            Usar otra cuenta de Google
+        </a>
+
         <p class="footer-note">
             Al ingresar aceptás el uso de la aplicación<br>para gestión de gastos familiares.
         </p>

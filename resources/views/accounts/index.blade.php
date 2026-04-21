@@ -16,11 +16,13 @@
 </div>
 
 @php
-    $grouped = $accounts->groupBy('type');
-    $typeLabels = ['cash' => 'Efectivo', 'digital' => 'Digital', 'credit' => 'Tarjetas de crédito'];
+    $grouped    = $accounts->groupBy('type');
+    $typeLabels = ['cash' => 'Efectivo', 'digital' => 'Digital', 'credit' => 'Tarjetas de crédito', 'loan' => 'Préstamos'];
+    $typeColors = ['cash' => 'var(--income)', 'digital' => 'var(--accent2)', 'credit' => 'var(--warn)', 'loan' => 'var(--expense)'];
+    $balanceLabel = ['cash' => 'Saldo disponible', 'digital' => 'Saldo disponible', 'credit' => 'Deuda acumulada', 'loan' => 'Deuda restante'];
 @endphp
 
-@foreach(['cash','digital','credit'] as $type)
+@foreach(['cash','digital','credit','loan'] as $type)
     @if(isset($grouped[$type]) && $grouped[$type]->isNotEmpty())
     <div style="margin-bottom: 28px;">
         <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px;">
@@ -35,7 +37,7 @@
                      onmouseout="this.style.borderColor='var(--border)'">
 
                     {{-- Barra de tipo --}}
-                    <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: {{ $type === 'credit' ? 'var(--warn)' : ($type === 'digital' ? 'var(--accent2)' : 'var(--income)') }};"></div>
+                    <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: {{ $typeColors[$type] }};"></div>
 
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
                         <div>
@@ -50,11 +52,19 @@
                     </div>
 
                     <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">
-                        {{ $type === 'credit' ? 'Deuda acumulada' : 'Saldo disponible' }}
+                        {{ $balanceLabel[$type] }}
                     </div>
-                    <div class="font-display" style="font-size: 20px; font-weight: 700; color: {{ $type === 'credit' ? 'var(--warn)' : 'var(--income)' }};">
+                    <div class="font-display" style="font-size: 20px; font-weight: 700; color: {{ $typeColors[$type] }};">
                         {{ $account->currency === 'USD' ? 'US$' : '$' }} {{ number_format(abs($account->balance), 2, ',', '.') }}
                     </div>
+
+                    @if($type === 'loan' && $account->initial_balance)
+                    <div style="margin-top: 8px; font-size: 11px; color: var(--muted);">
+                        @php $pct = $account->initial_balance > 0 ? round(($account->balance / $account->initial_balance) * 100, 0) : 0; @endphp
+                        Pagado: {{ 100 - max(0, $pct) }}% ·
+                        <span style="color: var(--expense);">Restante: $ {{ number_format($account->initial_balance, 0, ',', '.') }} original</span>
+                    </div>
+                    @endif
 
                     @if($type === 'credit' && $account->closing_day)
                     <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); display: flex; gap: 12px;">

@@ -14,13 +14,14 @@ class StoreAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'         => ['required', 'string', 'max:100'],
-            'type'         => ['required', 'in:cash,digital,credit'],
-            'currency'     => ['required', 'in:ARS,USD'],
-            'closing_day'  => ['nullable', 'required_if:type,credit', 'integer', 'min:1', 'max:31'],
-            'due_day'      => ['nullable', 'required_if:type,credit', 'integer', 'min:1', 'max:31'],
-            'credit_limit' => ['nullable', 'numeric', 'min:0'],
-            'notes'        => ['nullable', 'string', 'max:500'],
+            'name'            => ['required', 'string', 'max:100'],
+            'type'            => ['required', 'in:cash,digital,credit,loan'],
+            'currency'        => ['required', 'in:ARS,USD'],
+            'closing_day'     => ['nullable', 'required_if:type,credit', 'integer', 'min:1', 'max:31'],
+            'due_day'         => ['nullable', 'required_if:type,credit', 'integer', 'min:1', 'max:31'],
+            'credit_limit'    => ['nullable', 'numeric', 'min:0'],
+            'initial_balance' => ['nullable', 'required_if:type,loan', 'numeric', 'min:0.01'],
+            'notes'           => ['nullable', 'string', 'max:500'],
         ];
     }
 

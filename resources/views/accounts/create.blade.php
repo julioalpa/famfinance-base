@@ -25,10 +25,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                 <div>
                     <label class="form-label">Tipo *</label>
-                    <select name="type" id="account-type" class="form-select" onchange="toggleCreditFields()">
+                    <select name="type" id="account-type" class="form-select" onchange="toggleTypeFields()">
                         <option value="cash"    {{ old('type') === 'cash'    ? 'selected' : '' }}>Efectivo</option>
                         <option value="digital" {{ old('type') === 'digital' ? 'selected' : '' }}>Digital</option>
                         <option value="credit"  {{ old('type') === 'credit'  ? 'selected' : '' }}>Tarjeta de crédito</option>
+                        <option value="loan"    {{ old('type') === 'loan'    ? 'selected' : '' }}>Préstamo</option>
                     </select>
                     @error('type') <div style="font-size:12px;color:var(--danger);margin-top:4px;">{{ $message }}</div> @enderror
                 </div>
@@ -38,6 +39,21 @@
                         <option value="ARS" {{ old('currency','ARS') === 'ARS' ? 'selected' : '' }}>ARS — Pesos</option>
                         <option value="USD" {{ old('currency') === 'USD' ? 'selected' : '' }}>USD — Dólares</option>
                     </select>
+                </div>
+            </div>
+
+            {{-- Campos exclusivos de préstamo --}}
+            <div id="loan-fields" style="{{ old('type') === 'loan' ? '' : 'display:none' }}">
+                <div style="background: var(--surface2); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                    <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px;">Configuración del préstamo</div>
+                    <div>
+                        <label class="form-label">Monto total de la deuda *</label>
+                        <input type="number" name="initial_balance" class="form-input"
+                               placeholder="Ej: 500000" min="0.01" step="0.01"
+                               value="{{ old('initial_balance') }}">
+                        <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">El saldo inicial que pediste y debés devolver. Cada pago lo irá reduciendo.</div>
+                        @error('initial_balance') <div style="font-size:11px;color:var(--danger);margin-top:3px;">{{ $message }}</div> @enderror
+                    </div>
                 </div>
             </div>
 
@@ -87,9 +103,10 @@
 </div>
 
 <script>
-function toggleCreditFields() {
+function toggleTypeFields() {
     const type = document.getElementById('account-type').value;
     document.getElementById('credit-fields').style.display = type === 'credit' ? '' : 'none';
+    document.getElementById('loan-fields').style.display   = type === 'loan'   ? '' : 'none';
 }
 </script>
 

@@ -84,10 +84,21 @@
         </h2>
         @foreach($familyGroup->invitations as $inv)
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
-            <span>{{ $inv->email }}</span>
-            <span style="font-size: 11px; color: var(--muted);">
-                Enviada por {{ $inv->invitedBy->name }} · vence {{ $inv->expires_at->format('d/m/Y') }}
-            </span>
+            <div>
+                <div>{{ $inv->email }}</div>
+                <div style="font-size: 11px; color: var(--muted);">
+                    Enviada por {{ $inv->invitedBy->name }} · vence {{ $inv->expires_at->format('d/m/Y') }}
+                </div>
+            </div>
+            @if($familyGroup->owner_id === auth()->id())
+            <form method="POST" action="{{ route('family-groups.revoke-invitation', $inv) }}"
+                  onsubmit="return confirm('¿Revocar la invitación a {{ $inv->email }}?')">
+                @csrf @method('DELETE')
+                <button type="submit" style="background: none; border: none; color: var(--danger); font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace;">
+                    Revocar
+                </button>
+            </form>
+            @endif
         </div>
         @endforeach
     </div>

@@ -134,6 +134,18 @@ class FamilyGroupController extends Controller
             ->with('success', "Te uniste al grupo \"{$group->name}\".");
     }
 
+    public function revokeInvitation(Invitation $invitation)
+    {
+        $familyGroup = $this->activeGroup();
+
+        abort_if($familyGroup->owner_id !== auth()->id(), 403);
+        abort_if($invitation->family_group_id !== $familyGroup->id, 403);
+
+        $invitation->update(['status' => 'revoked']);
+
+        return back()->with('success', "Invitación a {$invitation->email} revocada.");
+    }
+
     public function removeMember(int $userId)
     {
         $familyGroup = $this->activeGroup();

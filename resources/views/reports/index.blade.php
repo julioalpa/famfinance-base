@@ -229,6 +229,193 @@
 
 </div>
 
+{{-- ── Row 4: Patrimonio neto ─────────────────────────────────────────────── --}}
+<div style="display:grid; grid-template-columns:1fr 2fr; gap:20px; margin-bottom:20px;">
+
+    {{-- Resumen --}}
+    <div class="card" style="display:flex; flex-direction:column; gap:16px; justify-content:center;">
+        <div>
+            <div style="font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; font-weight:700;">Activos</div>
+            <div class="font-display" style="font-size:22px; font-weight:800; color:var(--income);">$ {{ number_format($totalAssets, 0, ',', '.') }}</div>
+        </div>
+        <div>
+            <div style="font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; font-weight:700;">Pasivos</div>
+            <div class="font-display" style="font-size:22px; font-weight:800; color:var(--expense);">$ {{ number_format($totalLiabilities, 0, ',', '.') }}</div>
+        </div>
+        <div style="padding-top:14px; border-top:1px solid var(--border);">
+            <div style="font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; font-weight:700;">Patrimonio neto</div>
+            <div class="font-display" style="font-size:26px; font-weight:800; color:{{ $netWorth >= 0 ? 'var(--income)' : 'var(--expense)' }};">
+                {{ $netWorth >= 0 ? '+' : '' }}$ {{ number_format($netWorth, 0, ',', '.') }}
+            </div>
+        </div>
+    </div>
+
+    {{-- Desglose por cuenta --}}
+    <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:20px 24px 14px; border-bottom:1px solid var(--border);">
+            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Desglose por cuenta</h2>
+        </div>
+        @php
+            $assetAccounts     = $allAccounts->filter(fn($a) => ! $a->isLiability());
+            $liabilityAccounts = $allAccounts->filter(fn($a) => $a->isLiability());
+            $typeLabelsRep = ['cash' => 'Efectivo', 'digital' => 'Digital', 'credit' => 'Crédito', 'loan' => 'Préstamo'];
+        @endphp
+        <table class="data-table">
+            <tbody>
+                @if($assetAccounts->isNotEmpty())
+                <tr><td colspan="3" style="font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--income); font-weight:700; padding:12px 20px 6px;">ACTIVOS</td></tr>
+                @foreach($assetAccounts->sortByDesc('balance') as $acc)
+                <tr>
+                    <td style="font-weight:600; font-size:13px;">{{ $acc->name }}</td>
+                    <td style="font-size:12px; color:var(--muted);">{{ $typeLabelsRep[$acc->type] ?? $acc->type }} · {{ $acc->currency }}</td>
+                    <td style="text-align:right; font-weight:700; color:var(--income); white-space:nowrap;">+ $ {{ number_format($acc->balance, 0, ',', '.') }}</td>
+                </tr>
+                @endforeach
+                @endif
+
+                @if($liabilityAccounts->isNotEmpty())
+                <tr><td colspan="3" style="font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--expense); font-weight:700; padding:12px 20px 6px;">PASIVOS</td></tr>
+                @foreach($liabilityAccounts->sortByDesc('balance') as $acc)
+                <tr>
+                    <td style="font-weight:600; font-size:13px;">{{ $acc->name }}</td>
+                    <td style="font-size:12px; color:var(--muted);">{{ $typeLabelsRep[$acc->type] ?? $acc->type }} · {{ $acc->currency }}</td>
+                    <td style="text-align:right; font-weight:700; color:var(--expense); white-space:nowrap;">− $ {{ number_format($acc->balance, 0, ',', '.') }}</td>
+                </tr>
+                @endforeach
+                @endif
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{{-- ── Row 4: Historial de pendientes de pago ────────────────────────────── --}}
+@if($paymentItemHistory->isNotEmpty())
+<div style="margin-bottom:20px;">
+    <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Evolución de gastos fijos</h2>
+                <div style="font-size:12px; color:var(--muted); margin-top:2px;">Monto pagado por ítem · últimos {{ $months }} meses</div>
+            </div>
+            <a href="{{ route('payment-items.index') }}" style="font-size:12px; color:var(--accent); text-decoration:none; font-weight:600;">Gestionar ítems →</a>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="data-table" style="min-width:600px;">
+                <thead>
+                    <tr>
+                        <th style="min-width:160px;">Ítem</th>
+                        @foreach($monthKeys as $mk)
+                            <th style="text-align:right; white-space:nowrap;">{{ $mk['label'] }}</th>
+                        @endforeach
+                        <th style="text-align:right; white-space:nowrap;">Variación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($paymentItemHistory as $row)
+                    @php
+                        $lastPaid   = collect($row['months'])->last(fn($m) => $m['amount'] !== null);
+                        $lastChange = $lastPaid ? $lastPaid['change'] : null;
+                    @endphp
+                    <tr>
+                        <td style="font-weight:600; font-size:13px;">
+                            {{ $row['item']->description }}
+                            <div style="font-size:11px; color:var(--muted); font-weight:400; margin-top:2px;">{{ $row['item']->account?->name }}</div>
+                        </td>
+                        @foreach($row['months'] as $m)
+                        <td style="text-align:right; white-space:nowrap; font-size:13px;">
+                            @if($m['amount'] !== null)
+                                <span style="color:var(--text); font-weight:600;">$ {{ number_format($m['amount'], 0, ',', '.') }}</span>
+                                @if($m['change'] !== null)
+                                    <div style="font-size:10px; font-weight:700; color:{{ $m['change'] > 0 ? 'var(--expense)' : ($m['change'] < 0 ? 'var(--income)' : 'var(--muted)') }};">
+                                        {{ $m['change'] > 0 ? '+' : '' }}{{ $m['change'] }}%
+                                    </div>
+                                @endif
+                            @else
+                                <span style="color:var(--muted);">—</span>
+                            @endif
+                        </td>
+                        @endforeach
+                        <td style="text-align:right;">
+                            @if($lastChange !== null)
+                                <span style="display:inline-block; padding:3px 8px; border-radius:5px; font-size:11px; font-weight:700;
+                                    background:{{ $lastChange > 5 ? 'rgba(240,64,96,0.12)' : ($lastChange < -5 ? 'rgba(45,216,112,0.12)' : 'rgba(106,102,118,0.15)') }};
+                                    color:{{ $lastChange > 5 ? 'var(--expense)' : ($lastChange < -5 ? 'var(--income)' : 'var(--muted)') }};">
+                                    {{ $lastChange > 0 ? '+' : '' }}{{ $lastChange }}%
+                                </span>
+                            @else
+                                <span style="color:var(--muted); font-size:12px;">—</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- ── Row 5: Previsión de cuotas ─────────────────────────────────────────── --}}
+@if($installmentForecast->isNotEmpty())
+<div style="margin-bottom:20px;">
+    <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:20px 24px 16px; border-bottom:1px solid var(--border);">
+            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Previsión de cuotas</h2>
+            <div style="font-size:12px; color:var(--muted); margin-top:2px;">
+                Cuotas pendientes · próximos 12 meses ·
+                <strong style="color:var(--accent);">Total: $ {{ number_format($installmentForecast->sum('total'), 0, ',', '.') }}</strong>
+            </div>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Mes</th>
+                    <th style="text-align:center;">Cuotas</th>
+                    <th style="text-align:right;">Total del mes</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($installmentForecast as $slot)
+                <tr style="{{ $slot['is_current'] ? 'background: rgba(240,160,48,0.04);' : '' }}">
+                    <td style="font-weight:700; font-size:13px; white-space:nowrap;">
+                        {{ $slot['label'] }}
+                        @if($slot['is_current'])
+                            <span style="margin-left:6px; font-size:10px; background:rgba(240,160,48,0.15); color:var(--accent); padding:2px 6px; border-radius:4px; font-weight:700;">HOY</span>
+                        @endif
+                    </td>
+                    <td style="text-align:center; font-size:13px; color:var(--muted); font-weight:600;">{{ $slot['count'] }}</td>
+                    <td style="text-align:right; font-weight:800; font-size:14px; color:var(--expense); white-space:nowrap;">
+                        $ {{ number_format($slot['total'], 0, ',', '.') }}
+                    </td>
+                    <td style="font-size:12px; color:var(--muted);">
+                        @foreach($slot['items'] as $inst)
+                            <span style="display:inline-block; margin-right:8px; white-space:nowrap;">
+                                <span style="color:var(--text); font-weight:600;">{{ Str::limit($inst['description'], 22) }}</span>
+                                <span style="color:var(--muted);">({{ $inst['number'] }}/{{ $inst['of'] }})</span>
+                                <span style="color:var(--expense);">$&nbsp;{{ number_format($inst['amount'], 0, ',', '.') }}</span>
+                            </span>
+                        @endforeach
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr style="border-top:2px solid var(--border);">
+                    <td colspan="2" style="font-size:12px; color:var(--muted); font-weight:700; padding:14px 20px;">TOTAL COMPROMETIDO</td>
+                    <td style="text-align:right; font-weight:800; font-size:15px; color:var(--accent); padding:14px 20px; white-space:nowrap;">
+                        $ {{ number_format($installmentForecast->sum('total'), 0, ',', '.') }}
+                    </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+@endif
+
 {{-- ── Chart.js setup ───────────────────────────────────────────────────── --}}
 <script>
 (function () {

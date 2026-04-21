@@ -6,6 +6,8 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\ExchangeRate;
 use App\Models\Installment;
+use App\Models\MonthlyPayment;
+use App\Models\PaymentItem;
 use App\Models\RecurringExpense;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -24,6 +26,11 @@ class DashboardController extends Controller
 
         // ── Cuentas activas del grupo ────────────────────────────────────────
         $accounts = $group->accounts()->where('is_active', true)->get();
+
+        // ── Patrimonio neto ──────────────────────────────────────────────────
+        $totalAssets      = $accounts->filter(fn($a) => ! $a->isLiability())->sum('balance');
+        $totalLiabilities = $accounts->filter(fn($a) => $a->isLiability())->sum('balance');
+        $netWorth         = $totalAssets - $totalLiabilities;
 
         // ── Totales del mes ─────────────────────────────────────────────────
         $baseQuery = Transaction::where('family_group_id', $groupId)
@@ -73,6 +80,39 @@ class DashboardController extends Controller
             ->orderBy('day_of_month')
             ->get();
 
+        // ── Pendientes del mes actual (para widget) ───────────────────────────
+        $currentMon  = now()->month;
+        $currentYear = now()->year;
+
+        $activeItems = PaymentItem::where('family_group_id', $groupId)
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($activeItems as $item) {
+            MonthlyPayment::firstOrCreate(
+                [
+                    'payment_item_id' => $item->id,
+                    'month'           => $currentMon,
+                    'year'            => $currentYear,
+                ],
+                ['family_group_id' => $groupId]
+            );
+        }
+
+        $pendingPayments = MonthlyPayment::with(['paymentItem.account'])
+            ->where('family_group_id', $groupId)
+            ->where('month', $currentMon)
+            ->where('year', $currentYear)
+            ->get()
+            ->sortBy(fn ($mp) => [
+                $mp->is_paid ? 1 : 0,
+                $mp->paymentItem?->day_of_month ?? 99,
+            ])
+            ->values();
+
+        $pendingPaidCount  = $pendingPayments->where('is_paid', true)->count();
+        $pendingTotalCount = $pendingPayments->count();
+
         return view('dashboard', compact(
             'group',
             'accounts',
@@ -80,11 +120,17 @@ class DashboardController extends Controller
             'totalIncome',
             'totalExpense',
             'balance',
+            'totalAssets',
+            'totalLiabilities',
+            'netWorth',
             'expensesByCategory',
             'installmentSummary',
             'recentTransactions',
             'exchangeRate',
             'recurringExpenses',
+            'pendingPayments',
+            'pendingPaidCount',
+            'pendingTotalCount',
         ));
     }
 }

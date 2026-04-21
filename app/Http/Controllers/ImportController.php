@@ -9,6 +9,29 @@ use Illuminate\Http\Request;
 
 class ImportController extends Controller
 {
+    private static function parseDate(string $fecha): ?string
+    {
+        $fecha = trim($fecha);
+
+        // Formato YYYY.MM.DD
+        if (preg_match('/^\d{4}\.\d{2}\.\d{2}$/', $fecha)) {
+            return str_replace('.', '-', $fecha);
+        }
+
+        // Formato "16 abr 2026"
+        $months = ['ene'=>'01','feb'=>'02','mar'=>'03','abr'=>'04','may'=>'05','jun'=>'06',
+                   'jul'=>'07','ago'=>'08','sep'=>'09','oct'=>'10','nov'=>'11','dic'=>'12'];
+
+        if (preg_match('/^(\d{1,2})\s+([a-záéíóú]{3})\s+(\d{4})$/i', $fecha, $m)) {
+            $mon = $months[mb_strtolower($m[2])] ?? null;
+            if ($mon) {
+                return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$mon, (int)$m[1]);
+            }
+        }
+
+        return null;
+    }
+
     public function index()
     {
         return view('import.index');
@@ -107,8 +130,12 @@ class ImportController extends Controller
                 continue;
             }
 
-            // Fecha: YYYY.MM.DD → YYYY-MM-DD
-            $date = str_replace('.', '-', $fecha);
+            // Fecha: soporta "YYYY.MM.DD" y "16 abr 2026"
+            $date = self::parseDate($fecha);
+            if (!$date) {
+                $skipped++;
+                continue;
+            }
 
             // Categoría: buscar o crear
             $catKey = mb_strtolower($catName);

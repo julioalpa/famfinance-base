@@ -9,12 +9,14 @@ use Laravel\Socialite\Facades\Socialite;
 
 class GoogleAuthController extends Controller
 {
-    /**
-     * Redirige al usuario a la pantalla de consentimiento de Google.
-     */
     public function redirect()
     {
         return Socialite::driver('google')->redirect();
+    }
+
+    public function redirectSwitch()
+    {
+        return Socialite::driver('google')->with(['prompt' => 'select_account'])->redirect();
     }
 
     /**

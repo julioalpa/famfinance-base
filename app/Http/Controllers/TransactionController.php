@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Category;
+use App\Models\MonthlyPayment;
+use App\Models\PaymentItem;
 use App\Models\Transaction;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class TransactionController extends Controller
 {
@@ -63,8 +66,28 @@ class TransactionController extends Controller
             session()->forget('bulk_count');
         }
 
+        $paidThisMonth = MonthlyPayment::where('family_group_id', $groupId)
+            ->where('month', now()->month)
+            ->where('year', now()->year)
+            ->where('is_paid', true)
+            ->pluck('payment_item_id');
+
+        $pendingItems = PaymentItem::with(['account', 'category'])
+            ->where('family_group_id', $groupId)
+            ->where('is_active', true)
+            ->whereNotIn('id', $paidThisMonth)
+            ->orderBy('description')
+            ->get()
+            ->map(fn($item) => [
+                'id'          => $item->id,
+                'description' => $item->description,
+                'account_id'  => $item->account_id,
+                'category_id' => $item->category_id,
+                'last_amount' => $item->lastPaidAmount(now()->month, now()->year),
+            ]);
+
         return view('transactions.create', compact(
-            'categories', 'accounts', 'bulk', 'bulkCount', 'defaultDate', 'defaultAccountId'
+            'categories', 'accounts', 'bulk', 'bulkCount', 'defaultDate', 'defaultAccountId', 'pendingItems'
         ));
     }
 
@@ -72,11 +95,34 @@ class TransactionController extends Controller
     {
         $groupId = session('active_family_group_id');
 
-        $this->service->create(
-            $request->validated(),
-            $groupId,
-            auth()->id()
-        );
+        $validated = $request->validated();
+        $paymentItemId = $validated['payment_item_id'] ?? null;
+        unset($validated['payment_item_id']);
+
+        $transaction = $this->service->create($validated, $groupId, auth()->id());
+
+        if ($paymentItemId) {
+            $item = PaymentItem::where('id', $paymentItemId)
+                ->where('family_group_id', $groupId)
+                ->first();
+
+            if ($item) {
+                $date = Carbon::parse($transaction->date);
+                $mp = MonthlyPayment::firstOrCreate(
+                    ['payment_item_id' => $item->id, 'month' => $date->month, 'year' => $date->year],
+                    ['family_group_id' => $groupId]
+                );
+
+                if (! $mp->is_paid) {
+                    $mp->update([
+                        'is_paid'        => true,
+                        'paid_at'        => now(),
+                        'amount'         => $transaction->amount,
+                        'transaction_id' => $transaction->id,
+                    ]);
+                }
+            }
+        }
 
         if ($request->boolean('bulk')) {
             session(['bulk_count' => session('bulk_count', 0) + 1]);
@@ -145,7 +191,7 @@ class TransactionController extends Controller
         $groupId = session('active_family_group_id');
 
         abort_if(
-            $transaction->family_group_id !== $groupId,
+            (int) $transaction->family_group_id !== (int) $groupId,
             403,
             'No tenés permiso para acceder a este movimiento.'
         );

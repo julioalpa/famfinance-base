@@ -14,6 +14,7 @@
     $bulk             = $bulk ?? false;
     $defaultDate      = $defaultDate ?? null;
     $defaultAccountId = $defaultAccountId ?? null;
+    $pendingItems     = $pendingItems ?? collect();
 @endphp
 
 <form method="POST" action="{{ $action }}">
@@ -179,6 +180,30 @@
                 </div>
             </div>
 
+            {{-- Pendiente del mes --}}
+            @if(! $isEdit && $pendingItems->isNotEmpty())
+            <div class="form-group" id="pending-item-group" style="margin-bottom: 20px; display: none;">
+                <label class="form-label" for="payment_item_id">
+                    Asociar a pendiente del mes
+                    <span style="color: var(--muted); font-weight: 400;">(opcional)</span>
+                </label>
+                <select name="payment_item_id" id="payment_item_id" class="form-select"
+                        onchange="applyPendingItem(this.value)">
+                    <option value="">— Sin asociar —</option>
+                    @foreach($pendingItems as $item)
+                        <option value="{{ $item['id'] }}"
+                                {{ old('payment_item_id') == $item['id'] ? 'selected' : '' }}>
+                            {{ $item['description'] }}
+                            @if($item['last_amount']) · {{ number_format($item['last_amount'], 2, ',', '.') }}@endif
+                        </option>
+                    @endforeach
+                </select>
+                <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+                    Al guardar, se marcará como pagado automáticamente.
+                </div>
+            </div>
+            @endif
+
             {{-- Notas --}}
             <div class="form-group" style="margin-bottom: 20px;">
                 <label class="form-label" for="notes">Notas adicionales</label>
@@ -209,6 +234,28 @@
 </form>
 
 <script>
+@if(! $isEdit && $pendingItems->isNotEmpty())
+const PENDING_ITEMS = @json($pendingItems->keyBy('id'));
+
+function applyPendingItem(id) {
+    if (!id) return;
+    const item = PENDING_ITEMS[id];
+    if (!item) return;
+
+    if (item.last_amount) {
+        document.getElementById('amount').value = item.last_amount;
+        document.getElementById('amount').dispatchEvent(new Event('input'));
+    }
+    if (item.account_id) {
+        document.getElementById('account_id').value = item.account_id;
+        document.getElementById('account_id').dispatchEvent(new Event('change'));
+    }
+    if (item.category_id) {
+        document.getElementById('category_id').value = item.category_id;
+    }
+}
+@endif
+
 (function() {
     // ── Lógica de tipo de movimiento ─────────────────────────────────────
     const typeColors = {
@@ -240,6 +287,9 @@
         document.getElementById('target-account-group').style.display   = selected === 'transfer' ? '' : 'none';
         document.getElementById('income-source-group').style.display     = selected === 'income'   ? '' : 'none';
         document.getElementById('installments-group').style.display      = (selected === 'expense' && isCredit) ? '' : 'none';
+
+        const pendingGroup = document.getElementById('pending-item-group');
+        if (pendingGroup) pendingGroup.style.display = selected === 'expense' ? '' : 'none';
     }
 
     document.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener('change', updateTypeUI));

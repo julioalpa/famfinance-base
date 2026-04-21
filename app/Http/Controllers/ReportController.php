@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Installment;
+use App\Models\MonthlyPayment;
+use App\Models\PaymentItem;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -95,6 +98,89 @@ class ReportController extends Controller
             ->map(fn($items) => round($items->sum('amount'), 2))
             ->sortDesc();
 
+        // ── Patrimonio neto ───────────────────────────────────────────────────
+        $allAccounts      = auth()->user()->familyGroups()->find($groupId)
+            ->accounts()->where('is_active', true)->get();
+        $totalAssets      = $allAccounts->filter(fn($a) => ! $a->isLiability())->sum('balance');
+        $totalLiabilities = $allAccounts->filter(fn($a) => $a->isLiability())->sum('balance');
+        $netWorth         = $totalAssets - $totalLiabilities;
+
+        // ── Historial de ítems de pago (pendientes) ───────────────────────────
+        $monthKeys = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $d = now()->subMonths($i)->startOfMonth();
+            $monthKeys[] = [
+                'key'   => "{$d->year}-{$d->month}",
+                'label' => ucfirst($d->locale('es')->isoFormat('MMM YY')),
+                'month' => $d->month,
+                'year'  => $d->year,
+            ];
+        }
+
+        $activePaymentItems = PaymentItem::with('account')
+            ->where('family_group_id', $groupId)
+            ->where('is_active', true)
+            ->orderBy('description')
+            ->get();
+
+        $historyRaw = MonthlyPayment::where('family_group_id', $groupId)
+            ->where('is_paid', true)
+            ->whereIn('payment_item_id', $activePaymentItems->pluck('id'))
+            ->get()
+            ->groupBy('payment_item_id');
+
+        $paymentItemHistory = $activePaymentItems->map(function ($item) use ($historyRaw, $monthKeys) {
+            $byKey = $historyRaw->get($item->id, collect())
+                ->keyBy(fn($mp) => "{$mp->year}-{$mp->month}");
+            $rows     = [];
+            $prevAmount = null;
+            foreach ($monthKeys as $mk) {
+                $mp     = $byKey->get($mk['key']);
+                $amount = $mp ? (float) $mp->amount : null;
+                $change = null;
+                if ($amount !== null && $prevAmount !== null && $prevAmount > 0) {
+                    $change = round((($amount - $prevAmount) / $prevAmount) * 100, 1);
+                }
+                if ($amount !== null) $prevAmount = $amount;
+                $rows[] = ['label' => $mk['label'], 'amount' => $amount, 'change' => $change];
+            }
+            return ['item' => $item, 'months' => $rows];
+        })->filter(fn($row) => collect($row['months'])->contains(fn($m) => $m['amount'] !== null));
+
+        // ── Previsión de cuotas ───────────────────────────────────────────────
+        $forecastHorizon = 12;
+        $forecastStart   = now()->startOfMonth();
+
+        $upcomingInstallments = Installment::with(['transaction', 'account'])
+            ->whereHas('account', fn($q) => $q->where('family_group_id', $groupId))
+            ->where('is_paid', false)
+            ->where('due_date', '>=', $forecastStart)
+            ->where('due_date', '<', $forecastStart->copy()->addMonths($forecastHorizon))
+            ->orderBy('due_date')
+            ->get();
+
+        $installmentForecast = collect();
+        for ($i = 0; $i < $forecastHorizon; $i++) {
+            $d    = $forecastStart->copy()->addMonths($i);
+            $slot = $upcomingInstallments->filter(
+                fn($inst) => $inst->due_date->year === $d->year && $inst->due_date->month === $d->month
+            );
+            if ($slot->isEmpty()) continue;
+            $installmentForecast->push([
+                'label' => ucfirst($d->locale('es')->isoFormat('MMMM YYYY')),
+                'is_current' => $i === 0,
+                'total' => round($slot->sum('amount'), 2),
+                'count' => $slot->count(),
+                'items' => $slot->map(fn($inst) => [
+                    'description' => $inst->transaction?->description ?? 'Sin descripción',
+                    'account'     => $inst->account?->name ?? '—',
+                    'amount'      => (float) $inst->amount,
+                    'number'      => $inst->installment_number,
+                    'of'          => $inst->transaction?->installments_count ?? '?',
+                ])->sortBy('description')->values(),
+            ]);
+        }
+
         return view('reports.index', compact(
             'monthlyData',
             'months',
@@ -108,6 +194,13 @@ class ReportController extends Controller
             'dailySpending',
             'byMember',
             'startDate',
+            'monthKeys',
+            'paymentItemHistory',
+            'installmentForecast',
+            'allAccounts',
+            'totalAssets',
+            'totalLiabilities',
+            'netWorth',
         ));
     }
 }

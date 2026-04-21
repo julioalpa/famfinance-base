@@ -52,19 +52,17 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
-                <form method="POST" action="{{ route('categories.destroy', $category) }}"
-                      onsubmit="return confirm('¿Eliminar esta categoría?')">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="btn btn-danger" style="font-size: 12px;">Eliminar</button>
-                </form>
-
-                <div style="display: flex; gap: 10px;">
-                    <a href="{{ route('categories.index') }}" class="btn btn-ghost">Cancelar</a>
-                    <button type="submit" class="btn btn-primary"
-                            onclick="this.closest('form').submit()">Guardar cambios</button>
-                </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+                <a href="{{ route('categories.index') }}" class="btn btn-ghost">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
             </div>
+        </form>
+
+        <form method="POST" action="{{ route('categories.destroy', $category) }}"
+              style="margin-top: 16px;"
+              onsubmit="return confirm('¿Eliminar esta categoría?')">
+            @csrf @method('DELETE')
+            <button type="submit" class="btn btn-danger" style="font-size: 12px;">Eliminar</button>
         </form>
     </div>
 </div>

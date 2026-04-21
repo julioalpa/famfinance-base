@@ -7,6 +7,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\FamilyGroupController;
+use App\Http\Controllers\MonthlyPaymentController;
+use App\Http\Controllers\PaymentItemController;
 use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TransactionController;
@@ -16,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/login', fn() => view('auth.login'))->name('login');
     Route::get('/auth/google',          [GoogleAuthController::class, 'redirect'])->name('auth.google');
+    Route::get('/auth/google/switch',   [GoogleAuthController::class, 'redirectSwitch'])->name('auth.google.switch');
     Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 });
 
@@ -55,7 +58,7 @@ Route::middleware('auth')->group(function () {
             'edit'    => 'accounts.edit',
             'update'  => 'accounts.update',
             'destroy' => 'accounts.destroy',
-        ]);
+        ])->parameters(['cuentas' => 'account']);
 
         // Movimientos (gastos e ingresos)
         Route::resource('movimientos', TransactionController::class)->names([
@@ -66,7 +69,7 @@ Route::middleware('auth')->group(function () {
             'edit'    => 'transactions.edit',
             'update'  => 'transactions.update',
             'destroy' => 'transactions.destroy',
-        ]);
+        ])->parameters(['movimientos' => 'transaction']);
 
         // Grupo familiar
         Route::get('/grupo', [FamilyGroupController::class, 'show'])
@@ -75,6 +78,8 @@ Route::middleware('auth')->group(function () {
             ->name('family-groups.invite');
         Route::delete('/grupo/miembros/{userId}', [FamilyGroupController::class, 'removeMember'])
             ->name('family-groups.remove-member');
+        Route::delete('/grupo/invitaciones/{invitation}', [FamilyGroupController::class, 'revokeInvitation'])
+            ->name('family-groups.revoke-invitation');
         Route::post('/grupo/cambiar/{familyGroup}', [FamilyGroupController::class, 'switchGroup'])
             ->name('family-groups.switch');
 
@@ -92,7 +97,7 @@ Route::middleware('auth')->group(function () {
                 'edit'    => 'categories.edit',
                 'update'  => 'categories.update',
                 'destroy' => 'categories.destroy',
-            ]);
+            ])->parameters(['categorias' => 'category']);
 
         // Tipo de cambio
         Route::get('/tipo-de-cambio',           [ExchangeRateController::class, 'index'])->name('exchange-rates.index');
@@ -108,6 +113,22 @@ Route::middleware('auth')->group(function () {
             'edit'    => 'recurring-expenses.edit',
             'update'  => 'recurring-expenses.update',
             'destroy' => 'recurring-expenses.destroy',
-        ])->except(['show']);
+        ])->except(['show'])->parameters(['debitos' => 'recurringExpense']);
+
+        // Checklist mensual de pendientes
+        Route::get('/pendientes', [MonthlyPaymentController::class, 'index'])->name('monthly-payments.index');
+        Route::post('/pendientes/{monthlyPayment}/pagar',    [MonthlyPaymentController::class, 'markPaid'])->name('monthly-payments.mark-paid');
+        Route::post('/pendientes/{monthlyPayment}/desmarcar', [MonthlyPaymentController::class, 'markUnpaid'])->name('monthly-payments.mark-unpaid');
+
+        // Ítems de pendientes (plantillas)
+        Route::post('/pendientes-items/{paymentItem}/toggle', [PaymentItemController::class, 'toggle'])->name('payment-items.toggle');
+        Route::resource('pendientes-items', PaymentItemController::class)->names([
+            'index'   => 'payment-items.index',
+            'create'  => 'payment-items.create',
+            'store'   => 'payment-items.store',
+            'edit'    => 'payment-items.edit',
+            'update'  => 'payment-items.update',
+            'destroy' => 'payment-items.destroy',
+        ])->except(['show'])->parameters(['pendientes-items' => 'paymentItem']);
     });
 });

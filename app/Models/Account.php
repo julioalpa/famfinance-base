@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Account extends Model
 {
@@ -20,6 +21,7 @@ class Account extends Model
         'closing_day',
         'due_day',
         'credit_limit',
+        'initial_balance',
         'is_active',
         'notes',
     ];
@@ -27,10 +29,11 @@ class Account extends Model
     protected function casts(): array
     {
         return [
-            'is_active'    => 'boolean',
-            'credit_limit' => 'decimal:2',
-            'closing_day'  => 'integer',
-            'due_day'      => 'integer',
+            'is_active'       => 'boolean',
+            'credit_limit'    => 'decimal:2',
+            'initial_balance' => 'decimal:2',
+            'closing_day'     => 'integer',
+            'due_day'         => 'integer',
         ];
     }
 
@@ -54,33 +57,40 @@ class Account extends Model
         return $this->hasMany(Installment::class);
     }
 
-    public function isCredit(): bool
-    {
-        return $this->type === 'credit';
-    }
+    public function isCredit(): bool  { return $this->type === 'credit'; }
+    public function isCash(): bool    { return $this->type === 'cash'; }
+    public function isDigital(): bool { return $this->type === 'digital'; }
+    public function isLoan(): bool    { return $this->type === 'loan'; }
 
-    public function isCash(): bool
+    public function isLiability(): bool
     {
-        return $this->type === 'cash';
-    }
-
-    public function isDigital(): bool
-    {
-        return $this->type === 'digital';
+        return in_array($this->type, ['credit', 'loan']);
     }
 
     /**
-     * Calcula el balance de la cuenta sumando ingresos y restando gastos.
-     * Para cuentas de crédito devuelve el total consumido (deuda).
+     * Saldo de la cuenta incluyendo transferencias:
+     *  - cash/digital : ingresos − gastos + transferencias_entrantes − transferencias_salientes
+     *  - credit/loan  : lo mismo pero invertido (positivo = debés)
+     *
+     * Las transferencias se almacenan como un único registro:
+     *   account_id = origen, target_account_id = destino, type = 'transfer'
      */
     public function getBalanceAttribute(): float
     {
-        $income  = $this->transactions()->where('type', 'income')->sum('amount');
-        $expense = $this->transactions()->where('type', 'expense')->sum('amount');
+        $income      = (float) $this->transactions()->where('type', 'income')->sum('amount');
+        $expense     = (float) $this->transactions()->where('type', 'expense')->sum('amount');
+        $transferOut = (float) $this->transactions()->where('type', 'transfer')->sum('amount');
+        $transferIn  = (float) DB::table('transactions')
+            ->where('target_account_id', $this->id)
+            ->where('type', 'transfer')
+            ->whereNull('deleted_at')
+            ->sum('amount');
 
-        return $this->isCredit()
-            ? $expense - $income   // crédito: saldo deudor
-            : $income - $expense;  // cash/digital: saldo disponible
+        return match ($this->type) {
+            'credit' => $expense - $income + $transferOut - $transferIn,
+            'loan'   => (float) ($this->initial_balance ?? 0) + $expense - $income + $transferOut - $transferIn,
+            default  => $income - $expense + $transferIn - $transferOut,
+        };
     }
 
     /**

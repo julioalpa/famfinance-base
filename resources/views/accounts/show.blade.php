@@ -10,7 +10,7 @@
         <h1 class="font-display" style="font-size: 24px; font-weight: 700; margin-top: 6px;">{{ $account->name }}</h1>
         <div style="margin-top: 6px; display: flex; align-items: center; gap: 10px;">
             <span class="badge badge-{{ $account->type }}">
-                {{ ['cash'=>'Efectivo','digital'=>'Digital','credit'=>'Crédito'][$account->type] }}
+                {{ ['cash'=>'Efectivo','digital'=>'Digital','credit'=>'Crédito','loan'=>'Préstamo'][$account->type] ?? $account->type }}
             </span>
             <span style="font-size: 12px; color: var(--muted);">{{ $account->currency }}</span>
             <span style="font-size: 12px; color: var(--muted);">· Registrada por {{ $account->user->name }}</span>
@@ -53,6 +53,106 @@
     </div>
     @endif
 </div>
+
+{{-- Próximo resumen estimado --}}
+@if($nextPaymentSummary)
+<div class="card" style="margin-bottom: 24px; border-color: rgba(240,160,48,0.3);">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 6px;">
+                Próximo resumen estimado
+            </div>
+            <div style="font-size: 12px; color: var(--muted);">
+                Período: {{ $nextPaymentSummary['period_start']->format('d/m/Y') }} → {{ $nextPaymentSummary['period_end']->format('d/m/Y') }}
+                @if($nextPaymentSummary['due_date'])
+                    · <span style="color: var(--warn);">Vence {{ $nextPaymentSummary['due_date']->format('d/m/Y') }}</span>
+                @endif
+            </div>
+        </div>
+        <div class="font-display" style="font-size: 28px; font-weight: 800; color: var(--warn); letter-spacing: -0.03em;">
+            $ {{ number_format($nextPaymentSummary['total'], 2, ',', '.') }}
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+        <div>
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;">Consumos del período</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--expense);">
+                $ {{ number_format($nextPaymentSummary['expenses'], 2, ',', '.') }}
+            </div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">Gastos sin cuotas desde el último cierre</div>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;">Cuotas próximo mes</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--warn);">
+                $ {{ number_format($nextPaymentSummary['installments_total'], 2, ',', '.') }}
+            </div>
+            @if($nextPaymentSummary['installments']->isNotEmpty())
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">
+                {{ $nextPaymentSummary['installments']->count() }} cuota{{ $nextPaymentSummary['installments']->count() > 1 ? 's' : '' }}
+                @foreach($nextPaymentSummary['installments']->take(2) as $inst)
+                    · {{ Str::limit($inst->transaction->description ?? '—', 18) }} ({{ $inst->installment_number }}/{{ $inst->transaction->installments_count }})
+                @endforeach
+                @if($nextPaymentSummary['installments']->count() > 2)
+                    · y {{ $nextPaymentSummary['installments']->count() - 2 }} más
+                @endif
+            </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Ajuste de fechas --}}
+    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);">
+        <button onclick="document.getElementById('date-override-form').classList.toggle('hidden-form')"
+                style="background: none; border: none; font-size: 11px; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: inherit; padding: 0;">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            Ajustar fechas del resumen
+            @if($nextPaymentSummary['closing_used'] != $nextPaymentSummary['closing_default'] || $nextPaymentSummary['due_day_used'] != $nextPaymentSummary['due_day_default'])
+                <span style="color: var(--accent); font-weight: 700;">· modificado</span>
+            @endif
+        </button>
+
+        <form id="date-override-form" method="GET"
+              class="{{ ($nextPaymentSummary['closing_used'] != $nextPaymentSummary['closing_default'] || $nextPaymentSummary['due_day_used'] != $nextPaymentSummary['due_day_default']) ? '' : 'hidden-form' }}"
+              style="margin-top: 12px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;">
+            <input type="hidden" name="month" value="{{ $month }}">
+            <div>
+                <label style="font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px;">
+                    Día de cierre
+                    <span style="color: var(--surface2);">(default: {{ $nextPaymentSummary['closing_default'] }})</span>
+                </label>
+                <input type="number" name="closing_override" class="form-input"
+                       style="width: 80px; padding: 6px 10px; font-size: 13px;"
+                       min="1" max="31"
+                       value="{{ $nextPaymentSummary['closing_used'] }}"
+                       placeholder="{{ $nextPaymentSummary['closing_default'] }}">
+            </div>
+            <div>
+                <label style="font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px;">
+                    Día de vencimiento
+                    <span style="color: var(--surface2);">(default: {{ $nextPaymentSummary['due_day_default'] ?: '—' }})</span>
+                </label>
+                <input type="number" name="due_override" class="form-input"
+                       style="width: 80px; padding: 6px 10px; font-size: 13px;"
+                       min="1" max="31"
+                       value="{{ $nextPaymentSummary['due_day_used'] }}"
+                       placeholder="{{ $nextPaymentSummary['due_day_default'] ?: '—' }}">
+            </div>
+            <button type="submit" class="btn btn-primary" style="font-size: 12px; padding: 7px 14px;">Recalcular</button>
+            @if($nextPaymentSummary['closing_used'] != $nextPaymentSummary['closing_default'] || $nextPaymentSummary['due_day_used'] != $nextPaymentSummary['due_day_default'])
+                <a href="{{ route('accounts.show', $account) }}?month={{ $month }}"
+                   style="font-size: 11px; color: var(--muted); text-decoration: none; align-self: center;">
+                    Restablecer defaults
+                </a>
+            @endif
+        </form>
+    </div>
+</div>
+
+<style>
+.hidden-form { display: none !important; }
+</style>
+@endif
 
 {{-- Selector de mes --}}
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
@@ -132,12 +232,17 @@
             </thead>
             <tbody>
                 @foreach($transactions as $tx)
+                @php $isPayment = $tx->getAttribute('is_payment'); @endphp
                 <tr>
                     <td style="color: var(--muted); font-size: 12px;">{{ $tx->date->format('d/m/Y') }}</td>
                     <td>
-                        <span class="badge badge-{{ $tx->type }}" style="font-size: 10px;">
-                            {{ $tx->type === 'expense' ? 'Gasto' : ($tx->type === 'income' ? 'Ingreso' : 'Transfer.') }}
-                        </span>
+                        @if($isPayment)
+                            <span class="badge badge-income" style="font-size: 10px;">Pago</span>
+                        @else
+                            <span class="badge badge-{{ $tx->type }}" style="font-size: 10px;">
+                                {{ $tx->type === 'expense' ? 'Gasto' : ($tx->type === 'income' ? 'Ingreso' : 'Transfer.') }}
+                            </span>
+                        @endif
                     </td>
                     <td>
                         <a href="{{ route('transactions.show', $tx) }}" style="color: var(--text); text-decoration: none; font-size: 13px;">
@@ -149,12 +254,17 @@
                     </td>
                     <td style="font-size: 12px; color: var(--muted);">{{ $tx->category?->name ?? '—' }}</td>
                     <td style="font-size: 12px; color: var(--muted);">{{ $tx->user->name }}</td>
-                    <td style="text-align: right; font-weight: 500; white-space: nowrap;"
-                        style="color: {{ $tx->isIncome() ? 'var(--income)' : ($tx->isExpense() ? 'var(--expense)' : 'var(--accent2)') }}">
-                        <span class="{{ $tx->isIncome() ? 'amount-income' : ($tx->isExpense() ? 'amount-expense' : 'amount-neutral') }}">
-                            {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '-' : '') }}
-                            {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
-                        </span>
+                    <td style="text-align: right; font-weight: 500; white-space: nowrap;">
+                        @if($isPayment)
+                            <span style="color: var(--income); font-weight: 700;">
+                                − {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                            </span>
+                        @else
+                            <span class="{{ $tx->isIncome() ? 'amount-income' : ($tx->isExpense() ? 'amount-expense' : 'amount-neutral') }}">
+                                {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '-' : '') }}
+                                {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                            </span>
+                        @endif
                     </td>
                 </tr>
                 @endforeach

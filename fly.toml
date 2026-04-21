@@ -1,46 +1,46 @@
-# fly.toml — FamFinance
-# Docs: https://fly.io/docs/reference/configuration/
+# fly.toml app configuration file generated for famfinance-falling-brook-6007 on 2026-04-20T00:05:37-03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app            = "famfinance"
-primary_region = "gru"          # São Paulo — el más cercano a Argentina
+app = 'famfinance-falling-brook-6007'
+primary_region = 'gru'
 
 [build]
-  dockerfile = "Dockerfile.prod"
+  dockerfile = 'Dockerfile.prod'
 
-# Variables de entorno no sensibles (los secretos van con `fly secrets set`)
 [env]
-  APP_NAME        = "FamFinance"
-  APP_ENV         = "production"
-  APP_DEBUG       = "false"
-  APP_LOCALE      = "es"
-  LOG_CHANNEL     = "stderr"
-  LOG_LEVEL       = "error"
-  SESSION_DRIVER  = "database"
-  SESSION_LIFETIME = "120"
-  CACHE_STORE     = "database"
-  QUEUE_CONNECTION = "sync"
-  FILESYSTEM_DISK = "local"
-  BCRYPT_ROUNDS   = "12"
+  APP_DEBUG = 'false'
+  APP_ENV = 'production'
+  APP_LOCALE = 'es'
+  APP_NAME = 'FamFinance'
+  BCRYPT_ROUNDS = '12'
+  CACHE_STORE = 'database'
+  FILESYSTEM_DISK = 'local'
+  LOG_CHANNEL = 'stderr'
+  LOG_LEVEL = 'error'
+  QUEUE_CONNECTION = 'sync'
+  SESSION_DRIVER = 'database'
+  SESSION_LIFETIME = '120'
 
-# Volumen persistente para storage de Laravel (imports CSV, etc.)
 [[mounts]]
-  source      = "famfinance_storage"
-  destination = "/var/www/html/storage/app"
-  initial_size = "1gb"
+  source = 'famfinance_storage'
+  destination = '/var/www/html/storage/app'
+  initial_size = '1gb'
 
 [http_service]
-  internal_port        = 80
-  force_https          = true
-  auto_stop_machines   = "stop"
-  auto_start_machines  = true
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
   min_machines_running = 0
 
   [http_service.concurrency]
-    type       = "requests"
+    type = 'requests'
     hard_limit = 30
     soft_limit = 25
 
 [[vm]]
-  memory   = "512mb"
-  cpu_kind = "shared"
-  cpus     = 1
+  memory = '512mb'
+  cpus = 1
+  memory_mb = 512
