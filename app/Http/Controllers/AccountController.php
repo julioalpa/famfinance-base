@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAccountRequest;
 use App\Models\Account;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 
 class AccountController extends Controller
@@ -143,6 +144,49 @@ class AccountController extends Controller
         return redirect()
             ->route('accounts.show', $account)
             ->with('success', 'Cuenta actualizada.');
+    }
+
+    public function adjust(Request $request, Account $account)
+    {
+        $this->authorizeAccount($account);
+
+        $request->validate([
+            'target_balance' => ['required', 'numeric'],
+            'notes'          => ['nullable', 'string', 'max:500'],
+            'date'           => ['nullable', 'date'],
+        ]);
+
+        $current = $account->balance;
+        $target  = (float) $request->target_balance;
+        $diff    = $target - $current;
+
+        if (abs($diff) < 0.01) {
+            return back()->with('info', 'El saldo ya coincide con el valor ingresado.');
+        }
+
+        // Para activos: diff > 0 = entra dinero ('in'); diff < 0 = sale ('out')
+        // Para pasivos: diff > 0 = sube la deuda ('out'); diff < 0 = baja la deuda ('in')
+        if ($account->isLiability()) {
+            $direction = $diff > 0 ? 'out' : 'in';
+        } else {
+            $direction = $diff > 0 ? 'in' : 'out';
+        }
+
+        Transaction::create([
+            'family_group_id'      => session('active_family_group_id'),
+            'account_id'           => $account->id,
+            'user_id'              => auth()->id(),
+            'type'                 => 'adjustment',
+            'adjustment_direction' => $direction,
+            'amount'               => abs($diff),
+            'currency'             => $account->currency,
+            'date'                 => $request->input('date', today()->format('Y-m-d')),
+            'description'          => 'Ajuste de saldo',
+            'notes'                => $request->notes,
+        ]);
+
+        return back()->with('success', 'Saldo ajustado. Se registró un movimiento de ajuste de ' .
+            ($account->currency === 'USD' ? 'US$' : '$') . ' ' . number_format(abs($diff), 2, ',', '.') . '.');
     }
 
     public function destroy(Account $account)

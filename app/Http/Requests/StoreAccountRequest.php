@@ -21,6 +21,7 @@ class StoreAccountRequest extends FormRequest
             'due_day'         => ['nullable', 'required_if:type,credit', 'integer', 'min:1', 'max:31'],
             'credit_limit'    => ['nullable', 'numeric', 'min:0'],
             'initial_balance' => ['nullable', 'required_if:type,loan', 'numeric', 'min:0.01'],
+            'brand'           => ['nullable', 'in:mercadopago,bbva,provincia,visa,mastercard'],
             'notes'           => ['nullable', 'string', 'max:500'],
         ];
     }

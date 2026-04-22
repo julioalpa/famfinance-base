@@ -19,7 +19,7 @@
             <span style="font-size: 14px; font-weight: 600; color: var(--income);">Importación completada</span>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr {{ ($r['unpairedTransfers'] ?? 0) > 0 ? '1fr' : '' }}; gap: 12px; margin-bottom: 16px;">
             <div style="background: var(--surface2); border-radius: 8px; padding: 14px; text-align: center;">
                 <div class="font-display" style="font-size: 28px; font-weight: 700; color: var(--income);">{{ $r['imported'] }}</div>
                 <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">movimientos importados</div>
@@ -28,7 +28,19 @@
                 <div class="font-display" style="font-size: 28px; font-weight: 700; color: var(--muted);">{{ $r['skipped'] }}</div>
                 <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">filas salteadas</div>
             </div>
+            @if(($r['unpairedTransfers'] ?? 0) > 0)
+            <div style="background: rgba(240,160,48,0.08); border: 1px solid rgba(240,160,48,0.2); border-radius: 8px; padding: 14px; text-align: center;">
+                <div class="font-display" style="font-size: 28px; font-weight: 700; color: var(--warn);">{{ $r['unpairedTransfers'] }}</div>
+                <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">transferencias sin emparejar</div>
+            </div>
+            @endif
         </div>
+
+        @if(($r['unpairedTransfers'] ?? 0) > 0)
+        <div style="background: rgba(240,160,48,0.06); border: 1px solid rgba(240,160,48,0.18); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: var(--warn);">
+            <strong>¿Por qué no se emparejaron?</strong> Las transferencias se detectan en pares: dos filas con el mismo día y monto, una con monto negativo (origen) y otra positiva (destino). Si las filas no coinciden exactamente, no se pueden vincular.
+        </div>
+        @endif
 
         @if(count($r['createdCategories']) > 0)
         <div style="margin-bottom: 12px;">
@@ -70,11 +82,13 @@
                 @error('file') <div style="font-size:12px;color:var(--danger);margin-top:4px;">{{ $message }}</div> @enderror
             </div>
 
-            <div style="background: var(--surface2); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--muted); line-height: 1.7;">
+            <div style="background: var(--surface2); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--muted); line-height: 1.8;">
                 <strong style="color: var(--text);">Formato esperado del CSV:</strong><br>
-                Columnas: <code>Categoría, Nota, Importe, Moneda, Tipo, Cuenta, Fecha</code><br>
-                Tipo aceptado: <code>Gastos</code> o <code>Ingresos</code> (las <em>Transferencias</em> se saltean)<br>
-                Fecha: <code>YYYY.MM.DD</code><br>
+                Columnas: <code>Categoría, Nota, Importe, Moneda, Tipo, Cuenta, Fecha</code><br><br>
+                <strong style="color: var(--text);">Tipos aceptados:</strong><br>
+                · <code>Gastos</code> / <code>Ingresos</code> → se importan directamente<br>
+                · <code>Transferencia</code> → se emparejan de a dos filas con igual día y monto; el monto negativo es el origen y el positivo el destino<br><br>
+                <strong style="color: var(--text);">Fecha:</strong> <code>YYYY.MM.DD</code> o <code>16 abr 2026</code><br>
                 Si una categoría o cuenta no existe, se crea automáticamente.
             </div>
 

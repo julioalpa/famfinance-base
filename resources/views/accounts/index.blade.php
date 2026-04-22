@@ -18,6 +18,12 @@
 @php
     $grouped    = $accounts->groupBy('type');
     $typeLabels = ['cash' => 'Efectivo', 'digital' => 'Digital', 'credit' => 'Tarjetas de crédito', 'loan' => 'Préstamos'];
+    $typeSubtitles = [
+        'cash'    => 'Billetera, caja, efectivo en mano',
+        'digital' => 'Billeteras virtuales, cuentas bancarias',
+        'credit'  => 'Lo que gastaste y aún debés a la tarjeta',
+        'loan'    => 'Préstamos personales o hipotecarios — lo que debés en total',
+    ];
     $typeColors = ['cash' => 'var(--income)', 'digital' => 'var(--accent2)', 'credit' => 'var(--warn)', 'loan' => 'var(--expense)'];
     $balanceLabel = ['cash' => 'Saldo disponible', 'digital' => 'Saldo disponible', 'credit' => 'Deuda acumulada', 'loan' => 'Deuda restante'];
 @endphp
@@ -25,8 +31,13 @@
 @foreach(['cash','digital','credit','loan'] as $type)
     @if(isset($grouped[$type]) && $grouped[$type]->isNotEmpty())
     <div style="margin-bottom: 28px;">
-        <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px;">
-            {{ $typeLabels[$type] }}
+        <div style="margin-bottom: 14px;">
+            <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700;">
+                {{ $typeLabels[$type] }}
+            </div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px; opacity: 0.7;">
+                {{ $typeSubtitles[$type] }}
+            </div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;">
             @foreach($grouped[$type] as $account)
@@ -46,16 +57,24 @@
                             </div>
                             <span class="badge badge-{{ $type }}" style="font-size: 10px;">{{ $typeLabels[$type] }}</span>
                         </div>
-                        <div style="font-size: 11px; color: var(--muted); background: var(--surface2); padding: 3px 8px; border-radius: 4px;">
-                            {{ $account->currency }}
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            @include('accounts._brand_logo', ['brand' => $account->brand, 'type' => $account->type, 'size' => 'sm'])
+                            <div style="font-size: 11px; color: var(--muted); background: var(--surface2); padding: 3px 8px; border-radius: 4px;">
+                                {{ $account->currency }}
+                            </div>
                         </div>
                     </div>
 
                     <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">
                         {{ $balanceLabel[$type] }}
                     </div>
-                    <div class="font-display" style="font-size: 20px; font-weight: 700; color: {{ $typeColors[$type] }};">
-                        {{ $account->currency === 'USD' ? 'US$' : '$' }} {{ number_format(abs($account->balance), 2, ',', '.') }}
+                    @php
+                        $bal      = $account->balance;
+                        $isNeg    = !in_array($type, ['credit','loan']) && $bal < 0;
+                        $balColor = $isNeg ? 'var(--expense)' : $typeColors[$type];
+                    @endphp
+                    <div class="font-display" style="font-size: 20px; font-weight: 700; color: {{ $balColor }};">
+                        @if($isNeg)−@endif{{ $account->currency === 'USD' ? 'US$' : '$' }} {{ number_format(abs($bal), 2, ',', '.') }}
                     </div>
 
                     @if($type === 'loan' && $account->initial_balance)

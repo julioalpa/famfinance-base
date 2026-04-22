@@ -37,6 +37,45 @@ class ImportController extends Controller
         return view('import.index');
     }
 
+    private static function parseAmount(string $importe, string $moneda): float
+    {
+        $currency = str_starts_with($moneda, 'USD') ? 'USD' : 'ARS';
+
+        if ($currency === 'USD' && preg_match('/\(([0-9.\s]+)\)/', $moneda, $m)) {
+            return (float) str_replace(' ', '', $m[1]);
+        }
+
+        // Preservar signo (para detectar dirección en transferencias)
+        return (float) str_replace([' ', ','], ['', '.'], $importe);
+    }
+
+    private function resolveAccount(string $name, string $currency, int $groupId, int $userId, array &$cache, array &$created): int
+    {
+        $key = mb_strtolower($name);
+
+        if (!isset($cache[$key])) {
+            $account = Account::where('family_group_id', $groupId)
+                ->whereRaw('LOWER(name) = ?', [$key])
+                ->first();
+
+            if (!$account) {
+                $account = Account::create([
+                    'family_group_id' => $groupId,
+                    'user_id'         => $userId,
+                    'name'            => $name,
+                    'type'            => 'digital',
+                    'currency'        => $currency,
+                    'is_active'       => true,
+                ]);
+                $created[] = $name;
+            }
+
+            $cache[$key] = $account->id;
+        }
+
+        return $cache[$key];
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -52,12 +91,10 @@ class ImportController extends Controller
 
         $content = file_get_contents($request->file('file')->getRealPath());
 
-        // Detectar y convertir encoding
         $encoding = mb_detect_encoding($content, ['UTF-8', 'ISO-8859-1', 'Windows-1252'], true);
         if ($encoding && $encoding !== 'UTF-8') {
             $content = mb_convert_encoding($content, 'UTF-8', $encoding);
         }
-        // Quitar BOM si existe
         $content = ltrim($content, "\xEF\xBB\xBF");
 
         $lines = array_values(array_filter(
@@ -69,7 +106,6 @@ class ImportController extends Controller
             return back()->withErrors(['file' => 'El archivo está vacío o solo tiene encabezado.']);
         }
 
-        // Saltar fila de encabezado
         array_shift($lines);
 
         $imported          = 0;
@@ -78,6 +114,8 @@ class ImportController extends Controller
         $createdAccounts   = [];
         $categoryCache     = [];
         $accountCache      = [];
+        $transferBuffer    = [];
+        $unpairedTransfers = 0;
 
         foreach ($lines as $line) {
             $row = str_getcsv(trim($line));
@@ -87,22 +125,40 @@ class ImportController extends Controller
                 continue;
             }
 
-            [$catName, $nota, $importe, $moneda, $tipo, $cuenta, $fecha] = $row;
+            [$catName, $nota, $importe, $moneda, $tipo, $cuenta, $fecha] = array_map('trim', $row);
 
-            $catName = trim($catName);
-            $nota    = trim($nota);
-            $importe = trim($importe);
-            $moneda  = trim($moneda);
-            $tipo    = trim($tipo);
-            $cuenta  = trim($cuenta);
-            $fecha   = trim($fecha);
-
-            // Saltar transferencias y filas sin cuenta
-            if (mb_strtolower($tipo) === 'transferencia' || $cuenta === '') {
+            if ($cuenta === '') {
                 $skipped++;
                 continue;
             }
 
+            $currency = str_starts_with($moneda, 'USD') ? 'USD' : 'ARS';
+            $date     = self::parseDate($fecha);
+
+            if (!$date) {
+                $skipped++;
+                continue;
+            }
+
+            // ── Transferencias: acumular en buffer para emparejar ─────────────
+            if (mb_strtolower($tipo) === 'transferencia') {
+                $signedAmount = self::parseAmount($importe, $moneda);
+                if ($signedAmount == 0) { $skipped++; continue; }
+
+                $accountId = $this->resolveAccount($cuenta, $currency, $groupId, $userId, $accountCache, $createdAccounts);
+
+                $transferBuffer[] = [
+                    'account_id'  => $accountId,
+                    'amount'      => $signedAmount,         // con signo para detectar dirección
+                    'abs_amount'  => abs($signedAmount),
+                    'date'        => $date,
+                    'currency'    => $currency,
+                    'description' => $nota ?: null,
+                ];
+                continue;
+            }
+
+            // ── Gastos e ingresos ─────────────────────────────────────────────
             $type = match (mb_strtolower($tipo)) {
                 'gastos'   => 'expense',
                 'ingresos' => 'income',
@@ -114,28 +170,8 @@ class ImportController extends Controller
                 continue;
             }
 
-            // Parsear moneda y monto
-            $currency = str_starts_with($moneda, 'USD') ? 'USD' : 'ARS';
-
-            if ($currency === 'USD' && preg_match('/\(([0-9.\s]+)\)/', $moneda, $m)) {
-                // Usar el monto en USD del campo Moneda
-                $amount = (float) str_replace(' ', '', $m[1]);
-            } else {
-                // Monto en ARS del campo Importe (espacios como separador de miles)
-                $amount = (float) str_replace([' ', ','], ['', '.'], $importe);
-            }
-
-            if ($amount <= 0) {
-                $skipped++;
-                continue;
-            }
-
-            // Fecha: soporta "YYYY.MM.DD" y "16 abr 2026"
-            $date = self::parseDate($fecha);
-            if (!$date) {
-                $skipped++;
-                continue;
-            }
+            $amount = abs(self::parseAmount($importe, $moneda));
+            if ($amount <= 0) { $skipped++; continue; }
 
             // Categoría: buscar o crear
             $catKey = mb_strtolower($catName);
@@ -160,32 +196,12 @@ class ImportController extends Controller
                 $categoryCache[$catKey] = $category->id;
             }
 
-            // Cuenta: buscar o crear
-            $acctKey = mb_strtolower($cuenta);
-            if (!isset($accountCache[$acctKey])) {
-                $account = Account::where('family_group_id', $groupId)
-                    ->whereRaw('LOWER(name) = ?', [$acctKey])
-                    ->first();
-
-                if (!$account) {
-                    $account = Account::create([
-                        'family_group_id' => $groupId,
-                        'user_id'         => $userId,
-                        'name'            => $cuenta,
-                        'type'            => 'digital',
-                        'currency'        => $currency,
-                        'is_active'       => true,
-                    ]);
-                    $createdAccounts[] = $cuenta;
-                }
-
-                $accountCache[$acctKey] = $account->id;
-            }
+            $accountId = $this->resolveAccount($cuenta, $currency, $groupId, $userId, $accountCache, $createdAccounts);
 
             Transaction::create([
                 'family_group_id' => $groupId,
                 'user_id'         => $userId,
-                'account_id'      => $accountCache[$acctKey],
+                'account_id'      => $accountId,
                 'category_id'     => $categoryCache[$catKey],
                 'type'            => $type,
                 'amount'          => $amount,
@@ -197,9 +213,59 @@ class ImportController extends Controller
             $imported++;
         }
 
+        // ── Emparejar transferencias ──────────────────────────────────────────
+        // Agrupar por fecha + |monto|. Cada par de filas con mismo día y monto
+        // es una única transferencia: monto negativo = origen, positivo = destino.
+        $groups = [];
+        foreach ($transferBuffer as $t) {
+            $key = $t['date'] . '_' . number_format($t['abs_amount'], 2, '.', '');
+            $groups[$key][] = $t;
+        }
+
+        foreach ($groups as $group) {
+            if (count($group) !== 2) {
+                // No emparejables (fila suelta o más de 2 con mismo día+monto)
+                $skipped           += count($group);
+                $unpairedTransfers += count($group);
+                continue;
+            }
+
+            [$t1, $t2] = $group;
+
+            // Determinar origen y destino por signo; si ambos positivos, t1 = origen
+            if ($t1['amount'] < 0) {
+                [$from, $to] = [$t1, $t2];
+            } elseif ($t2['amount'] < 0) {
+                [$from, $to] = [$t2, $t1];
+            } else {
+                [$from, $to] = [$t1, $t2];
+            }
+
+            if ($from['account_id'] === $to['account_id']) {
+                $skipped += 2;
+                $unpairedTransfers += 2;
+                continue;
+            }
+
+            Transaction::create([
+                'family_group_id'   => $groupId,
+                'user_id'           => $userId,
+                'account_id'        => $from['account_id'],
+                'target_account_id' => $to['account_id'],
+                'type'              => 'transfer',
+                'amount'            => $from['abs_amount'],
+                'currency'          => $from['currency'],
+                'date'              => $from['date'],
+                'description'       => $from['description'] ?: 'Transferencia',
+            ]);
+
+            $imported++;
+        }
+
         return back()->with('results', [
             'imported'          => $imported,
             'skipped'           => $skipped,
+            'unpairedTransfers' => $unpairedTransfers,
             'createdCategories' => array_unique($createdCategories),
             'createdAccounts'   => array_unique($createdAccounts),
         ]);

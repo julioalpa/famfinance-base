@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ExchangeRate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ class Account extends Model
         'family_group_id',
         'user_id',
         'name',
+        'brand',
         'type',
         'currency',
         'closing_day',
@@ -67,6 +69,15 @@ class Account extends Model
         return in_array($this->type, ['credit', 'loan']);
     }
 
+    public function balanceInArs(?ExchangeRate $rate): float
+    {
+        $bal = $this->balance;
+        if ($this->currency === 'ARS' || $rate === null) {
+            return $bal;
+        }
+        return $rate->convert($bal, $this->currency);
+    }
+
     /**
      * Saldo de la cuenta incluyendo transferencias:
      *  - cash/digital : ingresos − gastos + transferencias_entrantes − transferencias_salientes
@@ -77,19 +88,21 @@ class Account extends Model
      */
     public function getBalanceAttribute(): float
     {
-        $income      = (float) $this->transactions()->where('type', 'income')->sum('amount');
-        $expense     = (float) $this->transactions()->where('type', 'expense')->sum('amount');
-        $transferOut = (float) $this->transactions()->where('type', 'transfer')->sum('amount');
-        $transferIn  = (float) DB::table('transactions')
+        $income        = (float) $this->transactions()->where('type', 'income')->sum('amount');
+        $expense       = (float) $this->transactions()->where('type', 'expense')->sum('amount');
+        $transferOut   = (float) $this->transactions()->where('type', 'transfer')->sum('amount');
+        $transferIn    = (float) DB::table('transactions')
             ->where('target_account_id', $this->id)
             ->where('type', 'transfer')
             ->whereNull('deleted_at')
             ->sum('amount');
+        $adjustmentIn  = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'in')->sum('amount');
+        $adjustmentOut = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'out')->sum('amount');
 
         return match ($this->type) {
-            'credit' => $expense - $income + $transferOut - $transferIn,
-            'loan'   => (float) ($this->initial_balance ?? 0) + $expense - $income + $transferOut - $transferIn,
-            default  => $income - $expense + $transferIn - $transferOut,
+            'credit' => $expense - $income + $transferOut - $transferIn + $adjustmentOut - $adjustmentIn,
+            'loan'   => (float) ($this->initial_balance ?? 0) + $expense - $income + $transferOut - $transferIn + $adjustmentOut - $adjustmentIn,
+            default  => $income - $expense + $transferIn - $transferOut + $adjustmentIn - $adjustmentOut,
         };
     }
 

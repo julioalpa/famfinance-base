@@ -87,6 +87,14 @@
                 </div>
             </div>
 
+            {{-- Selector de marca/logo --}}
+            <div id="brand-picker" style="margin-bottom: 20px; display: none;">
+                <label class="form-label">Logo / Banco</label>
+                <div id="brand-options" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                </div>
+                <div style="font-size: 11px; color: var(--muted); margin-top: 5px;">Opcional. Se mostrará en la tarjeta de la cuenta.</div>
+            </div>
+
             <div style="margin-bottom: 24px;">
                 <label class="form-label">Notas</label>
                 <input type="text" name="notes" class="form-input"
@@ -102,12 +110,16 @@
     </div>
 </div>
 
+@include('accounts._brand_picker_script', ['currentBrand' => old('brand')])
+
 <script>
 function toggleTypeFields() {
     const type = document.getElementById('account-type').value;
     document.getElementById('credit-fields').style.display = type === 'credit' ? '' : 'none';
     document.getElementById('loan-fields').style.display   = type === 'loan'   ? '' : 'none';
+    updateBrandPicker(type);
 }
+toggleTypeFields();
 </script>
 
 @endsection

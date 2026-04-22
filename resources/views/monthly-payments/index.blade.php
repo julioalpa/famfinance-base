@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Pendientes del mes')
+@section('title', 'Pagos del mes')
 
 @section('content')
 
@@ -8,7 +8,7 @@
 <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
     <div>
         <h1 class="font-display" style="font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; color: var(--text);">
-            Pendientes del mes
+            Pagos del mes
         </h1>
         <div style="font-size: 13px; color: var(--muted); font-weight: 500;">
             @php
@@ -76,8 +76,8 @@
 @if($monthlyPayments->isEmpty())
     <div class="card" style="text-align: center; padding: 60px 32px;">
         <div style="font-size: 40px; margin-bottom: 16px;">📋</div>
-        <div style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">Sin ítems de pago configurados</div>
-        <div style="font-size: 13px; color: var(--muted); margin-bottom: 24px;">Agregá los pagos que tenés que hacer cada mes y llevalos como checklist.</div>
+        <div style="font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px;">No hay pagos configurados para este mes</div>
+        <div style="font-size: 13px; color: var(--muted); margin-bottom: 24px;">Creá un ítem por cada pago fijo que hacés cada mes (alquiler, internet, seguro…) y llevalos como un checklist.</div>
         <a href="{{ route('payment-items.create') }}" class="btn btn-primary">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             Agregar primer ítem

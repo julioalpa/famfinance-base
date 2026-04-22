@@ -27,38 +27,57 @@ class DashboardController extends Controller
         // ── Cuentas activas del grupo ────────────────────────────────────────
         $accounts = $group->accounts()->where('is_active', true)->get();
 
-        // ── Patrimonio neto ──────────────────────────────────────────────────
-        $totalAssets      = $accounts->filter(fn($a) => ! $a->isLiability())->sum('balance');
-        $totalLiabilities = $accounts->filter(fn($a) => $a->isLiability())->sum('balance');
+        // ── Tipo de cambio vigente (necesario antes de cualquier cálculo) ────
+        $exchangeRate = $group->latestExchangeRate();
+
+        // ── Patrimonio neto (convertido a ARS) ───────────────────────────────
+        $totalAssets      = $accounts->filter(fn($a) => ! $a->isLiability())
+                                     ->sum(fn($a) => $a->balanceInArs($exchangeRate));
+        $totalLiabilities = $accounts->filter(fn($a) => $a->isLiability())
+                                     ->sum(fn($a) => $a->balanceInArs($exchangeRate));
         $netWorth         = $totalAssets - $totalLiabilities;
 
-        // ── Totales del mes ─────────────────────────────────────────────────
+        // ── Totales del mes (split por moneda, luego convertir) ──────────────
         $baseQuery = Transaction::where('family_group_id', $groupId)
             ->whereYear('date', $year)
             ->whereMonth('date', $mon);
 
-        $totalIncome  = (clone $baseQuery)->where('type', 'income')->sum('amount');
-        $totalExpense = (clone $baseQuery)->where('type', 'expense')->sum('amount');
+        $totalIncome  = $this->sumConverted(clone $baseQuery, 'income',  $exchangeRate);
+        $totalExpense = $this->sumConverted(clone $baseQuery, 'expense', $exchangeRate);
         $balance      = $totalIncome - $totalExpense;
 
         // ── Gastos por categoría (para gráfico) ─────────────────────────────
-        $expensesByCategory = (clone $baseQuery)
+        $expensesByCategoryRaw = (clone $baseQuery)
             ->where('type', 'expense')
             ->with('category')
             ->get()
-            ->groupBy(fn($t) => $t->category?->name ?? 'Sin categoría')
-            ->map(fn($items) => $items->sum('amount'))
-            ->sortDesc()
+            ->groupBy(fn($t) => $t->category?->id ?? 0)
+            ->map(fn($items) => [
+                'category' => $items->first()->category,
+                'amount'   => $items->sum(fn($t) => $t->amountInArs($exchangeRate)),
+            ])
+            ->sortByDesc('amount')
             ->take(8);
+
+        // Legacy: keyed by name for the view bar chart
+        $expensesByCategory = $expensesByCategoryRaw
+            ->mapWithKeys(fn($row) => [($row['category']?->name ?? 'Sin categoría') => $row['amount']]);
 
         // ── Cuotas pendientes por cuenta de crédito en el mes ───────────────
         $creditAccounts = $accounts->where('type', 'credit');
-        $installmentSummary = $creditAccounts->map(function (Account $account) use ($mon, $year) {
+        $installmentSummary = $creditAccounts->map(function (Account $account) use ($mon, $year, $exchangeRate) {
             $installments = $account->getUpcomingInstallments($mon, $year);
+            $total = $installments->sum(function ($inst) use ($exchangeRate) {
+                $amt = (float) $inst->amount;
+                if ($inst->transaction?->currency === 'USD' && $exchangeRate) {
+                    return $exchangeRate->convert($amt, 'USD');
+                }
+                return $amt;
+            });
             return [
                 'account'      => $account,
                 'installments' => $installments,
-                'total'        => $installments->sum('amount'),
+                'total'        => $total,
             ];
         })->filter(fn($item) => $item['installments']->isNotEmpty());
 
@@ -69,9 +88,6 @@ class DashboardController extends Controller
             ->orderByDesc('id')
             ->limit(10)
             ->get();
-
-        // ── Tipo de cambio vigente ───────────────────────────────────────────
-        $exchangeRate = $group->latestExchangeRate();
 
         // ── Débitos fijos activos del grupo ──────────────────────────────────
         $recurringExpenses = RecurringExpense::with(['account', 'category'])
@@ -124,6 +140,7 @@ class DashboardController extends Controller
             'totalLiabilities',
             'netWorth',
             'expensesByCategory',
+            'expensesByCategoryRaw',
             'installmentSummary',
             'recentTransactions',
             'exchangeRate',
@@ -132,5 +149,22 @@ class DashboardController extends Controller
             'pendingPaidCount',
             'pendingTotalCount',
         ));
+    }
+
+    /**
+     * Suma montos de un tipo de transacción convirtiendo USD→ARS cuando hay cotización.
+     * Hace dos SUM() en DB (por moneda) para no cargar todos los registros en memoria.
+     */
+    private function sumConverted(\Illuminate\Database\Eloquent\Builder $query, string $type, ?\App\Models\ExchangeRate $rate): float
+    {
+        $q = (clone $query)->where('type', $type);
+
+        $ars = (float) (clone $q)->where('currency', 'ARS')->sum('amount');
+        $usd = (float) (clone $q)->where('currency', 'USD')->sum('amount');
+
+        if ($usd === 0.0) return $ars;
+        if ($rate === null) return $ars + $usd; // sin cotización: suma cruda (con banner de aviso)
+
+        return $ars + $rate->convert($usd, 'USD');
     }
 }

@@ -7,10 +7,13 @@
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
     <div>
         <a href="{{ route('accounts.index') }}" style="font-size: 12px; color: var(--muted); text-decoration: none;">← Cuentas</a>
-        <h1 class="font-display" style="font-size: 24px; font-weight: 700; margin-top: 6px;">{{ $account->name }}</h1>
+        <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+            @include('accounts._brand_logo', ['brand' => $account->brand, 'type' => $account->type, 'size' => 'lg'])
+            <h1 class="font-display" style="font-size: 24px; font-weight: 700;">{{ $account->name }}</h1>
+        </div>
         <div style="margin-top: 6px; display: flex; align-items: center; gap: 10px;">
             <span class="badge badge-{{ $account->type }}">
-                {{ ['cash'=>'Efectivo','digital'=>'Digital','credit'=>'Crédito','loan'=>'Préstamo'][$account->type] ?? $account->type }}
+                {{ ['cash'=>'Efectivo','digital'=>'Digital','credit'=>'Tarjeta de crédito','loan'=>'Préstamo'][$account->type] ?? $account->type }}
             </span>
             <span style="font-size: 12px; color: var(--muted);">{{ $account->currency }}</span>
             <span style="font-size: 12px; color: var(--muted);">· Registrada por {{ $account->user->name }}</span>
@@ -20,6 +23,10 @@
         <a href="{{ route('transactions.create') }}?account_id={{ $account->id }}" class="btn btn-primary" style="font-size: 12px;">
             + Movimiento
         </a>
+        <button onclick="openAdjustModal()" class="btn btn-ghost" style="font-size: 12px;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Ajustar saldo
+        </button>
         <a href="{{ route('accounts.edit', $account) }}" class="btn btn-ghost" style="font-size: 12px;">Editar</a>
     </div>
 </div>
@@ -27,11 +34,18 @@
 {{-- Stats de la cuenta --}}
 <div style="display: grid; grid-template-columns: repeat({{ $account->isCredit() ? 3 : 3 }}, 1fr); gap: 14px; margin-bottom: 24px;">
     <div class="stat-card {{ $account->isCredit() ? 'neutral' : 'balance' }}">
+        @php $bal = $account->balance; @endphp
         <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;">
-            {{ $account->isCredit() ? 'Deuda acumulada' : 'Saldo disponible' }}
+            @if($account->isCredit()) Deuda acumulada
+            @elseif($account->isLoan()) Deuda restante
+            @elseif($bal < 0) Saldo negativo
+            @else Saldo disponible
+            @endif
         </div>
-        <div class="font-display" style="font-size: 22px; font-weight: 700; color: {{ $account->isCredit() ? 'var(--warn)' : 'var(--income)' }};">
-            {{ $account->currency === 'USD' ? 'US$' : '$' }} {{ number_format(abs($account->balance), 2, ',', '.') }}
+        <div class="font-display" style="font-size: 22px; font-weight: 700; color: {{ $account->isCredit() ? 'var(--warn)' : ($bal < 0 ? 'var(--expense)' : 'var(--income)') }};">
+            @if(!$account->isLiability() && $bal < 0)−{{ $account->currency === 'USD' ? 'US$' : '$' }} {{ number_format(abs($bal), 2, ',', '.') }}
+            @else{{ $account->currency === 'USD' ? 'US$' : '$' }} {{ number_format(abs($bal), 2, ',', '.') }}
+            @endif
         </div>
     </div>
 
@@ -59,9 +73,10 @@
 <div class="card" style="margin-bottom: 24px; border-color: rgba(240,160,48,0.3);">
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
         <div>
-            <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 6px;">
-                Próximo resumen estimado
+            <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 4px;">
+                Estimación del próximo resumen de tarjeta
             </div>
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 6px;">Lo que probablemente tengas que pagar cuando llegue el próximo vencimiento</div>
             <div style="font-size: 12px; color: var(--muted);">
                 Período: {{ $nextPaymentSummary['period_start']->format('d/m/Y') }} → {{ $nextPaymentSummary['period_end']->format('d/m/Y') }}
                 @if($nextPaymentSummary['due_date'])
@@ -76,14 +91,14 @@
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
         <div>
-            <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;">Consumos del período</div>
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;">Gastos nuevos del período</div>
             <div style="font-size: 18px; font-weight: 700; color: var(--expense);">
                 $ {{ number_format($nextPaymentSummary['expenses'], 2, ',', '.') }}
             </div>
-            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">Gastos sin cuotas desde el último cierre</div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">Lo que gastaste desde el último cierre (sin contar cuotas)</div>
         </div>
         <div>
-            <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;">Cuotas próximo mes</div>
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;">Cuotas que vencen este mes</div>
             <div style="font-size: 18px; font-weight: 700; color: var(--warn);">
                 $ {{ number_format($nextPaymentSummary['installments_total'], 2, ',', '.') }}
             </div>
@@ -238,6 +253,10 @@
                     <td>
                         @if($isPayment)
                             <span class="badge badge-income" style="font-size: 10px;">Pago</span>
+                        @elseif($tx->type === 'adjustment')
+                            <span class="badge badge-adjustment" style="font-size: 10px;">
+                                Ajuste {{ $tx->adjustment_direction === 'in' ? '▲' : '▼' }}
+                            </span>
                         @else
                             <span class="badge badge-{{ $tx->type }}" style="font-size: 10px;">
                                 {{ $tx->type === 'expense' ? 'Gasto' : ($tx->type === 'income' ? 'Ingreso' : 'Transfer.') }}
@@ -252,16 +271,30 @@
                             <span class="badge badge-credit" style="margin-left:4px; font-size:10px;">{{ $tx->installments_count }}c</span>
                         @endif
                     </td>
-                    <td style="font-size: 12px; color: var(--muted);">{{ $tx->category?->name ?? '—' }}</td>
+                    <td>
+                        @if($tx->category)
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            @include('categories._icon', ['icon' => $tx->category->icon, 'color' => $tx->category->color, 'type' => $tx->category->type, 'size' => 'xs'])
+                            <span style="font-size:12px;color:var(--muted);">{{ $tx->category->name }}</span>
+                        </div>
+                        @else
+                        <span style="font-size:12px;color:var(--muted);">—</span>
+                        @endif
+                    </td>
                     <td style="font-size: 12px; color: var(--muted);">{{ $tx->user->name }}</td>
                     <td style="text-align: right; font-weight: 500; white-space: nowrap;">
                         @if($isPayment)
                             <span style="color: var(--income); font-weight: 700;">
                                 − {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
                             </span>
+                        @elseif($tx->isAdjustment())
+                            <span style="color:#a078ff; font-weight:600;">
+                                {{ $tx->adjustment_direction === 'in' ? '+' : '−' }}
+                                {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                            </span>
                         @else
                             <span class="{{ $tx->isIncome() ? 'amount-income' : ($tx->isExpense() ? 'amount-expense' : 'amount-neutral') }}">
-                                {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '-' : '') }}
+                                {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '−' : '') }}
                                 {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
                             </span>
                         @endif
@@ -272,5 +305,122 @@
         </table>
     @endif
 </div>
+
+{{-- ── Modal ajuste de saldo ────────────────────────────────────────────────── --}}
+<div id="adjust-modal-backdrop"
+     onclick="closeAdjustModal()"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:500; align-items:center; justify-content:center;">
+    <div onclick="event.stopPropagation()"
+         style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:28px; width:100%; max-width:440px; margin:16px; position:relative;">
+
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px;">
+            <div>
+                <h3 class="font-display" style="font-size:17px; font-weight:800; letter-spacing:-0.02em;">Ajustar saldo</h3>
+                <div style="font-size:12px; color:var(--muted); margin-top:3px;">
+                    Ingresá el saldo real de <strong style="color:var(--text);">{{ $account->name }}</strong> y se registrará un movimiento de ajuste automáticamente.
+                </div>
+            </div>
+            <button onclick="closeAdjustModal()" style="background:none; border:none; cursor:pointer; color:var(--muted); padding:4px; margin-left:12px;" aria-label="Cerrar">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        @php $modalBal = $account->balance; @endphp
+        <div style="background:var(--surface2); border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:13px;">
+            <div style="color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:3px;">
+                {{ $account->isLiability() ? 'Deuda registrada en la app' : 'Saldo registrado en la app' }}
+            </div>
+            <div class="font-display" style="font-size:20px; font-weight:700; color:{{ $account->isLiability() ? 'var(--warn)' : ($modalBal < 0 ? 'var(--expense)' : 'var(--income)') }};">
+                @if(!$account->isLiability() && $modalBal < 0)−@endif{{ $account->currency === 'USD' ? 'US$' : '$' }} {{ number_format(abs($modalBal), 2, ',', '.') }}
+            </div>
+        </div>
+
+        <form method="POST" action="{{ route('accounts.adjust', $account) }}">
+            @csrf
+
+            <div style="margin-bottom:18px;">
+                <label class="form-label">{{ $account->isLiability() ? 'Deuda real actual' : 'Saldo real actual' }} *</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span style="font-size:14px; color:var(--muted); font-weight:700; white-space:nowrap; padding:10px 0;">
+                        {{ $account->currency === 'USD' ? 'US$' : '$' }}
+                    </span>
+                    <input type="number" name="target_balance" id="adjust-target"
+                           class="form-input" step="0.01" required
+                           placeholder="0,00"
+                           oninput="updateAdjustPreview(this.value)">
+                </div>
+                <div id="adjust-preview" style="font-size:12px; color:var(--muted); margin-top:6px; min-height:18px;"></div>
+            </div>
+
+            <div style="margin-bottom:18px;">
+                <label class="form-label" for="adjust-date">Fecha del ajuste</label>
+                <input type="date" name="date" id="adjust-date" class="form-input"
+                       value="{{ today()->format('Y-m-d') }}">
+            </div>
+
+            <div style="margin-bottom:22px;">
+                <label class="form-label" for="adjust-notes">Motivo (opcional)</label>
+                <input type="text" name="notes" id="adjust-notes" class="form-input"
+                       placeholder="Ej: diferencia por comisión bancaria no registrada">
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" onclick="closeAdjustModal()" class="btn btn-ghost">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Registrar ajuste
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const CURRENT_BALANCE = {{ $account->balance }};
+const IS_LIABILITY    = {{ $account->isLiability() ? 'true' : 'false' }};
+const CURRENCY_SYMBOL = '{{ $account->currency === 'USD' ? 'US$' : '$' }}';
+
+function openAdjustModal() {
+    document.getElementById('adjust-modal-backdrop').style.display = 'flex';
+    document.getElementById('adjust-target').value = '';
+    document.getElementById('adjust-preview').textContent = '';
+    setTimeout(() => document.getElementById('adjust-target').focus(), 50);
+}
+
+function closeAdjustModal() {
+    document.getElementById('adjust-modal-backdrop').style.display = 'none';
+}
+
+function updateAdjustPreview(val) {
+    const target = parseFloat(val);
+    const preview = document.getElementById('adjust-preview');
+    if (isNaN(target) || val === '') { preview.textContent = ''; return; }
+
+    const diff = target - CURRENT_BALANCE;
+    if (Math.abs(diff) < 0.01) {
+        preview.textContent = '✓ El saldo ya coincide, no se generará ningún ajuste.';
+        preview.style.color = 'var(--income)';
+        return;
+    }
+
+    const absDiff = Math.abs(diff).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (IS_LIABILITY) {
+        if (diff > 0) {
+            preview.innerHTML = `→ Se registrará un ajuste que <strong style="color:var(--expense)">aumenta la deuda</strong> en ${CURRENCY_SYMBOL} ${absDiff}`;
+        } else {
+            preview.innerHTML = `→ Se registrará un ajuste que <strong style="color:var(--income)">reduce la deuda</strong> en ${CURRENCY_SYMBOL} ${absDiff}`;
+        }
+    } else {
+        if (diff > 0) {
+            preview.innerHTML = `→ Se registrará un ajuste que <strong style="color:var(--income)">suma</strong> ${CURRENCY_SYMBOL} ${absDiff} al saldo`;
+        } else {
+            preview.innerHTML = `→ Se registrará un ajuste que <strong style="color:var(--expense)">descuenta</strong> ${CURRENCY_SYMBOL} ${absDiff} del saldo`;
+        }
+    }
+    preview.style.color = 'var(--muted)';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAdjustModal(); });
+</script>
 
 @endsection

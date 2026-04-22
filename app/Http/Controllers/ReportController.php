@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExchangeRate;
+use App\Models\FamilyGroup;
 use App\Models\Installment;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
@@ -13,18 +15,20 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $groupId = session('active_family_group_id');
+        $group   = auth()->user()->familyGroups()->find($groupId);
 
         $months = (int) $request->get('months', 6);
         $months = in_array($months, [3, 6, 12]) ? $months : 6;
 
-        $startDate = now()->subMonths($months - 1)->startOfMonth();
+        $startDate    = now()->subMonths($months - 1)->startOfMonth();
+        $exchangeRate = $group->latestExchangeRate();
 
-        // ── Monthly income/expense (single grouped query) ─────────────────────
+        // ── Monthly income/expense (split por moneda para convertir USD→ARS) ──
         $monthlyRaw = Transaction::where('family_group_id', $groupId)
             ->where('date', '>=', $startDate)
             ->whereIn('type', ['income', 'expense'])
-            ->selectRaw('EXTRACT(YEAR FROM date) as year, EXTRACT(MONTH FROM date) as month, type, SUM(amount) as total')
-            ->groupBy('year', 'month', 'type')
+            ->selectRaw('EXTRACT(YEAR FROM date) as year, EXTRACT(MONTH FROM date) as month, type, currency, SUM(amount) as total')
+            ->groupBy('year', 'month', 'type', 'currency')
             ->get();
 
         $monthlyData = [];
@@ -40,9 +44,13 @@ class ReportController extends Controller
 
         foreach ($monthlyRaw as $row) {
             $key = "{$row->year}-{$row->month}";
-            if (isset($monthlyData[$key])) {
-                $monthlyData[$key][$row->type] = (float) $row->total;
+            if (! isset($monthlyData[$key])) continue;
+
+            $amount = (float) $row->total;
+            if ($row->currency === 'USD' && $exchangeRate) {
+                $amount = $exchangeRate->convert($amount, 'USD');
             }
+            $monthlyData[$key][$row->type] += $amount;
         }
 
         $monthlyData = collect(array_values($monthlyData));
@@ -65,26 +73,34 @@ class ReportController extends Controller
             ->with('category')
             ->get()
             ->groupBy(fn($t) => $t->category?->name ?? 'Sin categoría')
-            ->map(fn($items) => round($items->sum('amount'), 2))
+            ->map(fn($items) => round($items->sum(fn($t) => $t->amountInArs($exchangeRate)), 2))
             ->sortDesc()
             ->take(10);
 
-        // ── Daily spending (current month) ────────────────────────────────────
+        // ── Daily spending (current month, split por moneda) ─────────────────
         $dailyRaw = Transaction::where('family_group_id', $groupId)
             ->where('type', 'expense')
             ->whereYear('date', now()->year)
             ->whereMonth('date', now()->month)
-            ->selectRaw('EXTRACT(DAY FROM date) as day, SUM(amount) as total')
-            ->groupBy('day')
+            ->selectRaw('EXTRACT(DAY FROM date) as day, currency, SUM(amount) as total')
+            ->groupBy('day', 'currency')
             ->orderBy('day')
-            ->get()
-            ->keyBy('day');
+            ->get();
+
+        $dailyMap = [];
+        foreach ($dailyRaw as $row) {
+            $amount = (float) $row->total;
+            if ($row->currency === 'USD' && $exchangeRate) {
+                $amount = $exchangeRate->convert($amount, 'USD');
+            }
+            $dailyMap[(int) $row->day] = ($dailyMap[(int) $row->day] ?? 0.0) + $amount;
+        }
 
         $dailySpending = [];
         for ($day = 1; $day <= now()->daysInMonth; $day++) {
             $dailySpending[] = [
                 'day'   => $day,
-                'total' => (float) ($dailyRaw->get($day)?->total ?? 0),
+                'total' => $dailyMap[$day] ?? 0.0,
             ];
         }
 
@@ -95,14 +111,15 @@ class ReportController extends Controller
             ->with('user')
             ->get()
             ->groupBy(fn($t) => $t->user->name)
-            ->map(fn($items) => round($items->sum('amount'), 2))
+            ->map(fn($items) => round($items->sum(fn($t) => $t->amountInArs($exchangeRate)), 2))
             ->sortDesc();
 
-        // ── Patrimonio neto ───────────────────────────────────────────────────
-        $allAccounts      = auth()->user()->familyGroups()->find($groupId)
-            ->accounts()->where('is_active', true)->get();
-        $totalAssets      = $allAccounts->filter(fn($a) => ! $a->isLiability())->sum('balance');
-        $totalLiabilities = $allAccounts->filter(fn($a) => $a->isLiability())->sum('balance');
+        // ── Patrimonio neto (convertido a ARS) ───────────────────────────────
+        $allAccounts      = $group->accounts()->where('is_active', true)->get();
+        $totalAssets      = $allAccounts->filter(fn($a) => ! $a->isLiability())
+                                        ->sum(fn($a) => $a->balanceInArs($exchangeRate));
+        $totalLiabilities = $allAccounts->filter(fn($a) => $a->isLiability())
+                                        ->sum(fn($a) => $a->balanceInArs($exchangeRate));
         $netWorth         = $totalAssets - $totalLiabilities;
 
         // ── Historial de ítems de pago (pendientes) ───────────────────────────
@@ -169,7 +186,13 @@ class ReportController extends Controller
             $installmentForecast->push([
                 'label' => ucfirst($d->locale('es')->isoFormat('MMMM YYYY')),
                 'is_current' => $i === 0,
-                'total' => round($slot->sum('amount'), 2),
+                'total' => round($slot->sum(function ($inst) use ($exchangeRate) {
+                    $amt = (float) $inst->amount;
+                    if ($inst->transaction?->currency === 'USD' && $exchangeRate) {
+                        return $exchangeRate->convert($amt, 'USD');
+                    }
+                    return $amt;
+                }), 2),
                 'count' => $slot->count(),
                 'items' => $slot->map(fn($inst) => [
                     'description' => $inst->transaction?->description ?? 'Sin descripción',
@@ -201,6 +224,7 @@ class ReportController extends Controller
             'totalAssets',
             'totalLiabilities',
             'netWorth',
+            'exchangeRate',
         ));
     }
 }

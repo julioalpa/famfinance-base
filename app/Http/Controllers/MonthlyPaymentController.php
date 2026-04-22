@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class MonthlyPaymentController extends Controller
 {
@@ -55,9 +56,18 @@ class MonthlyPaymentController extends Controller
             $mp->last_amount = $mp->paymentItem?->lastPaidAmount($mon, $year);
         }
 
-        $paidCount   = $monthlyPayments->where('is_paid', true)->count();
-        $totalCount  = $monthlyPayments->count();
-        $totalPaid   = $monthlyPayments->where('is_paid', true)->sum(fn ($mp) => (float) $mp->amount);
+        $group = Auth::user()->familyGroups()->find($groupId);
+        $rate  = $group->latestExchangeRate();
+
+        $paidCount  = $monthlyPayments->where('is_paid', true)->count();
+        $totalCount = $monthlyPayments->count();
+        $totalPaid  = $monthlyPayments->where('is_paid', true)->sum(function ($mp) use ($rate) {
+            $amt = (float) $mp->amount;
+            if ($mp->paymentItem?->currency === 'USD' && $rate) {
+                return $rate->convert($amt, 'USD');
+            }
+            return $amt;
+        });
 
         return view('monthly-payments.index', compact(
             'monthlyPayments',

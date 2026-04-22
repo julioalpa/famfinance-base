@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreRecurringExpenseRequest;
 use App\Models\Category;
+use App\Models\FamilyGroup;
 use App\Models\RecurringExpense;
 use Illuminate\Http\Request;
 
@@ -12,6 +13,8 @@ class RecurringExpenseController extends Controller
     public function index()
     {
         $groupId = session('active_family_group_id');
+        $group   = auth()->user()->familyGroups()->find($groupId);
+        $rate    = $group->latestExchangeRate();
 
         $recurring = RecurringExpense::with(['account', 'category'])
             ->where('family_group_id', $groupId)
@@ -20,7 +23,13 @@ class RecurringExpenseController extends Controller
 
         $totalActive = $recurring
             ->where('is_active', true)
-            ->sum(fn($r) => $r->amount);
+            ->sum(function ($r) use ($rate) {
+                $amt = (float) $r->amount;
+                if ($r->currency === 'USD' && $rate) {
+                    return $rate->convert($amt, 'USD');
+                }
+                return $amt;
+            });
 
         return view('recurring-expenses.index', compact('recurring', 'totalActive'));
     }

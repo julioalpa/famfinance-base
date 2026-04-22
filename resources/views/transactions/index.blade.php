@@ -28,9 +28,10 @@
             <label class="form-label">Tipo</label>
             <select name="type" class="form-select" style="width: 160px;">
                 <option value="">Todos</option>
-                <option value="expense"  {{ request('type') === 'expense'  ? 'selected' : '' }}>Gastos</option>
-                <option value="income"   {{ request('type') === 'income'   ? 'selected' : '' }}>Ingresos</option>
-                <option value="transfer" {{ request('type') === 'transfer' ? 'selected' : '' }}>Transferencias</option>
+                <option value="expense"    {{ request('type') === 'expense'    ? 'selected' : '' }}>Gastos</option>
+                <option value="income"    {{ request('type') === 'income'    ? 'selected' : '' }}>Ingresos</option>
+                <option value="transfer"  {{ request('type') === 'transfer'  ? 'selected' : '' }}>Transferencias</option>
+                <option value="adjustment"{{ request('type') === 'adjustment'? 'selected' : '' }}>Ajustes</option>
             </select>
         </div>
         <div>
@@ -89,9 +90,15 @@
                         {{ $tx->date->format('d/m/Y') }}
                     </td>
                     <td>
-                        <span class="badge badge-{{ $tx->type }}">
-                            {{ $tx->type === 'expense' ? 'Gasto' : ($tx->type === 'income' ? 'Ingreso' : 'Transfer.') }}
-                        </span>
+                        @if($tx->type === 'adjustment')
+                            <span class="badge badge-adjustment" style="font-size:10px;">
+                                Ajuste {{ $tx->adjustment_direction === 'in' ? '▲' : '▼' }}
+                            </span>
+                        @else
+                            <span class="badge badge-{{ $tx->type }}">
+                                {{ $tx->type === 'expense' ? 'Gasto' : ($tx->type === 'income' ? 'Ingreso' : 'Transfer.') }}
+                            </span>
+                        @endif
                     </td>
                     <td>
                         <a href="{{ route('transactions.show', $tx) }}" style="color: var(--text); text-decoration: none;">
@@ -103,17 +110,32 @@
                             </span>
                         @endif
                     </td>
-                    <td style="font-size: 12px; color: var(--muted);">
-                        {{ $tx->category?->name ?? '—' }}
+                    <td>
+                        @if($tx->category)
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            @include('categories._icon', ['icon' => $tx->category->icon, 'color' => $tx->category->color, 'type' => $tx->category->type, 'size' => 'xs'])
+                            <span style="font-size:12px;color:var(--muted);">{{ $tx->category->name }}</span>
+                        </div>
+                        @else
+                        <span style="font-size:12px;color:var(--muted);">—</span>
+                        @endif
                     </td>
                     <td>
                         <span class="badge badge-{{ $tx->account->type }}">{{ $tx->account->name }}</span>
                     </td>
                     <td style="font-size: 12px; color: var(--muted);">{{ $tx->user->name }}</td>
-                    <td style="text-align: right; font-weight: 500; white-space: nowrap;"
-                        class="{{ $tx->isIncome() ? 'amount-income' : ($tx->isExpense() ? 'amount-expense' : 'amount-neutral') }}">
-                        {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '-' : '') }}
-                        {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                    <td style="text-align: right; font-weight: 500; white-space: nowrap;">
+                        @if($tx->isAdjustment())
+                            <span style="color:#a078ff;">
+                                {{ $tx->adjustment_direction === 'in' ? '+' : '−' }}
+                                {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                            </span>
+                        @else
+                            <span class="{{ $tx->isIncome() ? 'amount-income' : ($tx->isExpense() ? 'amount-expense' : 'amount-neutral') }}">
+                                {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '−' : '') }}
+                                {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                            </span>
+                        @endif
                     </td>
                     <td style="white-space: nowrap;">
                         <a href="{{ route('transactions.edit', $tx) }}" style="color: var(--muted); font-size: 12px; text-decoration: none; margin-right: 10px;">Editar</a>

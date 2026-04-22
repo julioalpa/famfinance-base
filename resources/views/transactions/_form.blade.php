@@ -130,15 +130,16 @@
 
             {{-- Origen del ingreso --}}
             <div class="form-group" id="income-source-group" style="margin-bottom: 20px; display: none;">
-                <label class="form-label" for="income_source">Origen del ingreso *</label>
+                <label class="form-label" for="income_source">¿De dónde viene este ingreso?</label>
                 <select name="income_source" id="income_source" class="form-select">
                     <option value="">Seleccioná</option>
-                    <option value="salary"  {{ old('income_source', $tx?->income_source) === 'salary'  ? 'selected' : '' }}>Sueldo</option>
-                    <option value="credit"  {{ old('income_source', $tx?->income_source) === 'credit'  ? 'selected' : '' }}>Crédito</option>
-                    <option value="cash"    {{ old('income_source', $tx?->income_source) === 'cash'    ? 'selected' : '' }}>Efectivo</option>
-                    <option value="loan"    {{ old('income_source', $tx?->income_source) === 'loan'    ? 'selected' : '' }}>Préstamo</option>
+                    <option value="salary"  {{ old('income_source', $tx?->income_source) === 'salary'  ? 'selected' : '' }}>Sueldo / cobro de trabajo</option>
+                    <option value="credit"  {{ old('income_source', $tx?->income_source) === 'credit'  ? 'selected' : '' }}>Crédito bancario</option>
+                    <option value="cash"    {{ old('income_source', $tx?->income_source) === 'cash'    ? 'selected' : '' }}>Efectivo recibido</option>
+                    <option value="loan"    {{ old('income_source', $tx?->income_source) === 'loan'    ? 'selected' : '' }}>Préstamo recibido</option>
                     <option value="other"   {{ old('income_source', $tx?->income_source) === 'other'   ? 'selected' : '' }}>Otro</option>
                 </select>
+                <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Opcional. Sirve para filtrar reportes de ingresos.</div>
             </div>
 
             {{-- Descripción --}}
@@ -184,22 +185,22 @@
             @if(! $isEdit && $pendingItems->isNotEmpty())
             <div class="form-group" id="pending-item-group" style="margin-bottom: 20px; display: none;">
                 <label class="form-label" for="payment_item_id">
-                    Asociar a pendiente del mes
+                    ¿Es el pago de algo pendiente?
                     <span style="color: var(--muted); font-weight: 400;">(opcional)</span>
                 </label>
                 <select name="payment_item_id" id="payment_item_id" class="form-select"
                         onchange="applyPendingItem(this.value)">
-                    <option value="">— Sin asociar —</option>
+                    <option value="">— No, es un gasto normal —</option>
                     @foreach($pendingItems as $item)
                         <option value="{{ $item['id'] }}"
                                 {{ old('payment_item_id') == $item['id'] ? 'selected' : '' }}>
                             {{ $item['description'] }}
-                            @if($item['last_amount']) · {{ number_format($item['last_amount'], 2, ',', '.') }}@endif
+                            @if($item['last_amount']) · última vez: ${{ number_format($item['last_amount'], 2, ',', '.') }}@endif
                         </option>
                     @endforeach
                 </select>
                 <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
-                    Al guardar, se marcará como pagado automáticamente.
+                    Seleccioná si este gasto corresponde a un ítem de tu checklist mensual. Se marcará como pagado automáticamente y completará los datos.
                 </div>
             </div>
             @endif

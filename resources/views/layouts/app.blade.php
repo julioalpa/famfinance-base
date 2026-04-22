@@ -354,12 +354,14 @@
             letter-spacing: 0.02em;
         }
 
-        .badge-income   { background: rgba(45,216,112,0.12);  color: var(--income); }
-        .badge-expense  { background: rgba(240,64,96,0.12);   color: var(--expense); }
-        .badge-transfer { background: rgba(78,155,255,0.12);  color: var(--accent2); }
-        .badge-credit   { background: rgba(232,184,64,0.12);  color: var(--warn); }
-        .badge-cash     { background: rgba(45,216,112,0.10);  color: var(--income); }
-        .badge-digital  { background: rgba(78,155,255,0.10);  color: var(--accent2); }
+        .badge-income     { background: rgba(45,216,112,0.12);  color: var(--income); }
+        .badge-expense    { background: rgba(240,64,96,0.12);   color: var(--expense); }
+        .badge-transfer   { background: rgba(78,155,255,0.12);  color: var(--accent2); }
+        .badge-adjustment { background: rgba(160,120,255,0.12); color: #a078ff; }
+        .badge-credit     { background: rgba(232,184,64,0.12);  color: var(--warn); }
+        .badge-cash       { background: rgba(45,216,112,0.10);  color: var(--income); }
+        .badge-digital    { background: rgba(78,155,255,0.10);  color: var(--accent2); }
+        .badge-loan       { background: rgba(240,64,96,0.10);   color: var(--expense); }
 
         /* ── Alerts ──────────────────────────────────────────────────────────── */
         .alert {
@@ -515,19 +517,21 @@
         </a>
 
         <a href="{{ route('recurring-expenses.index') }}"
-           class="nav-link {{ request()->routeIs('recurring-expenses.*') ? 'active' : '' }}">
+           class="nav-link {{ request()->routeIs('recurring-expenses.*') ? 'active' : '' }}"
+           title="Gastos que se repiten todos los meses (recordatorio)">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
             </svg>
-            Débitos fijos
+            Gastos recurrentes
         </a>
 
         <a href="{{ route('monthly-payments.index') }}"
-           class="nav-link {{ request()->routeIs('monthly-payments.*') || request()->routeIs('payment-items.*') ? 'active' : '' }}">
+           class="nav-link {{ request()->routeIs('monthly-payments.*') || request()->routeIs('payment-items.*') ? 'active' : '' }}"
+           title="Checklist de pagos del mes — marcá los que ya pagaste">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
             </svg>
-            Pendientes del mes
+            Pagos del mes
         </a>
 
         <div class="nav-section">Configuración</div>

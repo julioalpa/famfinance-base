@@ -30,6 +30,9 @@
 </div>
 
 {{-- ── Stats Cards ──────────────────────────────────────────────────────────── --}}
+<div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 10px;">
+    Movimientos del mes
+</div>
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;">
 
     <div class="stat-card income">
@@ -49,7 +52,7 @@
     </div>
 
     <div class="stat-card balance">
-        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Balance</div>
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Balance del mes</div>
         <div class="font-display" style="font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: {{ $balance >= 0 ? 'var(--income)' : 'var(--expense)' }};">
             {{ $balance >= 0 ? '+' : '' }}$ {{ number_format($balance, 2, ',', '.') }}
         </div>
@@ -58,30 +61,38 @@
 </div>
 
 {{-- ── Patrimonio neto ──────────────────────────────────────────────────────── --}}
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+    <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700;">
+        Situación financiera general
+    </div>
+    <div style="font-size: 11px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px;">
+        Total acumulado · todas las cuentas
+    </div>
+</div>
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;">
 
     <div class="stat-card income">
-        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Activos</div>
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-weight: 700;">Dinero disponible</div>
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">Efectivo + cuentas digitales</div>
         <div class="font-display" style="font-size: 26px; font-weight: 800; color: var(--income); letter-spacing: -0.03em; line-height: 1;">
             $ {{ number_format($totalAssets, 2, ',', '.') }}
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">Efectivo + Digital</div>
     </div>
 
     <div class="stat-card expense">
-        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Pasivos</div>
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-weight: 700;">Deudas totales</div>
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">Tarjetas de crédito + préstamos</div>
         <div class="font-display" style="font-size: 26px; font-weight: 800; color: var(--expense); letter-spacing: -0.03em; line-height: 1;">
             $ {{ number_format($totalLiabilities, 2, ',', '.') }}
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">Crédito + Préstamos</div>
     </div>
 
     <div class="stat-card {{ $netWorth >= 0 ? 'balance' : 'expense' }}">
-        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Patrimonio neto</div>
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-weight: 700;">Lo que tenés en total</div>
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px;">Dinero disponible − deudas</div>
         <div class="font-display" style="font-size: 26px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: {{ $netWorth >= 0 ? 'var(--income)' : 'var(--expense)' }};">
             {{ $netWorth >= 0 ? '+' : '' }}$ {{ number_format($netWorth, 2, ',', '.') }}
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">Activos − Pasivos</div>
     </div>
 </div>
 
@@ -95,16 +106,20 @@
             <span style="font-size: 12px; color: var(--muted); font-weight: 500;">{{ now()->locale('es')->isoFormat('MMM YYYY') }}</span>
         </div>
 
-        @if($expensesByCategory->isEmpty())
+        @if($expensesByCategoryRaw->isEmpty())
             <div style="text-align: center; padding: 32px 0; color: var(--muted); font-size: 13px;">
                 Sin gastos registrados este mes
             </div>
         @else
-            @php $maxVal = $expensesByCategory->max(); @endphp
-            @foreach($expensesByCategory as $cat => $amount)
+            @php $maxVal = $expensesByCategoryRaw->max('amount'); @endphp
+            @foreach($expensesByCategoryRaw as $row)
+            @php $cat = $row['category']; $amount = $row['amount']; @endphp
             <div style="margin-bottom: 14px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span style="font-size: 12px; color: var(--text);">{{ $cat }}</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        @include('categories._icon', ['icon' => $cat?->icon, 'color' => $cat?->color, 'type' => $cat?->type ?? 'expense', 'size' => 'xs'])
+                        <span style="font-size: 12px; color: var(--text);">{{ $cat?->name ?? 'Sin categoría' }}</span>
+                    </div>
                     <span style="font-size: 12px; color: var(--muted);">$ {{ number_format($amount, 0, ',', '.') }}</span>
                 </div>
                 <div style="height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden;">
@@ -165,18 +180,24 @@
 {{-- ── Débitos fijos del mes ────────────────────────────────────────────── --}}
 @if($recurringExpenses->isNotEmpty())
 @php
-    $today        = now()->day;
-    $totalRecurring = $recurringExpenses->sum('amount');
+    $today          = now()->day;
+    $totalRecurring = $recurringExpenses->sum(function ($r) use ($exchangeRate) {
+        $amt = (float) $r->amount;
+        if ($r->currency === 'USD' && $exchangeRate) {
+            return $exchangeRate->convert($amt, 'USD');
+        }
+        return $amt;
+    });
 @endphp
 <div class="card" style="margin-bottom: 24px;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
         <div>
-            <h2 class="font-display" style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">Débitos fijos del mes</h2>
+            <h2 class="font-display" style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">Gastos recurrentes del mes</h2>
             <div style="font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500;">
                 Total: <span style="color: var(--expense); font-weight: 700;">$ {{ number_format($totalRecurring, 2, ',', '.') }}</span> ARS
             </div>
         </div>
-        <a href="{{ route('recurring-expenses.index') }}" style="font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600;">Gestionar →</a>
+        <a href="{{ route('recurring-expenses.index') }}" style="font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600;">Ver todos →</a>
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
@@ -249,7 +270,7 @@
 <div class="card" style="margin-bottom: 24px;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
         <div>
-            <h2 class="font-display" style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">Pendientes del mes</h2>
+            <h2 class="font-display" style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">Pagos del mes</h2>
             <div style="font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500;">
                 <span style="color: {{ $pendingPaidCount === $pendingTotalCount ? 'var(--income)' : 'var(--text)' }}; font-weight: 700;">{{ $pendingPaidCount }}/{{ $pendingTotalCount }}</span> pagados
             </div>
@@ -348,7 +369,10 @@
                     </td>
                     <td>
                         @if($tx->category)
+                        <div style="display:flex;align-items:center;gap:5px;">
+                            @include('categories._icon', ['icon' => $tx->category->icon, 'color' => $tx->category->color, 'type' => $tx->category->type, 'size' => 'xs'])
                             <span style="font-size: 12px; color: var(--muted);">{{ $tx->category->name }}</span>
+                        </div>
                         @else
                             <span style="color: var(--border);">—</span>
                         @endif
@@ -357,10 +381,18 @@
                         <span class="badge badge-{{ $tx->account->type }}">{{ $tx->account->name }}</span>
                     </td>
                     <td style="font-size: 12px; color: var(--muted);">{{ $tx->user->name }}</td>
-                    <td style="text-align: right; font-weight: 500; white-space: nowrap;"
-                        class="{{ $tx->isIncome() ? 'amount-income' : ($tx->isExpense() ? 'amount-expense' : 'amount-neutral') }}">
-                        {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '-' : '') }}
-                        {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                    <td style="text-align: right; font-weight: 500; white-space: nowrap;">
+                        @if($tx->isAdjustment())
+                            <span style="color:#a078ff;">
+                                {{ $tx->adjustment_direction === 'in' ? '+' : '−' }}
+                                {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                            </span>
+                        @else
+                            <span class="{{ $tx->isIncome() ? 'amount-income' : ($tx->isExpense() ? 'amount-expense' : 'amount-neutral') }}">
+                                {{ $tx->isIncome() ? '+' : ($tx->isExpense() ? '−' : '') }}
+                                {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}
+                            </span>
+                        @endif
                     </td>
                 </tr>
                 @endforeach

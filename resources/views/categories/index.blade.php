@@ -27,14 +27,11 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
         @foreach($system as $cat)
         <div class="card" style="padding: 12px 16px; display: flex; align-items: center; gap: 12px; opacity: 0.75;">
-            @if($cat->color)
-            <div style="width: 10px; height: 10px; border-radius: 50%; background: {{ $cat->color }}; flex-shrink: 0;"></div>
-            @endif
+            <div style="display:flex;align-items:center;flex-shrink:0;">
+                @include('categories._icon', ['icon' => $cat->icon, 'color' => $cat->color, 'type' => $cat->type, 'size' => 'sm'])
+            </div>
             <div style="flex: 1; min-width: 0;">
                 <div style="font-size: 13px; font-weight: 500; color: var(--text);">{{ $cat->name }}</div>
-                @if($cat->icon)
-                <div style="font-size: 11px; color: var(--muted);">{{ $cat->icon }}</div>
-                @endif
             </div>
             <span style="font-size: 10px; color: var(--muted); background: var(--surface2); padding: 2px 7px; border-radius: 4px; white-space: nowrap;">{{ $typeLabels[$cat->type] }}</span>
         </div>
@@ -49,16 +46,11 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
         @foreach($custom as $cat)
         <div class="card" style="padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-            @if($cat->color)
-            <div style="width: 10px; height: 10px; border-radius: 50%; background: {{ $cat->color }}; flex-shrink: 0;"></div>
-            @else
-            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex-shrink: 0;"></div>
-            @endif
+            <div style="display:flex;align-items:center;flex-shrink:0;">
+                @include('categories._icon', ['icon' => $cat->icon, 'color' => $cat->color, 'type' => $cat->type, 'size' => 'sm'])
+            </div>
             <div style="flex: 1; min-width: 0;">
                 <div style="font-size: 13px; font-weight: 500; color: var(--text);">{{ $cat->name }}</div>
-                @if($cat->icon)
-                <div style="font-size: 11px; color: var(--muted);">{{ $cat->icon }}</div>
-                @endif
             </div>
             <span style="font-size: 10px; color: var(--muted); background: var(--surface2); padding: 2px 7px; border-radius: 4px; white-space: nowrap;">{{ $typeLabels[$cat->type] }}</span>
             <a href="{{ route('categories.edit', $cat) }}" style="color: var(--muted); text-decoration: none; flex-shrink: 0;" title="Editar">

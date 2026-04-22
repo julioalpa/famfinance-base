@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reportes', [ReportController::class, 'index'])->name('reports.index');
 
         // Cuentas
+        Route::post('/cuentas/{account}/ajustar', [AccountController::class, 'adjust'])->name('accounts.adjust');
         Route::resource('cuentas', AccountController::class)->names([
             'index'   => 'accounts.index',
             'create'  => 'accounts.create',

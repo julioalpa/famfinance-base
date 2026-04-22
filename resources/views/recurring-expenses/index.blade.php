@@ -1,20 +1,20 @@
 @extends('layouts.app')
 
-@section('title', 'Débitos fijos')
+@section('title', 'Gastos recurrentes')
 
 @section('content')
 
 {{-- Header --}}
 <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
     <div>
-        <h1 class="font-display" style="font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px;">Débitos fijos</h1>
+        <h1 class="font-display" style="font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px;">Gastos recurrentes</h1>
         <div style="font-size: 13px; color: var(--muted); font-weight: 500;">
-            Gastos recurrentes y débitos automáticos del grupo
+            Servicios, suscripciones y pagos que se repiten todos los meses
         </div>
     </div>
     <a href="{{ route('recurring-expenses.create') }}" class="btn btn-primary">
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Nuevo débito fijo
+        Agregar gasto recurrente
     </a>
 </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ExchangeRate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +19,7 @@ class Transaction extends Model
         'category_id',
         'type',
         'income_source',
+        'adjustment_direction',
         'amount',
         'currency',
         'date',
@@ -82,5 +84,19 @@ class Transaction extends Model
     public function isTransfer(): bool
     {
         return $this->type === 'transfer';
+    }
+
+    public function isAdjustment(): bool
+    {
+        return $this->type === 'adjustment';
+    }
+
+    public function amountInArs(?ExchangeRate $rate): float
+    {
+        $amt = (float) $this->amount;
+        if ($this->currency === 'ARS' || $rate === null) {
+            return $amt;
+        }
+        return $rate->convert($amt, $this->currency);
     }
 }
