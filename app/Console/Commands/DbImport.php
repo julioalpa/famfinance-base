@@ -35,9 +35,9 @@ class DbImport extends Command
         'accounts',
         'categories',
         'exchange_rates',
+        'recurring_expenses',
         'transactions',
         'installments',
-        'recurring_expenses',
         'recurring_expense_logs',
         'payment_items',
         'monthly_payments',
@@ -87,6 +87,13 @@ class DbImport extends Command
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
 
+        // Deshabilitar FK checks durante la inserción
+        if ($driver === 'pgsql') {
+            DB::statement("SET session_replication_role = 'replica'");
+        } elseif ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        }
+
         // Insertar en orden de dependencias
         foreach (self::INSERT_ORDER as $table) {
             $rows = $export['tables'][$table] ?? [];
@@ -103,6 +110,13 @@ class DbImport extends Command
             }
 
             $this->line("  <fg=green>✓</> {$table}: " . count($rows) . ' registros insertados');
+        }
+
+        // Re-habilitar FK checks
+        if ($driver === 'pgsql') {
+            DB::statement("SET session_replication_role = 'origin'");
+        } elseif ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
 
         $this->newLine();
