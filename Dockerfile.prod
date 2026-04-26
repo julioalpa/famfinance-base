@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libzip-dev libpng-dev libonig-dev libxml2-dev libpq-dev libicu-dev \
     && docker-php-ext-install \
         pdo_pgsql pdo_mysql mbstring zip bcmath exif pcntl intl opcache \
-    && a2enmod rewrite \
+    && a2enmod rewrite expires headers \
     && rm -rf /var/lib/apt/lists/*
 
 # OPcache config (production-tuned)
