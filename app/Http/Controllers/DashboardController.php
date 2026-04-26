@@ -9,6 +9,7 @@ use App\Models\Installment;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
 use App\Models\RecurringExpense;
+use App\Models\RecurringExpenseLog;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -89,12 +90,18 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // ── Débitos fijos activos del grupo ──────────────────────────────────
+        // ── Débitos fijos activos del grupo + logs del mes actual ────────────
         $recurringExpenses = RecurringExpense::with(['account', 'category'])
             ->where('family_group_id', $groupId)
             ->where('is_active', true)
             ->orderBy('day_of_month')
             ->get();
+
+        $recurringLogs = RecurringExpenseLog::where('family_group_id', $groupId)
+            ->where('month', now()->month)
+            ->where('year', now()->year)
+            ->get()
+            ->keyBy('recurring_expense_id');
 
         // ── Pendientes del mes actual (para widget) ───────────────────────────
         $currentMon  = now()->month;
@@ -145,6 +152,7 @@ class DashboardController extends Controller
             'recentTransactions',
             'exchangeRate',
             'recurringExpenses',
+            'recurringLogs',
             'pendingPayments',
             'pendingPaidCount',
             'pendingTotalCount',

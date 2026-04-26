@@ -106,7 +106,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/tipo-de-cambio/{exchangeRate}', [ExchangeRateController::class, 'destroy'])->name('exchange-rates.destroy');
 
         // Débitos fijos / gastos recurrentes
-        Route::post('/debitos/{recurringExpense}/toggle', [RecurringExpenseController::class, 'toggle'])->name('recurring-expenses.toggle');
+        Route::post('/debitos/{recurringExpense}/toggle',   [RecurringExpenseController::class, 'toggle'])->name('recurring-expenses.toggle');
+        Route::post('/debitos/{recurringExpense}/confirmar', [RecurringExpenseController::class, 'confirm'])->name('recurring-expenses.confirm');
+        Route::post('/debitos/{recurringExpense}/omitir',   [RecurringExpenseController::class, 'skip'])->name('recurring-expenses.skip');
         Route::resource('debitos', RecurringExpenseController::class)->names([
             'index'   => 'recurring-expenses.index',
             'create'  => 'recurring-expenses.create',

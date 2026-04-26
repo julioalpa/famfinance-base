@@ -6,8 +6,8 @@ RUN npm ci --prefer-offline
 COPY . .
 RUN npm run build
 
-# ── Stage 2: PHP 8.3 + Apache ────────────────────────────────────────────────
-FROM php:8.3-apache
+# ── Stage 2: PHP 8.4 + Apache ────────────────────────────────────────────────
+FROM php:8.4-apache
 
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -61,7 +61,9 @@ COPY . .
 COPY --from=assets /app/public/build ./public/build
 
 # Optimise autoloader
-RUN composer dump-autoload --optimize --classmap-authoritative
+RUN mkdir -p bootstrap/cache storage/framework/{sessions,views,cache} \
+    && chmod -R 775 bootstrap/cache storage \
+    && composer dump-autoload --optimize --classmap-authoritative
 
 # Permissions
 RUN chown -R www-data:www-data storage bootstrap/cache \

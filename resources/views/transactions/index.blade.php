@@ -17,6 +17,43 @@
     </a>
 </div>
 
+{{-- Stats del mes --}}
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px;">
+
+    <div class="stat-card expense">
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 700;">Gastos</div>
+        <div class="font-display" style="font-size: 22px; font-weight: 800; color: var(--expense); letter-spacing: -0.03em; line-height: 1;">
+            $ {{ number_format($monthStats['expenses'], 2, ',', '.') }}
+        </div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 500;">{{ $monthLabel }}</div>
+    </div>
+
+    <div class="stat-card income">
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 700;">Ingresos</div>
+        <div class="font-display" style="font-size: 22px; font-weight: 800; color: var(--income); letter-spacing: -0.03em; line-height: 1;">
+            $ {{ number_format($monthStats['income'], 2, ',', '.') }}
+        </div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 500;">{{ $monthLabel }}</div>
+    </div>
+
+    <div class="stat-card balance">
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 700;">Balance</div>
+        <div class="font-display" style="font-size: 22px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: {{ $monthStats['balance'] >= 0 ? 'var(--income)' : 'var(--expense)' }};">
+            {{ $monthStats['balance'] >= 0 ? '+' : '−' }}$ {{ number_format(abs($monthStats['balance']), 2, ',', '.') }}
+        </div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 500;">Ingresos − Gastos</div>
+    </div>
+
+    <div class="stat-card neutral">
+        <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 700;">Movimientos</div>
+        <div class="font-display" style="font-size: 22px; font-weight: 800; color: var(--warn); letter-spacing: -0.03em; line-height: 1;">
+            {{ number_format($monthStats['count']) }}
+        </div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 500;">{{ $monthLabel }}</div>
+    </div>
+
+</div>
+
 {{-- Filtros --}}
 <div class="card" style="margin-bottom: 20px;">
     <form method="GET" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
@@ -150,13 +187,22 @@
             </tbody>
         </table>
 
-        {{-- Paginación --}}
-        @if($transactions->hasPages())
-        <div style="padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted);">
-            <span>{{ $transactions->total() }} movimientos</span>
-            {{ $transactions->links() }}
+        {{-- Footer: total filtrado + paginación --}}
+        <div style="padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <span>{{ $transactions->total() }} movimientos</span>
+                <span style="display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--accent); flex-shrink: 0;"><path d="M12 20V4M5 13l7 7 7-7"/></svg>
+                    <span style="font-weight: 600; color: var(--text);">Total filtrado:</span>
+                    <span style="font-weight: 700; color: var(--accent); font-family: 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em;">
+                        $ {{ number_format($filteredTotal, 2, ',', '.') }}
+                    </span>
+                </span>
+            </div>
+            @if($transactions->hasPages())
+                {{ $transactions->links() }}
+            @endif
         </div>
-        @endif
     @endif
 </div>
 

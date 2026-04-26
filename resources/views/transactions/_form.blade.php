@@ -115,7 +115,7 @@
         <div>
 
             {{-- Categoría --}}
-            <div class="form-group" style="margin-bottom: 20px;">
+            <div class="form-group" id="category-group" style="margin-bottom: 20px;">
                 <label class="form-label" for="category_id">Categoría</label>
                 <select name="category_id" id="category_id" class="form-select">
                     <option value="">Sin categoría</option>
@@ -288,6 +288,12 @@ function applyPendingItem(id) {
         document.getElementById('target-account-group').style.display   = selected === 'transfer' ? '' : 'none';
         document.getElementById('income-source-group').style.display     = selected === 'income'   ? '' : 'none';
         document.getElementById('installments-group').style.display      = (selected === 'expense' && isCredit) ? '' : 'none';
+
+        const categoryGroup = document.getElementById('category-group');
+        categoryGroup.style.display = selected === 'transfer' ? 'none' : '';
+        if (selected === 'transfer') {
+            document.getElementById('category_id').value = '';
+        }
 
         const pendingGroup = document.getElementById('pending-item-group');
         if (pendingGroup) pendingGroup.style.display = selected === 'expense' ? '' : 'none';

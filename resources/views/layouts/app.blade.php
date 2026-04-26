@@ -622,6 +622,12 @@
         document.getElementById('sidebar').classList.toggle('open');
         document.getElementById('sidebar-overlay').classList.toggle('visible');
     }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('input[type="date"], input[type="month"]')) {
+            try { e.target.showPicker(); } catch (_) {}
+        }
+    });
 </script>
 
 </body>

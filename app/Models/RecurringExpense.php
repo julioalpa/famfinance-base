@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RecurringExpense extends Model
 {
@@ -50,6 +51,16 @@ class RecurringExpense extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(RecurringExpenseLog::class);
+    }
+
+    public function logForMonth(int $month, int $year): ?RecurringExpenseLog
+    {
+        return $this->logs->first(fn($l) => $l->month === $month && $l->year === $year);
     }
 
     /** Days until execution this month (negative = already passed). */

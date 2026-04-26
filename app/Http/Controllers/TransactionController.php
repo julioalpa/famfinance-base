@@ -18,6 +18,8 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $groupId = session('active_family_group_id');
+        $selectedMonth = $request->input('month', now()->format('Y-m'));
+        [$statsYear, $statsMonth] = explode('-', $selectedMonth);
 
         $query = Transaction::with(['account', 'category', 'user'])
             ->where('family_group_id', $groupId)
@@ -35,9 +37,40 @@ class TransactionController extends Controller
             $query->where('category_id', $request->category_id);
         }
         if ($request->filled('month')) {
-            [$year, $month] = explode('-', $request->month);
-            $query->whereYear('date', $year)->whereMonth('date', $month);
+            $query->whereYear('date', $statsYear)->whereMonth('date', $statsMonth);
         }
+
+        // Stats del mes seleccionado (sin filtros de tipo/cuenta/categoría)
+        $baseMonth = fn () => Transaction::where('family_group_id', $groupId)
+            ->whereYear('date', $statsYear)
+            ->whereMonth('date', $statsMonth);
+
+        $monthStats = [
+            'expenses' => $baseMonth()->where('type', 'expense')->sum('amount'),
+            'income'   => $baseMonth()->where('type', 'income')->sum('amount'),
+            'count'    => $baseMonth()->count(),
+        ];
+        $monthStats['balance'] = $monthStats['income'] - $monthStats['expenses'];
+
+        $monthLabel = Carbon::createFromDate($statsYear, $statsMonth, 1)
+            ->locale('es')
+            ->isoFormat('MMMM YYYY');
+
+        // Sumatoria del filtro actual (todas las páginas)
+        $filteredSumQuery = Transaction::where('family_group_id', $groupId);
+        if ($request->filled('type')) {
+            $filteredSumQuery->where('type', $request->type);
+        }
+        if ($request->filled('account_id')) {
+            $filteredSumQuery->where('account_id', $request->account_id);
+        }
+        if ($request->filled('category_id')) {
+            $filteredSumQuery->where('category_id', $request->category_id);
+        }
+        if ($request->filled('month')) {
+            $filteredSumQuery->whereYear('date', $statsYear)->whereMonth('date', $statsMonth);
+        }
+        $filteredTotal = $filteredSumQuery->sum('amount');
 
         $transactions = $query->paginate(50)->withQueryString();
         $categories   = Category::availableFor($groupId);
@@ -47,7 +80,10 @@ class TransactionController extends Controller
             ->where('is_active', true)
             ->get();
 
-        return view('transactions.index', compact('transactions', 'categories', 'accounts'));
+        return view('transactions.index', compact(
+            'transactions', 'categories', 'accounts',
+            'monthStats', 'monthLabel', 'filteredTotal'
+        ));
     }
 
     public function create(Request $request)

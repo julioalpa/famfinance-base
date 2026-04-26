@@ -9,7 +9,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE accounts MODIFY COLUMN type ENUM('cash','digital','credit','loan') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE accounts MODIFY COLUMN type ENUM('cash','digital','credit','loan') NOT NULL");
+        } else {
+            DB::statement("ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_type_check");
+            DB::statement("ALTER TABLE accounts ADD CONSTRAINT accounts_type_check CHECK (type IN ('cash','digital','credit','loan'))");
+        }
 
         Schema::table('accounts', function (Blueprint $table) {
             $table->decimal('initial_balance', 15, 2)->nullable()->after('credit_limit');

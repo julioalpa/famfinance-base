@@ -67,6 +67,7 @@
                     <th>Categoría</th>
                     <th style="text-align:right;">Monto</th>
                     <th style="text-align:center;">Estado</th>
+                    <th style="text-align:center;">Este mes</th>
                     <th></th>
                 </tr>
             </thead>
@@ -112,12 +113,34 @@
                         {{ $re->currency === 'USD' ? 'US$' : '$' }} {{ number_format($re->amount, 2, ',', '.') }}
                     </td>
 
-                    {{-- Estado --}}
+                    {{-- Estado activo/pausado --}}
                     <td style="text-align:center;">
                         @if($re->is_active)
                             <span class="badge badge-income">Activo</span>
                         @else
                             <span class="badge" style="background:var(--surface2); color:var(--muted);">Pausado</span>
+                        @endif
+                    </td>
+
+                    {{-- Estado este mes --}}
+                    @php $log = $re->logForMonth($currentMonth, $currentYear); @endphp
+                    <td style="text-align:center;">
+                        @if(!$re->is_active)
+                            <span style="font-size:11px; color:var(--muted);">—</span>
+                        @elseif($log?->status === 'confirmed')
+                            @if($log->transaction_id)
+                                <a href="{{ route('transactions.show', $log->transaction_id) }}" style="text-decoration:none;">
+                                    <span class="badge badge-income" style="font-size:10px;">Registrado</span>
+                                </a>
+                            @else
+                                <span class="badge badge-income" style="font-size:10px;">Registrado</span>
+                            @endif
+                        @elseif($log?->status === 'skipped')
+                            <span class="badge" style="background:var(--surface2); color:var(--muted); font-size:10px;">Omitido</span>
+                        @elseif($re->day_of_month <= now()->day)
+                            <span class="badge" style="background:rgba(240,64,96,0.1); color:var(--expense); font-size:10px;">Pendiente</span>
+                        @else
+                            <span style="font-size:11px; color:var(--muted);">día {{ $re->day_of_month }}</span>
                         @endif
                     </td>
 

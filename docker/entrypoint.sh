@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+echo "==> Preparando directorios..."
+mkdir -p /var/www/html/storage/framework/{sessions,views,cache/data}
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
 echo "==> Cacheando configuración..."
 php artisan config:cache
 php artisan route:cache

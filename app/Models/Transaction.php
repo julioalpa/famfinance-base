@@ -29,6 +29,7 @@ class Transaction extends Model
         'installment_amount',
         'target_account_id',
         'notes',
+        'recurring_expense_id',
     ];
 
     protected function casts(): array
@@ -69,6 +70,11 @@ class Transaction extends Model
     public function installments(): HasMany
     {
         return $this->hasMany(Installment::class)->orderBy('installment_number');
+    }
+
+    public function recurringExpense(): BelongsTo
+    {
+        return $this->belongsTo(RecurringExpense::class);
     }
 
     public function isExpense(): bool
