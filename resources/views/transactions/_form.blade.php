@@ -15,6 +15,8 @@
     $defaultDate      = $defaultDate ?? null;
     $defaultAccountId = $defaultAccountId ?? null;
     $pendingItems     = $pendingItems ?? collect();
+    $allTags          = $allTags ?? collect();
+    $selectedTagIds   = old('tags', $tx?->tags?->pluck('id')->toArray() ?? []);
 @endphp
 
 <form method="POST" action="{{ $action }}">
@@ -214,6 +216,9 @@
                           placeholder="Opcional..."
                           style="resize: vertical;">{{ old('notes', $tx?->notes) }}</textarea>
             </div>
+
+            {{-- Etiquetas --}}
+            <x-tag-picker :allTags="$allTags" :selectedIds="$selectedTagIds" />
         </div>
     </div>
 

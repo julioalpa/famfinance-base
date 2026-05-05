@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 class PaymentItem extends Model
 {
@@ -56,6 +57,11 @@ class PaymentItem extends Model
     public function monthlyPayments(): HasMany
     {
         return $this->hasMany(MonthlyPayment::class);
+    }
+
+    public function tags(): MorphToMany
+    {
+        return $this->morphToMany(Tag::class, 'taggable');
     }
 
     /** Último monto pagado (no descartado) antes del mes indicado. */

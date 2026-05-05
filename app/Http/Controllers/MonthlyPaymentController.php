@@ -38,7 +38,7 @@ class MonthlyPaymentController extends Controller
         }
 
         // Cargar todos los pagos del mes con relaciones
-        $monthlyPayments = MonthlyPayment::with(['paymentItem.account', 'paymentItem.category', 'transaction'])
+        $monthlyPayments = MonthlyPayment::with(['paymentItem.account', 'paymentItem.category', 'paymentItem.tags', 'transaction'])
             ->where('family_group_id', $groupId)
             ->where('month', $mon)
             ->where('year', $year)

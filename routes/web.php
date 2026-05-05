@@ -14,6 +14,7 @@ use App\Http\Controllers\CardPaymentController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\MonthlyReportController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -136,6 +137,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/pendientes/{monthlyPayment}/desmarcar',  [MonthlyPaymentController::class, 'markUnpaid'])->name('monthly-payments.mark-unpaid');
         Route::post('/pendientes/{monthlyPayment}/descartar',  [MonthlyPaymentController::class, 'dismiss'])->name('monthly-payments.dismiss');
         Route::post('/pendientes/{monthlyPayment}/restaurar',  [MonthlyPaymentController::class, 'undismiss'])->name('monthly-payments.undismiss');
+
+        // Etiquetas
+        Route::get('/etiquetas',          [TagController::class, 'index'])->name('tags.index');
+        Route::post('/etiquetas',         [TagController::class, 'store'])->name('tags.store');
+        Route::put('/etiquetas/{tag}',    [TagController::class, 'update'])->name('tags.update');
+        Route::delete('/etiquetas/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
 
         // Ítems de pendientes (plantillas)
         Route::post('/pendientes-items/{paymentItem}/toggle',  [PaymentItemController::class, 'toggle'])->name('payment-items.toggle');

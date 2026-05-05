@@ -80,6 +80,11 @@ class Transaction extends Model
         return $this->belongsTo(RecurringExpense::class);
     }
 
+    public function tags(): MorphToMany
+    {
+        return $this->morphToMany(Tag::class, 'taggable');
+    }
+
     public function isExpense(): bool
     {
         return $this->type === 'expense';

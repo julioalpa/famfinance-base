@@ -1,6 +1,8 @@
 @php
-    $pi     = $paymentItem ?? null;
-    $isEdit = $pi !== null;
+    $pi             = $paymentItem ?? null;
+    $isEdit         = $pi !== null;
+    $allTags        = $allTags ?? collect();
+    $selectedTagIds = old('tags', $pi?->tags?->pluck('id')->toArray() ?? []);
 @endphp
 
 <form method="POST" action="{{ $action }}">
@@ -180,6 +182,11 @@
             </div>
 
         </div>
+    </div>
+
+    {{-- Etiquetas --}}
+    <div style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 4px;">
+        <x-tag-picker :allTags="$allTags" :selectedIds="$selectedTagIds" />
     </div>
 
     <div style="display: flex; gap: 10px; justify-content: flex-end; padding-top: 20px; border-top: 1px solid var(--border);">

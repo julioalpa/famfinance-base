@@ -258,6 +258,17 @@
                 @endforeach
             </select>
         </div>
+        @if($allTags->isNotEmpty())
+        <div>
+            <label class="form-label">Etiqueta</label>
+            <select name="tag_id" class="form-select" style="width: 160px;">
+                <option value="">Todas</option>
+                @foreach($allTags as $tag)
+                    <option value="{{ $tag->id }}" {{ request('tag_id') == $tag->id ? 'selected' : '' }}>{{ $tag->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        @endif
         <div style="display:flex;gap:8px;">
             <button type="submit" class="btn btn-ghost">Filtrar</button>
             <a href="{{ route('transactions.index') }}" class="btn btn-ghost" style="color: var(--muted);">Limpiar</a>
@@ -308,6 +319,15 @@
                             @if($tx->has_installments)
                                 <span class="badge badge-credit" style="margin-left: 6px; font-size: 10px;">{{ $tx->installments_count }} cuotas</span>
                             @endif
+                            @foreach($tx->tags as $tag)
+                                <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px 2px 5px;
+                                             border-radius:12px;font-size:10px;font-weight:700;margin-left:4px;
+                                             background:{{ $tag->color }}22;color:{{ $tag->color }};
+                                             border:1px solid {{ $tag->color }}44;">
+                                    <span style="width:6px;height:6px;border-radius:50%;background:{{ $tag->color }};"></span>
+                                    {{ $tag->name }}
+                                </span>
+                            @endforeach
                         </td>
                         <td>
                             @if($tx->category)
@@ -381,6 +401,15 @@
                     @if($tx->has_installments)
                         <span class="badge badge-credit" style="font-size:10px;">{{ $tx->installments_count }}c</span>
                     @endif
+                    @foreach($tx->tags as $tag)
+                        <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px 2px 5px;
+                                     border-radius:10px;font-size:10px;font-weight:700;
+                                     background:{{ $tag->color }}22;color:{{ $tag->color }};
+                                     border:1px solid {{ $tag->color }}44;">
+                            <span style="width:5px;height:5px;border-radius:50%;background:{{ $tag->color }};"></span>
+                            {{ $tag->name }}
+                        </span>
+                    @endforeach
                 </div>
                 <div style="display:flex;gap:4px;margin-top:2px;">
                     <a href="{{ route('transactions.edit', $tx) }}" class="tx-action-link" style="font-size:11px;min-height:30px;padding:0 8px;">Editar</a>
@@ -456,6 +485,17 @@
                     @endforeach
                 </select>
             </div>
+            @if($allTags->isNotEmpty())
+            <div>
+                <label class="form-label">Etiqueta</label>
+                <select name="tag_id" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach($allTags as $tag)
+                        <option value="{{ $tag->id }}" {{ request('tag_id') == $tag->id ? 'selected' : '' }}>{{ $tag->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
             <div style="display:flex;gap:10px;margin-top:4px;">
                 <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Aplicar</button>
                 <a href="{{ route('transactions.index') }}" class="btn btn-ghost" style="flex:1;justify-content:center;">Limpiar</a>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePaymentItemRequest;
 use App\Models\Category;
 use App\Models\PaymentItem;
+use App\Models\Tag;
 use Illuminate\Http\Request;
 
 class PaymentItemController extends Controller
@@ -24,19 +25,21 @@ class PaymentItemController extends Controller
 
     public function create()
     {
-        [$categories, $accounts] = $this->formData();
+        [$categories, $accounts, $allTags] = $this->formData();
 
-        return view('payment-items.create', compact('categories', 'accounts'));
+        return view('payment-items.create', compact('categories', 'accounts', 'allTags'));
     }
 
     public function store(StorePaymentItemRequest $request)
     {
         $groupId = session('active_family_group_id');
 
-        PaymentItem::create([
-            ...$request->validated(),
-            'family_group_id' => $groupId,
-        ]);
+        $data   = $request->validated();
+        $tagIds = $data['tags'] ?? [];
+        unset($data['tags']);
+
+        $item = PaymentItem::create([...$data, 'family_group_id' => $groupId]);
+        $item->tags()->sync($tagIds);
 
         return redirect()
             ->route('payment-items.index')
@@ -47,16 +50,22 @@ class PaymentItemController extends Controller
     {
         $this->authorize($paymentItem);
 
-        [$categories, $accounts] = $this->formData();
+        [$categories, $accounts, $allTags] = $this->formData();
+        $paymentItem->load('tags');
 
-        return view('payment-items.edit', compact('paymentItem', 'categories', 'accounts'));
+        return view('payment-items.edit', compact('paymentItem', 'categories', 'accounts', 'allTags'));
     }
 
     public function update(StorePaymentItemRequest $request, PaymentItem $paymentItem)
     {
         $this->authorize($paymentItem);
 
-        $paymentItem->update($request->validated());
+        $data   = $request->validated();
+        $tagIds = $data['tags'] ?? [];
+        unset($data['tags']);
+
+        $paymentItem->update($data);
+        $paymentItem->tags()->sync($tagIds);
 
         return redirect()
             ->route('payment-items.index')
@@ -117,7 +126,8 @@ class PaymentItemController extends Controller
         $group      = auth()->user()->familyGroups()->find($groupId);
         $categories = Category::availableFor($groupId);
         $accounts   = $group->accounts()->where('is_active', true)->get();
+        $allTags    = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
 
-        return [$categories, $accounts];
+        return [$categories, $accounts, $allTags];
     }
 }

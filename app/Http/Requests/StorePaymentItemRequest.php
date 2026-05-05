@@ -25,6 +25,8 @@ class StorePaymentItemRequest extends FormRequest
             'notes'           => ['nullable', 'string', 'max:1000'],
             'is_dispensable'  => ['boolean'],
             'is_retiring'     => ['boolean'],
+            'tags'            => ['nullable', 'array'],
+            'tags.*'          => ['integer', 'exists:tags,id'],
         ];
     }
 

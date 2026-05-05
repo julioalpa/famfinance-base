@@ -6,6 +6,7 @@ use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Category;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
+use App\Models\Tag;
 use App\Models\Transaction;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
@@ -21,7 +22,7 @@ class TransactionController extends Controller
         $selectedMonth = $request->input('month', now()->format('Y-m'));
         [$statsYear, $statsMonth] = explode('-', $selectedMonth);
 
-        $query = Transaction::with(['account', 'category', 'user'])
+        $query = Transaction::with(['account', 'category', 'user', 'tags'])
             ->where('family_group_id', $groupId)
             ->orderByDesc('date')
             ->orderByDesc('id');
@@ -40,6 +41,9 @@ class TransactionController extends Controller
         }
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
+        }
+        if ($request->filled('tag_id')) {
+            $query->whereHas('tags', fn ($q) => $q->where('tags.id', $request->tag_id));
         }
         if ($request->filled('month')) {
             $query->whereYear('date', $statsYear)->whereMonth('date', $statsMonth);
@@ -76,6 +80,9 @@ class TransactionController extends Controller
         if ($request->filled('category_id')) {
             $filteredSumQuery->where('category_id', $request->category_id);
         }
+        if ($request->filled('tag_id')) {
+            $filteredSumQuery->whereHas('tags', fn ($q) => $q->where('tags.id', $request->tag_id));
+        }
         if ($request->filled('month')) {
             $filteredSumQuery->whereYear('date', $statsYear)->whereMonth('date', $statsMonth);
         }
@@ -88,10 +95,11 @@ class TransactionController extends Controller
             ->accounts()
             ->where('is_active', true)
             ->get();
+        $allTags = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
 
         return view('transactions.index', compact(
             'transactions', 'categories', 'accounts',
-            'monthStats', 'monthLabel', 'filteredTotal'
+            'monthStats', 'monthLabel', 'filteredTotal', 'allTags'
         ));
     }
 
@@ -102,6 +110,7 @@ class TransactionController extends Controller
         $categories = Category::availableFor($groupId);
         $accounts   = $group->accounts()->where('is_active', true)->get();
 
+        $allTags          = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
         $bulk             = $request->boolean('bulk');
         $bulkCount        = $bulk ? session('bulk_count', 0) : 0;
         $defaultDate      = $request->input('date');
@@ -132,7 +141,7 @@ class TransactionController extends Controller
             ]);
 
         return view('transactions.create', compact(
-            'categories', 'accounts', 'bulk', 'bulkCount', 'defaultDate', 'defaultAccountId', 'pendingItems'
+            'categories', 'accounts', 'allTags', 'bulk', 'bulkCount', 'defaultDate', 'defaultAccountId', 'pendingItems'
         ));
     }
 
@@ -140,11 +149,13 @@ class TransactionController extends Controller
     {
         $groupId = session('active_family_group_id');
 
-        $validated = $request->validated();
+        $validated     = $request->validated();
         $paymentItemId = $validated['payment_item_id'] ?? null;
-        unset($validated['payment_item_id']);
+        $tagIds        = $validated['tags'] ?? [];
+        unset($validated['payment_item_id'], $validated['tags']);
 
         $transaction = $this->service->create($validated, $groupId, auth()->id());
+        $transaction->tags()->sync($tagIds);
 
         if ($paymentItemId) {
             $item = PaymentItem::where('id', $paymentItemId)
@@ -205,15 +216,22 @@ class TransactionController extends Controller
         $group      = auth()->user()->familyGroups()->find($groupId);
         $categories = Category::availableFor($groupId);
         $accounts   = $group->accounts()->where('is_active', true)->get();
+        $allTags    = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
+        $transaction->load('tags');
 
-        return view('transactions.edit', compact('transaction', 'categories', 'accounts'));
+        return view('transactions.edit', compact('transaction', 'categories', 'accounts', 'allTags'));
     }
 
     public function update(StoreTransactionRequest $request, Transaction $transaction)
     {
         $this->authorizeTransaction($transaction);
 
-        $this->service->update($transaction, $request->validated());
+        $validated = $request->validated();
+        $tagIds    = $validated['tags'] ?? [];
+        unset($validated['tags']);
+
+        $this->service->update($transaction, $validated);
+        $transaction->tags()->sync($tagIds);
 
         return redirect()
             ->route('transactions.index')

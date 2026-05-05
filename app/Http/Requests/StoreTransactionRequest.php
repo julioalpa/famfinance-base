@@ -27,6 +27,8 @@ class StoreTransactionRequest extends FormRequest
             'target_account_id'  => ['nullable', 'required_if:type,transfer', 'integer', 'exists:accounts,id', 'different:account_id'],
             'notes'              => ['nullable', 'string', 'max:1000'],
             'payment_item_id'    => ['nullable', 'integer', 'exists:payment_items,id'],
+            'tags'               => ['nullable', 'array'],
+            'tags.*'             => ['integer', 'exists:tags,id'],
         ];
     }
 

@@ -88,6 +88,23 @@
 </div>
 @endif
 
+{{-- ── Buscador ─────────────────────────────────────────────────────────────── --}}
+@if($monthlyPayments->isNotEmpty())
+<div style="margin-bottom: 16px;">
+    <div style="position: relative;">
+        <svg width="15" height="15" fill="none" stroke="var(--muted)" stroke-width="2" viewBox="0 0 24 24"
+             style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="checklist-search"
+               class="form-input"
+               placeholder="Buscar por nombre o etiqueta…"
+               style="padding-left: 36px; font-size: 13px;"
+               oninput="filterChecklist(this.value)">
+    </div>
+</div>
+@endif
+
 {{-- ── Lista de pendientes ─────────────────────────────────────────────────── --}}
 @if($monthlyPayments->isEmpty())
     <div class="card" style="text-align: center; padding: 60px 32px;">
@@ -115,8 +132,12 @@
             $today          = now()->day;
             $isOverdue      = !$isPaid && !$isDismissed && $dueDay && $dueDay < $today
                               && $mon == now()->month && $year == now()->year;
+            $tagNames       = $item ? $item->tags->pluck('name')->join(' ') : '';
+            $searchText     = strtolower(($item?->description ?? '') . ' ' . $tagNames);
         @endphp
-        <div style="
+        <div class="checklist-item"
+             data-search="{{ $searchText }}"
+             style="
             background: var(--surface);
             border: 1px solid {{ $isDismissed ? 'var(--border)' : ($isPaid ? 'rgba(45,216,112,0.2)' : ($isOverdue ? 'rgba(240,64,96,0.25)' : 'var(--border)')) }};
             border-radius: 14px;
@@ -177,6 +198,17 @@
                     @endif
                     @if($isOverdue)
                         <span class="badge badge-expense" style="font-size: 10px;">VENCIDO</span>
+                    @endif
+                    @if($item && $item->tags->isNotEmpty())
+                        @foreach($item->tags as $tag)
+                            <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px 2px 5px;
+                                         border-radius:12px;font-size:10px;font-weight:700;
+                                         background:{{ $tag->color }}22;color:{{ $tag->color }};
+                                         border:1px solid {{ $tag->color }}44;">
+                                <span style="width:6px;height:6px;border-radius:50%;background:{{ $tag->color }};flex-shrink:0;"></span>
+                                {{ $tag->name }}
+                            </span>
+                        @endforeach
                     @endif
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px; flex-wrap: wrap;">
@@ -434,6 +466,14 @@ document.addEventListener('keydown', function(e) {
         closeRetireModal();
     }
 });
+
+function filterChecklist(q) {
+    const term = q.toLowerCase().trim();
+    document.querySelectorAll('.checklist-item').forEach(item => {
+        const txt = item.dataset.search || '';
+        item.style.display = term === '' || txt.includes(term) ? '' : 'none';
+    });
+}
 </script>
 
 @endsection
