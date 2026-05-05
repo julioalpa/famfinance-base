@@ -55,9 +55,11 @@ services:
   restart: unless-stopped
   ports:
     - 8000:80
+    - 8443:443
   volumes:
     - ./:/var/www:cached
     - ./docker-compose/nginx:/etc/nginx/conf.d:ro
+    - ./docker-compose/certs:/etc/nginx/certs:ro
   networks:
     - finance
     - shared

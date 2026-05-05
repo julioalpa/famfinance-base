@@ -3,16 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
-use App\Models\Category;
-use App\Models\ExchangeRate;
-use App\Models\Installment;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
-use App\Models\RecurringExpense;
-use App\Models\RecurringExpenseLog;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
@@ -90,19 +84,6 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // ── Débitos fijos activos del grupo + logs del mes actual ────────────
-        $recurringExpenses = RecurringExpense::with(['account', 'category'])
-            ->where('family_group_id', $groupId)
-            ->where('is_active', true)
-            ->orderBy('day_of_month')
-            ->get();
-
-        $recurringLogs = RecurringExpenseLog::where('family_group_id', $groupId)
-            ->where('month', now()->month)
-            ->where('year', now()->year)
-            ->get()
-            ->keyBy('recurring_expense_id');
-
         // ── Pendientes del mes actual (para widget) ───────────────────────────
         $currentMon  = now()->month;
         $currentYear = now()->year;
@@ -126,6 +107,7 @@ class DashboardController extends Controller
             ->where('family_group_id', $groupId)
             ->where('month', $currentMon)
             ->where('year', $currentYear)
+            ->where('is_dismissed', false)
             ->get()
             ->sortBy(fn ($mp) => [
                 $mp->is_paid ? 1 : 0,
@@ -151,18 +133,12 @@ class DashboardController extends Controller
             'installmentSummary',
             'recentTransactions',
             'exchangeRate',
-            'recurringExpenses',
-            'recurringLogs',
             'pendingPayments',
             'pendingPaidCount',
             'pendingTotalCount',
         ));
     }
 
-    /**
-     * Suma montos de un tipo de transacción convirtiendo USD→ARS cuando hay cotización.
-     * Hace dos SUM() en DB (por moneda) para no cargar todos los registros en memoria.
-     */
     private function sumConverted(\Illuminate\Database\Eloquent\Builder $query, string $type, ?\App\Models\ExchangeRate $rate): float
     {
         $q = (clone $query)->where('type', $type);
@@ -171,7 +147,7 @@ class DashboardController extends Controller
         $usd = (float) (clone $q)->where('currency', 'USD')->sum('amount');
 
         if ($usd === 0.0) return $ars;
-        if ($rate === null) return $ars + $usd; // sin cotización: suma cruda (con banner de aviso)
+        if ($rate === null) return $ars + $usd;
 
         return $ars + $rate->convert($usd, 'USD');
     }

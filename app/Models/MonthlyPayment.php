@@ -14,6 +14,7 @@ class MonthlyPayment extends Model
         'year',
         'amount',
         'is_paid',
+        'is_dismissed',
         'paid_at',
         'transaction_id',
     ];
@@ -21,9 +22,10 @@ class MonthlyPayment extends Model
     protected function casts(): array
     {
         return [
-            'amount'  => 'decimal:2',
-            'is_paid' => 'boolean',
-            'paid_at' => 'datetime',
+            'amount'       => 'decimal:2',
+            'is_paid'      => 'boolean',
+            'is_dismissed' => 'boolean',
+            'paid_at'      => 'datetime',
         ];
     }
 

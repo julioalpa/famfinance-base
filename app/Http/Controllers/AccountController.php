@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAccountRequest;
 use App\Models\Account;
+use App\Models\LoanInstallment;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -125,7 +126,25 @@ class AccountController extends Controller
             ];
         }
 
-        return view('accounts.show', compact('account', 'transactions', 'upcomingInstallments', 'month', 'nextPaymentSummary'));
+        // Préstamo: cargar cuotas del plan y cuentas origen para pagar
+        $loanInstallments = null;
+        $sourceAccounts   = null;
+        if ($account->isLoan()) {
+            $loanInstallments = LoanInstallment::where('account_id', $account->id)
+                ->orderBy('installment_number')
+                ->get();
+            $sourceAccounts = auth()->user()->familyGroups()
+                ->find(session('active_family_group_id'))
+                ->accounts()
+                ->where('is_active', true)
+                ->whereIn('type', ['cash', 'digital'])
+                ->get();
+        }
+
+        return view('accounts.show', compact(
+            'account', 'transactions', 'upcomingInstallments', 'month', 'nextPaymentSummary',
+            'loanInstallments', 'sourceAccounts'
+        ));
     }
 
     public function edit(Account $account)

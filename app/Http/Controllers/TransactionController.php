@@ -27,8 +27,13 @@ class TransactionController extends Controller
             ->orderByDesc('id');
 
         // Filtros opcionales
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
+        $typeFilter = $request->input('type');
+        if ($typeFilter === 'card_payment') {
+            $query->where('type', 'transfer')->where('is_card_payment', true);
+        } elseif ($typeFilter === 'transfer') {
+            $query->where('type', 'transfer')->where('is_card_payment', false);
+        } elseif ($request->filled('type')) {
+            $query->where('type', $typeFilter);
         }
         if ($request->filled('account_id')) {
             $query->where('account_id', $request->account_id);
@@ -58,8 +63,12 @@ class TransactionController extends Controller
 
         // Sumatoria del filtro actual (todas las páginas)
         $filteredSumQuery = Transaction::where('family_group_id', $groupId);
-        if ($request->filled('type')) {
-            $filteredSumQuery->where('type', $request->type);
+        if ($typeFilter === 'card_payment') {
+            $filteredSumQuery->where('type', 'transfer')->where('is_card_payment', true);
+        } elseif ($typeFilter === 'transfer') {
+            $filteredSumQuery->where('type', 'transfer')->where('is_card_payment', false);
+        } elseif ($request->filled('type')) {
+            $filteredSumQuery->where('type', $typeFilter);
         }
         if ($request->filled('account_id')) {
             $filteredSumQuery->where('account_id', $request->account_id);

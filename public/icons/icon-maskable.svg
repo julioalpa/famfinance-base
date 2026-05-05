@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Solid bg to all edges — required for maskable -->
+  <rect width="512" height="512" fill="#09090b"/>
+  <!-- Content within 80% safe zone (x/y: 102–410) -->
+  <!-- F — vertical stem -->
+  <rect x="178" y="136" width="54" height="240" rx="9" fill="#f0a030"/>
+  <!-- F — top bar -->
+  <rect x="178" y="136" width="178" height="50" rx="9" fill="#f0a030"/>
+  <!-- F — middle bar -->
+  <rect x="178" y="232" width="142" height="44" rx="7" fill="#f0a030"/>
+</svg>

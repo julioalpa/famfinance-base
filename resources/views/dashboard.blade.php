@@ -4,8 +4,23 @@
 
 @section('content')
 
+<style>
+@media (max-width: 640px) {
+    .dash-grid-3 { grid-template-columns: 1fr !important; }
+    .dash-grid-2 { grid-template-columns: 1fr !important; }
+    .dash-header { flex-direction: column !important; align-items: flex-start !important; }
+    .dash-header-right { width: 100%; }
+    .dash-header-right form,
+    .dash-header-right .btn { width: 100%; justify-content: center; }
+    .dash-header-right .form-input { width: 100% !important; }
+    .exchange-pill { flex-wrap: wrap; gap: 6px !important; }
+}
+@media (max-width: 480px) {
+}
+</style>
+
 {{-- ── Header ──────────────────────────────────────────────────────────────── --}}
-<div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
+<div class="dash-header" style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
     <div>
         <h1 class="font-display" style="font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; color: var(--text);">
             Dashboard
@@ -15,7 +30,7 @@
         </div>
     </div>
 
-    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <div class="dash-header-right" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
         <form method="GET">
             <input type="month" name="month" value="{{ $month }}"
                    class="form-input" style="width: auto; padding: 8px 13px; font-size: 13px;"
@@ -33,7 +48,7 @@
 <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 10px;">
     Movimientos del mes
 </div>
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;">
+<div class="dash-grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;">
 
     <div class="stat-card income">
         <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-weight: 700;">Ingresos</div>
@@ -61,7 +76,7 @@
 </div>
 
 {{-- ── Patrimonio neto ──────────────────────────────────────────────────────── --}}
-<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
     <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700;">
         Situación financiera general
     </div>
@@ -69,7 +84,7 @@
         Total acumulado · todas las cuentas
     </div>
 </div>
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;">
+<div class="dash-grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;">
 
     <div class="stat-card income">
         <div style="font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-weight: 700;">Dinero disponible</div>
@@ -97,7 +112,7 @@
 </div>
 
 {{-- ── Fila principal: Categorías + Cuotas ────────────────────────────────── --}}
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+<div class="dash-grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
 
     {{-- Gastos por categoría --}}
     <div class="card">
@@ -164,7 +179,7 @@
 
 {{-- ── Tipo de cambio --}}
 @if($exchangeRate)
-<div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 20px; display: flex; align-items: center; gap: 16px; margin-bottom: 24px; font-size: 12px;">
+<div class="exchange-pill" style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 20px; display: flex; align-items: center; gap: 16px; margin-bottom: 24px; font-size: 12px;">
     <span style="color: var(--muted);">TIPO DE CAMBIO VIGENTE</span>
     <span style="color: var(--warn); font-weight: 600;">1 USD = $ {{ number_format($exchangeRate->rate, 2, ',', '.') }} ARS</span>
     <span style="color: var(--muted);">· actualizado {{ $exchangeRate->date->locale('es')->diffForHumans() }}</span>
@@ -174,135 +189,6 @@
 <div style="background: rgba(255,209,102,0.06); border: 1px solid rgba(255,209,102,0.2); border-radius: 8px; padding: 12px 20px; margin-bottom: 24px; font-size: 12px; color: var(--warn); display: flex; align-items: center; justify-content: space-between;">
     <span>⚠ No hay tipo de cambio configurado. Los totales en ARS/USD no se pueden unificar.</span>
     <a href="{{ route('exchange-rates.index') }}" style="color: var(--warn); font-size: 11px;">Configurar →</a>
-</div>
-@endif
-
-{{-- ── Débitos fijos del mes ────────────────────────────────────────────── --}}
-@if($recurringExpenses->isNotEmpty())
-@php
-    $today          = now()->day;
-    $totalRecurring = $recurringExpenses->sum(function ($r) use ($exchangeRate) {
-        $amt = (float) $r->amount;
-        if ($r->currency === 'USD' && $exchangeRate) {
-            return $exchangeRate->convert($amt, 'USD');
-        }
-        return $amt;
-    });
-    $pendingRecurringCount = $recurringExpenses
-        ->filter(fn($r) => $r->day_of_month <= $today && !isset($recurringLogs[$r->id]))
-        ->count();
-@endphp
-<div class="card" style="margin-bottom: 24px;">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-        <div>
-            <h2 class="font-display" style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">
-                Débitos automáticos
-                @if($pendingRecurringCount > 0)
-                    <span style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:var(--expense); border-radius:50%; font-size:10px; font-weight:800; color:#fff; margin-left:6px; vertical-align:middle;">{{ $pendingRecurringCount }}</span>
-                @endif
-            </h2>
-            <div style="font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500;">
-                Total mensual: <span style="color: var(--expense); font-weight: 700;">$ {{ number_format($totalRecurring, 2, ',', '.') }}</span> ARS
-            </div>
-        </div>
-        <a href="{{ route('recurring-expenses.index') }}" style="font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600;">Administrar →</a>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
-        @foreach($recurringExpenses as $re)
-        @php
-            $log        = $recurringLogs[$re->id] ?? null;
-            $isDue      = $re->day_of_month <= $today;
-            $diff       = $re->day_of_month - $today;
-            $isToday    = $diff === 0;
-            $isUpcoming = $diff > 0 && $diff <= 7;
-
-            $isConfirmed = $log?->status === 'confirmed';
-            $isSkipped   = $log?->status === 'skipped';
-            $isPending   = $isDue && !$log;
-        @endphp
-        <div style="
-            background: var(--surface2);
-            border: 1px solid {{ $isConfirmed ? 'rgba(45,216,112,0.3)' : ($isPending ? 'rgba(240,64,96,0.25)' : ($isToday ? 'rgba(240,160,48,0.5)' : 'var(--border)')) }};
-            border-radius: 11px;
-            padding: 14px 16px;
-            position: relative;
-            overflow: hidden;
-            {{ $isSkipped ? 'opacity: 0.45;' : '' }}
-        ">
-            {{-- Fila superior: día + estado --}}
-            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px;">
-                <div style="
-                    background: {{ $isConfirmed ? 'rgba(45,216,112,0.15)' : ($isPending ? 'rgba(240,64,96,0.12)' : ($isToday ? 'var(--accent)' : 'var(--surface3)')) }};
-                    border-radius: 7px; padding: 4px 9px;
-                    display: inline-flex; align-items: center; gap: 4px;
-                ">
-                    <span class="font-display" style="font-size: 13px; font-weight: 800; color: {{ $isConfirmed ? 'var(--income)' : ($isPending ? 'var(--expense)' : ($isToday ? '#0c0804' : 'var(--text)')) }};">
-                        día {{ $re->day_of_month }}
-                    </span>
-                </div>
-
-                @if($isConfirmed)
-                    <span class="badge badge-income" style="font-size:10px;">REGISTRADO</span>
-                @elseif($isSkipped)
-                    <span class="badge" style="background:var(--surface3); color:var(--muted); font-size:10px;">OMITIDO</span>
-                @elseif($isPending)
-                    <span class="badge" style="background:rgba(240,64,96,0.12); color:var(--expense); font-size:10px; font-weight:700;">PENDIENTE</span>
-                @elseif($isToday)
-                    <span class="badge" style="background:rgba(240,160,48,0.15); color:var(--accent); font-size:10px;">HOY</span>
-                @elseif($isUpcoming)
-                    <span class="badge badge-transfer" style="font-size:10px;">{{ $diff }}d</span>
-                @endif
-            </div>
-
-            {{-- Nombre y monto --}}
-            <div style="font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                {{ $re->description }}
-            </div>
-            <div style="font-size: 15px; font-weight: 800; color: {{ $isConfirmed ? 'var(--muted)' : 'var(--expense)' }}; font-family: 'Bricolage Grotesque', sans-serif; letter-spacing: -0.02em; {{ $isConfirmed ? 'text-decoration: line-through;' : '' }}">
-                {{ $re->currency === 'USD' ? 'US$' : '$' }} {{ number_format($re->amount, 2, ',', '.') }}
-            </div>
-
-            {{-- Cuenta --}}
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
-                <span class="badge badge-{{ $re->account->type }}" style="font-size: 10px;">{{ $re->account->name }}</span>
-                @if($re->category)
-                    <span style="font-size: 11px; color: var(--muted); margin-left: 4px;">· {{ $re->category->name }}</span>
-                @endif
-            </div>
-
-            {{-- Botones de acción (solo si está pendiente) --}}
-            @if($isPending)
-            <div style="display: flex; gap: 6px; margin-top: 10px;">
-                <form method="POST" action="{{ route('recurring-expenses.confirm', $re) }}" style="flex:1;">
-                    @csrf
-                    <button type="submit" style="
-                        width: 100%; padding: 6px 0; font-size: 11px; font-weight: 700;
-                        background: rgba(45,216,112,0.12); color: var(--income);
-                        border: 1px solid rgba(45,216,112,0.3); border-radius: 7px;
-                        cursor: pointer; font-family: 'Nunito', sans-serif; letter-spacing: 0.02em;
-                    ">Registrar</button>
-                </form>
-                <form method="POST" action="{{ route('recurring-expenses.skip', $re) }}" style="flex:1;">
-                    @csrf
-                    <button type="submit" style="
-                        width: 100%; padding: 6px 0; font-size: 11px; font-weight: 600;
-                        background: transparent; color: var(--muted);
-                        border: 1px solid var(--border); border-radius: 7px;
-                        cursor: pointer; font-family: 'Nunito', sans-serif;
-                    ">Omitir</button>
-                </form>
-            </div>
-            @elseif($isConfirmed && $log->transaction_id)
-            <div style="margin-top: 10px;">
-                <a href="{{ route('transactions.show', $log->transaction_id) }}" style="font-size: 11px; color: var(--income); text-decoration: none; font-weight: 600;">
-                    Ver movimiento →
-                </a>
-            </div>
-            @endif
-        </div>
-        @endforeach
-    </div>
 </div>
 @endif
 
@@ -386,6 +272,7 @@
             </a>
         </div>
     @else
+        <div class="table-wrap">
         <table class="data-table">
             <thead>
                 <tr>
@@ -442,6 +329,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>{{-- /.table-wrap --}}
     @endif
 </div>
 

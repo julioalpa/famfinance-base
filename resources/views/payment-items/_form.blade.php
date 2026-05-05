@@ -106,6 +106,79 @@
                 </label>
             </div>
 
+            <div style="margin-bottom: 20px;">
+                <label class="form-label">Características</label>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px;">
+                        <input type="hidden" name="is_dispensable" value="0">
+                        <input type="checkbox" name="is_dispensable" id="is_dispensable" value="1"
+                               style="accent-color: var(--warn); width: 16px; height: 16px;"
+                               {{ old('is_dispensable', $pi?->is_dispensable ?? false) ? 'checked' : '' }}>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:var(--text);">Prescindible</div>
+                            <div style="font-size:11px; color:var(--muted); margin-top:1px;">Suma a la oportunidad de ahorro del resumen</div>
+                        </div>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 14px; background: var(--surface2); border: 1px solid rgba(240,64,96,0.2); border-radius: 9px;">
+                        <input type="hidden" name="is_retiring" value="0">
+                        <input type="checkbox" name="is_retiring" id="is_retiring" value="1"
+                               style="accent-color: var(--danger); width: 16px; height: 16px;"
+                               {{ old('is_retiring', $pi?->is_retiring ?? false) ? 'checked' : '' }}>
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:var(--text);">Próximo a darse de baja</div>
+                            <div style="font-size:11px; color:var(--muted); margin-top:1px;">Muestra un botón "Dar de baja" en el checklist</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {{-- Sección débito directo --}}
+    <div style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 4px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 12px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; margin-bottom: 16px;"
+               id="direct-debit-toggle-label">
+            <input type="hidden" name="is_direct_debit" value="0">
+            <input type="checkbox" name="is_direct_debit" id="is_direct_debit" value="1"
+                   style="accent-color: var(--accent); width: 16px; height: 16px;"
+                   onchange="toggleDirectDebitFields(this.checked)"
+                   {{ old('is_direct_debit', $pi?->is_direct_debit ?? false) ? 'checked' : '' }}>
+            <div>
+                <div style="font-size:14px; font-weight:700; color:var(--text);">Débito directo</div>
+                <div style="font-size:11px; color:var(--muted); margin-top:1px;">
+                    Se confirma con un click usando el monto fijo. Sin modal de importe.
+                </div>
+            </div>
+        </label>
+
+        <div id="direct-debit-fields"
+             style="display: {{ old('is_direct_debit', $pi?->is_direct_debit ?? false) ? 'grid' : 'none' }}; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+            <div>
+                <label class="form-label" for="amount">Monto mensual *</label>
+                <input type="number" name="amount" id="amount"
+                       class="form-input" step="0.01" min="0.01"
+                       placeholder="0,00"
+                       value="{{ old('amount', $pi?->amount) }}">
+                @error('amount')
+                    <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div>
+                <label class="form-label" for="notes">Notas internas</label>
+                <input type="text" name="notes" id="notes"
+                       class="form-input"
+                       placeholder="Opcional"
+                       maxlength="1000"
+                       value="{{ old('notes', $pi?->notes) }}">
+                @error('notes')
+                    <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div>
+                @enderror
+            </div>
+
         </div>
     </div>
 
@@ -116,3 +189,12 @@
         </button>
     </div>
 </form>
+
+<script>
+function toggleDirectDebitFields(show) {
+    const fields = document.getElementById('direct-debit-fields');
+    fields.style.display = show ? 'grid' : 'none';
+    const amountInput = document.getElementById('amount');
+    if (!show) amountInput.value = '';
+}
+</script>

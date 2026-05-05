@@ -39,6 +39,7 @@
 @if($totalCount > 0)
 @php
     $progressPct = $totalCount > 0 ? round(($paidCount / $totalCount) * 100) : 0;
+    $dismissedCount = $monthlyPayments->where('is_dismissed', true)->count();
 @endphp
 <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
@@ -47,7 +48,12 @@
                 <div class="font-display" style="font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: {{ $paidCount === $totalCount ? 'var(--income)' : 'var(--text)' }};">
                     {{ $paidCount }}<span style="font-size: 18px; color: var(--muted); font-weight: 600;">/{{ $totalCount }}</span>
                 </div>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 3px; font-weight: 500;">pagos completados</div>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 3px; font-weight: 500;">
+                    pagos completados
+                    @if($dismissedCount > 0)
+                        · <span style="color: var(--muted);">{{ $dismissedCount }} descartado{{ $dismissedCount > 1 ? 's' : '' }}</span>
+                    @endif
+                </div>
             </div>
             @if($paidCount === $totalCount && $totalCount > 0)
                 <div style="background: rgba(45,216,112,0.12); border: 1px solid rgba(45,216,112,0.25); border-radius: 10px; padding: 8px 14px; display: flex; align-items: center; gap: 8px;">
@@ -56,14 +62,24 @@
                 </div>
             @endif
         </div>
-        @if($totalPaid > 0)
-        <div style="text-align: right;">
-            <div class="font-display" style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--expense);">
-                $ {{ number_format($totalPaid, 2, ',', '.') }}
+        <div style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; justify-content: flex-end;">
+            @if($totalPaid > 0)
+            <div style="text-align: right;">
+                <div class="font-display" style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--expense);">
+                    $ {{ number_format($totalPaid, 2, ',', '.') }}
+                </div>
+                <div style="font-size: 12px; color: var(--muted); font-weight: 500;">total pagado este mes</div>
             </div>
-            <div style="font-size: 12px; color: var(--muted); font-weight: 500;">total pagado este mes</div>
+            @endif
+            @if($dispensableTotal > 0)
+            <div style="text-align: right; padding: 8px 14px; background: rgba(232,184,64,0.08); border: 1px solid rgba(232,184,64,0.2); border-radius: 10px;">
+                <div class="font-display" style="font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: var(--warn);">
+                    $ {{ number_format($dispensableTotal, 2, ',', '.') }}
+                </div>
+                <div style="font-size: 11px; color: var(--warn); font-weight: 600; opacity: 0.8;">oportunidad de ahorro</div>
+            </div>
+            @endif
         </div>
-        @endif
     </div>
 
     <div style="height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden;">
@@ -87,31 +103,45 @@
     <div style="display: flex; flex-direction: column; gap: 10px;">
         @foreach($monthlyPayments as $mp)
         @php
-            $item     = $mp->paymentItem;
-            $isPaid   = $mp->is_paid;
-            $lastAmt  = $mp->last_amount;
-            $dueDay   = $item?->day_of_month;
-            $today    = now()->day;
-            $isOverdue = !$isPaid && $dueDay && $dueDay < $today
-                         && $mon == now()->month && $year == now()->year;
+            $item           = $mp->paymentItem;
+            $isPaid         = $mp->is_paid;
+            $isDismissed    = $mp->is_dismissed;
+            $isDirectDebit  = $item?->is_direct_debit;
+            $isDispensable  = $item?->is_dispensable;
+            $isRetiring     = $item?->is_retiring;
+            $lastAmt        = $mp->last_amount;
+            $pctChange      = $mp->pct_change;
+            $dueDay         = $item?->day_of_month;
+            $today          = now()->day;
+            $isOverdue      = !$isPaid && !$isDismissed && $dueDay && $dueDay < $today
+                              && $mon == now()->month && $year == now()->year;
         @endphp
         <div style="
             background: var(--surface);
-            border: 1px solid {{ $isPaid ? 'rgba(45,216,112,0.2)' : ($isOverdue ? 'rgba(240,64,96,0.25)' : 'var(--border)') }};
+            border: 1px solid {{ $isDismissed ? 'var(--border)' : ($isPaid ? 'rgba(45,216,112,0.2)' : ($isOverdue ? 'rgba(240,64,96,0.25)' : 'var(--border)')) }};
             border-radius: 14px;
             padding: 18px 20px;
             display: flex;
             align-items: center;
             gap: 16px;
             transition: border-color 0.2s;
-            {{ $isPaid ? 'opacity: 0.75;' : '' }}
+            {{ ($isPaid || $isDismissed) ? 'opacity: 0.7;' : '' }}
         ">
-            {{-- Checkbox visual --}}
-            @if($isPaid)
+            {{-- Checkbox / estado visual --}}
+            @if($isDismissed)
+                <div style="width: 26px; height: 26px; border-radius: 8px; background: var(--surface2); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="12" height="12" fill="none" stroke="var(--muted)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </div>
+            @elseif($isPaid)
                 <div onclick="confirmUnpay({{ $mp->id }}, '{{ addslashes($item?->description) }}')"
                      style="width: 26px; height: 26px; border-radius: 8px; background: rgba(45,216,112,0.15); border: 2px solid var(--income); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s;"
                      title="Desmarcar como pagado">
                     <svg width="13" height="13" fill="none" stroke="var(--income)" stroke-width="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+            @elseif($isDirectDebit)
+                <div style="width: 26px; height: 26px; border-radius: 8px; background: rgba(240,160,48,0.1); border: 2px solid rgba(240,160,48,0.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
+                     title="Débito directo">
+                    <svg width="12" height="12" fill="none" stroke="var(--accent)" stroke-width="2.2" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                 </div>
             @else
                 <div onclick="openPayModal({{ $mp->id }}, '{{ addslashes($item?->description) }}', '{{ $lastAmt ?? '' }}', '{{ $item?->currency ?? 'ARS' }}')"
@@ -125,10 +155,22 @@
             {{-- Info principal --}}
             <div style="flex: 1; min-width: 0;">
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <span style="font-size: 15px; font-weight: 700; color: {{ $isPaid ? 'var(--muted)' : 'var(--text)' }}; {{ $isPaid ? 'text-decoration: line-through;' : '' }}">
+                    <span style="font-size: 15px; font-weight: 700; color: {{ ($isPaid || $isDismissed) ? 'var(--muted)' : 'var(--text)' }}; {{ $isPaid ? 'text-decoration: line-through;' : '' }}">
                         {{ $item?->description ?? '—' }}
                     </span>
-                    @if($dueDay)
+                    @if($isDismissed)
+                        <span class="badge" style="background: var(--surface2); color: var(--muted); font-size: 10px;">DESCARTADO</span>
+                    @endif
+                    @if($isDirectDebit && !$isDismissed)
+                        <span class="badge" style="background: rgba(240,160,48,0.1); color: var(--accent); font-size: 10px;">DÉBITO DIRECTO</span>
+                    @endif
+                    @if($isDispensable && !$isDismissed)
+                        <span class="badge" style="background: rgba(232,184,64,0.1); color: var(--warn); font-size: 10px;">PRESCINDIBLE</span>
+                    @endif
+                    @if($isRetiring && !$isDismissed)
+                        <span class="badge" style="background: rgba(240,64,96,0.08); color: var(--expense); font-size: 10px;">A DAR DE BAJA</span>
+                    @endif
+                    @if($dueDay && !$isDismissed)
                         <span class="badge" style="background: {{ $isOverdue ? 'rgba(240,64,96,0.1)' : 'var(--surface2)' }}; color: {{ $isOverdue ? 'var(--expense)' : 'var(--muted)' }}; font-size: 10px;">
                             día {{ $dueDay }}
                         </span>
@@ -156,13 +198,29 @@
 
             {{-- Monto --}}
             <div style="text-align: right; flex-shrink: 0;">
-                @if($isPaid && $mp->amount)
-                    <div class="font-display" style="font-size: 17px; font-weight: 800; color: var(--income); letter-spacing: -0.02em;">
-                        {{ $item?->currency === 'USD' ? 'US$' : '$' }} {{ number_format($mp->amount, 2, ',', '.') }}
+                @if($isDismissed)
+                    <div style="font-size: 12px; color: var(--muted);">no aplica</div>
+                @elseif($isPaid && $mp->amount)
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                        <div class="font-display" style="font-size: 17px; font-weight: 800; color: var(--income); letter-spacing: -0.02em;">
+                            {{ $item?->currency === 'USD' ? 'US$' : '$' }} {{ number_format($mp->amount, 2, ',', '.') }}
+                        </div>
+                        @if($pctChange !== null)
+                            <span style="
+                                font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+                                background: {{ $pctChange > 0 ? 'rgba(240,64,96,0.12)' : ($pctChange < 0 ? 'rgba(45,216,112,0.12)' : 'var(--surface2)') }};
+                                color: {{ $pctChange > 0 ? 'var(--expense)' : ($pctChange < 0 ? 'var(--income)' : 'var(--muted)') }};
+                            ">{{ $pctChange > 0 ? '+' : '' }}{{ $pctChange }}%</span>
+                        @endif
                     </div>
                     <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">
                         pagado {{ $mp->paid_at?->locale('es')->diffForHumans() }}
                     </div>
+                @elseif($isDirectDebit && $item?->amount)
+                    <div class="font-display" style="font-size: 16px; font-weight: 700; color: var(--muted); letter-spacing: -0.02em;">
+                        {{ $item->currency === 'USD' ? 'US$' : '$' }} {{ number_format($item->amount, 2, ',', '.') }}
+                    </div>
+                    <div style="font-size: 10px; color: var(--muted); margin-top: 2px;">monto fijo</div>
                 @elseif($lastAmt)
                     <div class="font-display" style="font-size: 16px; font-weight: 700; color: var(--muted); letter-spacing: -0.02em;">
                         {{ $item?->currency === 'USD' ? 'US$' : '$' }} {{ number_format($lastAmt, 2, ',', '.') }}
@@ -173,13 +231,48 @@
                 @endif
             </div>
 
-            {{-- Acción --}}
-            @if(!$isPaid)
+            {{-- Acciones --}}
+            @if(!$isDismissed && !$isPaid)
+            <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                @if($isDirectDebit)
+                    <form method="POST" action="{{ route('monthly-payments.confirm', $mp) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            Confirmar
+                        </button>
+                    </form>
+                @else
+                    <button onclick="openPayModal({{ $mp->id }}, '{{ addslashes($item?->description) }}', '{{ $lastAmt ?? '' }}', '{{ $item?->currency ?? 'ARS' }}')"
+                            class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                        Pagar
+                    </button>
+                @endif
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    @if($isRetiring)
+                        <button onclick="openRetireModal({{ $item->id }}, '{{ addslashes($item?->description) }}')"
+                                style="background: none; border: none; font-size: 11px; color: var(--expense); cursor: pointer; font-family: 'Nunito', sans-serif; font-weight: 700; padding: 2px 0; text-decoration: underline; text-underline-offset: 2px;">
+                            Dar de baja
+                        </button>
+                    @endif
+                    <form method="POST" action="{{ route('monthly-payments.dismiss', $mp) }}">
+                        @csrf
+                        <button type="submit"
+                                style="background: none; border: none; font-size: 11px; color: var(--muted); cursor: pointer; font-family: 'Nunito', sans-serif; font-weight: 600; padding: 2px 0; text-decoration: underline; text-underline-offset: 2px;"
+                                onclick="return confirm('¿Descartar este pago para el mes?')">
+                            Descartar
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @elseif($isDismissed)
             <div style="flex-shrink: 0;">
-                <button onclick="openPayModal({{ $mp->id }}, '{{ addslashes($item?->description) }}', '{{ $lastAmt ?? '' }}', '{{ $item?->currency ?? 'ARS' }}')"
-                        class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
-                    Pagar
-                </button>
+                <form method="POST" action="{{ route('monthly-payments.undismiss', $mp) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-ghost" style="padding: 7px 14px; font-size: 12px;">
+                        Restaurar
+                    </button>
+                </form>
             </div>
             @endif
         </div>
@@ -249,6 +342,29 @@
     </div>
 </div>
 
+{{-- ── Modal dar de baja ───────────────────────────────────────────────────── --}}
+<div id="retire-modal-backdrop"
+     onclick="closeRetireModal()"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:500; align-items:center; justify-content:center;">
+    <div onclick="event.stopPropagation()"
+         style="background:var(--surface); border:1px solid rgba(240,64,96,0.3); border-radius:16px; padding:28px; width:100%; max-width:400px; margin:16px;">
+        <h3 class="font-display" style="font-size:17px; font-weight:800; letter-spacing:-0.02em; margin-bottom:10px; color:var(--danger);">¿Dar de baja?</h3>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:6px;">
+            «<span id="retire-description" style="color:var(--text); font-weight:600;"></span>» dejará de aparecer en los próximos meses.
+        </p>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:22px;">Podés reactivarlo desde la sección de ítems si cambiás de opinión.</p>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" onclick="closeRetireModal()" class="btn btn-ghost">Cancelar</button>
+            <form id="retire-form" method="POST" style="display:inline;">
+                @csrf
+                <button type="submit" class="btn btn-danger">
+                    Dar de baja
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- ── Modal de desmarcar ──────────────────────────────────────────────────── --}}
 <div id="unpay-modal-backdrop"
      onclick="closeUnpayModal()"
@@ -301,10 +417,21 @@ function closeUnpayModal() {
     document.getElementById('unpay-modal-backdrop').style.display = 'none';
 }
 
+function openRetireModal(itemId, description) {
+    document.getElementById('retire-description').textContent = description;
+    document.getElementById('retire-form').action = '/pendientes-items/' + itemId + '/retirar';
+    document.getElementById('retire-modal-backdrop').style.display = 'flex';
+}
+
+function closeRetireModal() {
+    document.getElementById('retire-modal-backdrop').style.display = 'none';
+}
+
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closePayModal();
         closeUnpayModal();
+        closeRetireModal();
     }
 });
 </script>

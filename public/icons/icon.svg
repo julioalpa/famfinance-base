@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#09090b"/>
+  <!-- F — vertical stem -->
+  <rect x="155" y="116" width="60" height="280" rx="10" fill="#f0a030"/>
+  <!-- F — top bar -->
+  <rect x="155" y="116" width="202" height="56" rx="10" fill="#f0a030"/>
+  <!-- F — middle bar -->
+  <rect x="155" y="224" width="162" height="48" rx="8" fill="#f0a030"/>
+</svg>

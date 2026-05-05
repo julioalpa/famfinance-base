@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 class Transaction extends Model
 {
@@ -30,6 +31,7 @@ class Transaction extends Model
         'target_account_id',
         'notes',
         'recurring_expense_id',
+        'is_card_payment',
     ];
 
     protected function casts(): array
@@ -37,6 +39,7 @@ class Transaction extends Model
         return [
             'date'              => 'date',
             'has_installments'  => 'boolean',
+            'is_card_payment'   => 'boolean',
             'amount'            => 'decimal:2',
             'installment_amount'=> 'decimal:2',
         ];

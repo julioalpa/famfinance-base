@@ -2,9 +2,15 @@
 <html lang="es" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#09090b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="FamFinance">
     <title>@yield('title', 'FamFinance') — FamFinance</title>
+
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -440,7 +446,129 @@
         }
 
         @media (max-width: 480px) {
-            .main-content { padding: 70px 14px 24px; }
+            .main-content { padding: 70px 14px 32px; }
+        }
+
+        /* ── Mobile helpers ──────────────────────────────────────────────────── */
+
+        /* Tables scroll horizontally on small screens */
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 14px;
+        }
+
+        /* Stat grids: 4-col → 2-col → 1-col */
+        @media (max-width: 640px) {
+            [style*="grid-template-columns: repeat(4, 1fr)"],
+            [style*="grid-template-columns:repeat(4,1fr)"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            [style*="grid-template-columns: repeat(3, 1fr)"],
+            [style*="grid-template-columns:repeat(3,1fr)"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+
+        @media (max-width: 400px) {
+            [style*="grid-template-columns: repeat(4, 1fr)"],
+            [style*="grid-template-columns:repeat(4,1fr)"],
+            [style*="grid-template-columns: repeat(2, 1fr)"],
+            [style*="grid-template-columns:repeat(2,1fr)"] {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        /* Filter forms on mobile: stack vertically */
+        @media (max-width: 640px) {
+            form[style*="display: flex"][style*="flex-wrap: wrap"] > div,
+            form[style*="display:flex"][style*="flex-wrap:wrap"] > div {
+                width: 100%;
+            }
+            form[style*="display: flex"][style*="flex-wrap: wrap"] .form-input,
+            form[style*="display: flex"][style*="flex-wrap: wrap"] .form-select {
+                width: 100% !important;
+            }
+        }
+
+        /* Ensure touch targets are large enough */
+        @media (max-width: 768px) {
+            .btn { min-height: 44px; }
+            .form-input, .form-select { min-height: 44px; font-size: 16px; }
+            .data-table td, .data-table th { padding: 10px 12px; }
+            .nav-link { min-height: 44px; }
+        }
+
+        /* ── Bottom nav (mobile) ─────────────────────────────────────────────── */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            z-index: 200;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .bottom-nav-inner {
+            display: flex;
+            height: 56px;
+            align-items: stretch;
+        }
+
+        .bottom-nav-item {
+            flex: 1;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 3px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 10px; font-weight: 700;
+            letter-spacing: 0.03em;
+            background: none; border: none; cursor: pointer;
+            font-family: 'Nunito', sans-serif;
+            transition: color 0.15s;
+            padding: 0;
+        }
+
+        .bottom-nav-item svg { transition: color 0.15s; }
+        .bottom-nav-item.active { color: var(--accent); }
+        .bottom-nav-item.active svg { opacity: 1; }
+
+        /* ── FAB ─────────────────────────────────────────────────────────────── */
+        .fab {
+            display: none;
+            position: fixed;
+            right: 20px;
+            bottom: calc(56px + env(safe-area-inset-bottom) + 14px);
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #0c0804;
+            align-items: center; justify-content: center;
+            box-shadow: 0 4px 20px rgba(240,160,48,0.45), 0 1px 4px rgba(0,0,0,0.3);
+            z-index: 190;
+            text-decoration: none;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(240,160,48,0.3); }
+
+        /* ── Mobile: show bottom nav, hide hamburger, adjust content ─────────── */
+        @media (max-width: 768px) {
+            .bottom-nav { display: flex; flex-direction: column; }
+            .fab { display: flex; }
+            .mobile-toggle { display: none !important; }
+            .main-content {
+                padding-top: 20px !important;
+                padding-bottom: calc(56px + env(safe-area-inset-bottom) + 16px) !important;
+            }
+        }
+
+        /* Safe area padding for phones with notch/gesture bar */
+        @media (min-width: 769px) {
+            .main-content {
+                padding-bottom: max(24px, env(safe-area-inset-bottom));
+            }
         }
     </style>
 </head>
@@ -483,11 +611,20 @@
         </a>
 
         <a href="{{ route('reports.index') }}"
-           class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+           class="nav-link {{ request()->routeIs('reports.index') ? 'active' : '' }}">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path d="M18 20V10M12 20V4M6 20v-6"/>
             </svg>
             Reportes
+        </a>
+
+        <a href="{{ route('reports.monthly') }}"
+           class="nav-link {{ request()->routeIs('reports.monthly*') ? 'active' : '' }}">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+            </svg>
+            Balance mensual
         </a>
 
         <a href="{{ route('transactions.index') }}"
@@ -514,15 +651,6 @@
                 <circle cx="7" cy="7" r="1" fill="currentColor"/>
             </svg>
             Categorías
-        </a>
-
-        <a href="{{ route('recurring-expenses.index') }}"
-           class="nav-link {{ request()->routeIs('recurring-expenses.*') ? 'active' : '' }}"
-           title="Gastos que se repiten todos los meses (recordatorio)">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-            </svg>
-            Gastos recurrentes
         </a>
 
         <a href="{{ route('monthly-payments.index') }}"
@@ -580,15 +708,23 @@
                 <div class="user-email">{{ auth()->user()->email }}</div>
             </div>
         </div>
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit" class="btn btn-ghost" style="width: 100%; justify-content: center; font-size: 13px; padding: 8px 14px;">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+        <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+            <a href="{{ route('profile.password') }}" class="btn btn-ghost" style="flex: 1; justify-content: center; font-size: 12px; padding: 7px 10px;">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
-                Cerrar sesión
-            </button>
-        </form>
+                Contraseña
+            </a>
+            <form method="POST" action="{{ route('logout') }}" style="flex: 1;">
+                @csrf
+                <button type="submit" class="btn btn-ghost" style="width: 100%; justify-content: center; font-size: 12px; padding: 7px 10px;">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                    </svg>
+                    Salir
+                </button>
+            </form>
+        </div>
     </div>
 </aside>
 
@@ -617,17 +753,91 @@
     @yield('content')
 </main>
 
+{{-- ── FAB ───────────────────────────────────────────────────────────────────── --}}
+<a href="{{ route('transactions.create') }}" class="fab" aria-label="Nuevo movimiento">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+</a>
+
+{{-- ── Bottom nav ───────────────────────────────────────────────────────────── --}}
+<nav class="bottom-nav" aria-label="Navegación principal">
+    <div class="bottom-nav-inner">
+        <a href="{{ route('dashboard') }}"
+           class="bottom-nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+            Inicio
+        </a>
+
+        <a href="{{ route('transactions.index') }}"
+           class="bottom-nav-item {{ request()->routeIs('transactions.*') || request()->routeIs('card-payment.*') ? 'active' : '' }}">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+            </svg>
+            Movimientos
+        </a>
+
+        <a href="{{ route('accounts.index') }}"
+           class="bottom-nav-item {{ request()->routeIs('accounts.*') ? 'active' : '' }}">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect x="2" y="5" width="20" height="14" rx="2.5"/>
+                <path d="M2 10h20"/>
+            </svg>
+            Cuentas
+        </a>
+
+        <a href="{{ route('monthly-payments.index') }}"
+           class="bottom-nav-item {{ request()->routeIs('monthly-payments.*') || request()->routeIs('payment-items.*') ? 'active' : '' }}">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            Pagos
+        </a>
+
+        <button class="bottom-nav-item {{ request()->routeIs('reports.*') || request()->routeIs('categories.*') || request()->routeIs('exchange-rates.*') || request()->routeIs('family-groups.*') || request()->routeIs('import.*') || request()->routeIs('profile.*') ? 'active' : '' }}"
+                onclick="toggleSidebar()" aria-label="Menú">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M3 6h18M3 12h18M3 18h18"/>
+            </svg>
+            Menú
+        </button>
+    </div>
+</nav>
+
 <script>
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('open');
         document.getElementById('sidebar-overlay').classList.toggle('visible');
     }
 
+    // Close sidebar when a nav link is tapped on mobile
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebar-overlay').classList.remove('visible');
+            }
+        });
+    });
+
     document.addEventListener('click', function(e) {
         if (e.target.matches('input[type="date"], input[type="month"]')) {
             try { e.target.showPicker(); } catch (_) {}
         }
     });
+
+    // Register Service Worker (only on HTTPS or localhost)
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .catch(() => {}); // Silently skip on HTTP non-localhost
+        });
+    }
 </script>
 
 </body>

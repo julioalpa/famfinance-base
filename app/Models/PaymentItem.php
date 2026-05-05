@@ -19,13 +19,22 @@ class PaymentItem extends Model
         'currency',
         'day_of_month',
         'is_active',
+        'is_direct_debit',
+        'amount',
+        'notes',
+        'is_dispensable',
+        'is_retiring',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_active'    => 'boolean',
-            'day_of_month' => 'integer',
+            'is_active'       => 'boolean',
+            'is_direct_debit' => 'boolean',
+            'is_dispensable'  => 'boolean',
+            'is_retiring'     => 'boolean',
+            'day_of_month'    => 'integer',
+            'amount'          => 'decimal:2',
         ];
     }
 
@@ -49,22 +58,18 @@ class PaymentItem extends Model
         return $this->hasMany(MonthlyPayment::class);
     }
 
-    /** Último pago registrado antes del mes indicado (para pre-cargar el monto). */
+    /** Último monto pagado (no descartado) antes del mes indicado. */
     public function lastPaidAmount(int $month, int $year): ?string
     {
-        $prevYear  = $month === 1 ? $year - 1 : $year;
-        $prevMonth = $month === 1 ? 12 : $month - 1;
-
-        $record = $this->monthlyPayments()
+        return $this->monthlyPayments()
             ->where('is_paid', true)
-            ->where(function ($q) use ($prevYear, $prevMonth) {
-                $q->where('year', '<', $prevYear)
-                  ->orWhere(fn ($q2) => $q2->where('year', $prevYear)->where('month', '<=', $prevMonth));
+            ->where('is_dismissed', false)
+            ->where(function ($q) use ($year, $month) {
+                $q->where('year', '<', $year)
+                  ->orWhere(fn ($q2) => $q2->where('year', $year)->where('month', '<', $month));
             })
             ->orderByDesc('year')
             ->orderByDesc('month')
-            ->first();
-
-        return $record?->amount;
+            ->value('amount');
     }
 }

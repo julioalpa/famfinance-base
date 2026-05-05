@@ -14,12 +14,17 @@ class StorePaymentItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'account_id'   => ['required', 'exists:accounts,id'],
-            'category_id'  => ['nullable', 'exists:categories,id'],
-            'description'  => ['required', 'string', 'max:255'],
-            'currency'     => ['required', 'in:ARS,USD'],
-            'day_of_month' => ['nullable', 'integer', 'min:1', 'max:31'],
-            'is_active'    => ['boolean'],
+            'account_id'      => ['required', 'exists:accounts,id'],
+            'category_id'     => ['nullable', 'exists:categories,id'],
+            'description'     => ['required', 'string', 'max:255'],
+            'currency'        => ['required', 'in:ARS,USD'],
+            'day_of_month'    => ['nullable', 'integer', 'min:1', 'max:31'],
+            'is_active'       => ['boolean'],
+            'is_direct_debit' => ['boolean'],
+            'amount'          => ['nullable', 'numeric', 'min:0.01'],
+            'notes'           => ['nullable', 'string', 'max:1000'],
+            'is_dispensable'  => ['boolean'],
+            'is_retiring'     => ['boolean'],
         ];
     }
 
@@ -35,13 +40,18 @@ class StorePaymentItemRequest extends FormRequest
             'day_of_month.integer' => 'El día debe ser un número entero.',
             'day_of_month.min'     => 'El día debe ser entre 1 y 31.',
             'day_of_month.max'     => 'El día debe ser entre 1 y 31.',
+            'amount.numeric'       => 'El monto debe ser un número.',
+            'amount.min'           => 'El monto debe ser mayor a cero.',
         ];
     }
 
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'is_active' => $this->boolean('is_active'),
+            'is_active'       => $this->boolean('is_active'),
+            'is_direct_debit' => $this->boolean('is_direct_debit'),
+            'is_dispensable'  => $this->boolean('is_dispensable'),
+            'is_retiring'     => $this->boolean('is_retiring'),
         ]);
     }
 }

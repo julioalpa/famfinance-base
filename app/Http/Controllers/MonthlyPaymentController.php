@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PayMonthlyPaymentRequest;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
-use App\Models\Transaction;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,29 +44,53 @@ class MonthlyPaymentController extends Controller
             ->where('year', $year)
             ->get()
             ->sortBy(fn ($mp) => [
-                $mp->is_paid ? 1 : 0,
+                $mp->is_dismissed ? 2 : ($mp->is_paid ? 1 : 0),
                 $mp->paymentItem?->day_of_month ?? 99,
                 $mp->paymentItem?->description,
             ])
             ->values();
 
-        // Agregar el último monto pagado a cada registro para pre-cargar el form
+        // Agregar el último monto pagado y % de diferencia a cada registro
         foreach ($monthlyPayments as $mp) {
             $mp->last_amount = $mp->paymentItem?->lastPaidAmount($mon, $year);
+            $mp->pct_change  = null;
+            if ($mp->is_paid && $mp->amount && $mp->last_amount > 0) {
+                $mp->pct_change = round(((float) $mp->amount - (float) $mp->last_amount) / (float) $mp->last_amount * 100, 1);
+            }
         }
 
         $group = Auth::user()->familyGroups()->find($groupId);
         $rate  = $group->latestExchangeRate();
 
-        $paidCount  = $monthlyPayments->where('is_paid', true)->count();
-        $totalCount = $monthlyPayments->count();
-        $totalPaid  = $monthlyPayments->where('is_paid', true)->sum(function ($mp) use ($rate) {
+        // Dismissed items se excluyen del conteo de progreso
+        $activeMps  = $monthlyPayments->where('is_dismissed', false);
+        $paidCount  = $activeMps->where('is_paid', true)->count();
+        $totalCount = $activeMps->count();
+
+        $totalPaid = $activeMps->where('is_paid', true)->sum(function ($mp) use ($rate) {
             $amt = (float) $mp->amount;
             if ($mp->paymentItem?->currency === 'USD' && $rate) {
                 return $rate->convert($amt, 'USD');
             }
             return $amt;
         });
+
+        // Oportunidad de ahorro: suma de ítems prescindibles (monto real si pagado, fijo o último si no)
+        $dispensableTotal = $activeMps
+            ->filter(fn($mp) => $mp->paymentItem?->is_dispensable)
+            ->sum(function ($mp) use ($rate) {
+                if ($mp->is_paid) {
+                    $amt = (float) $mp->amount;
+                } elseif ($mp->paymentItem?->is_direct_debit) {
+                    $amt = (float) $mp->paymentItem->amount;
+                } else {
+                    $amt = (float) ($mp->last_amount ?? 0);
+                }
+                if ($mp->paymentItem?->currency === 'USD' && $rate) {
+                    return $rate->convert($amt, 'USD');
+                }
+                return $amt;
+            });
 
         return view('monthly-payments.index', compact(
             'monthlyPayments',
@@ -77,7 +100,52 @@ class MonthlyPaymentController extends Controller
             'paidCount',
             'totalCount',
             'totalPaid',
+            'dispensableTotal',
         ));
+    }
+
+    /** Confirmar un débito directo (un click, sin modal). */
+    public function confirm(MonthlyPayment $monthlyPayment)
+    {
+        $this->authorizePayment($monthlyPayment);
+
+        $item = $monthlyPayment->paymentItem;
+
+        abort_if(! $item, 404, 'Ítem de pago no encontrado.');
+        abort_unless($item->is_direct_debit, 400, 'Este ítem no es débito directo.');
+        abort_if($monthlyPayment->is_paid, 400, 'Este pago ya fue registrado.');
+        abort_if($monthlyPayment->is_dismissed, 400, 'Este pago está descartado.');
+
+        DB::transaction(function () use ($monthlyPayment, $item) {
+            $transaction = $this->transactionService->create(
+                [
+                    'account_id'  => $item->account_id,
+                    'category_id' => $item->category_id,
+                    'type'        => 'expense',
+                    'amount'      => $item->amount,
+                    'currency'    => $item->currency,
+                    'date'        => now()->format('Y-m-d'),
+                    'description' => $item->description,
+                    'notes'       => $item->notes,
+                ],
+                $monthlyPayment->family_group_id,
+                auth()->id(),
+            );
+
+            $monthlyPayment->update([
+                'amount'         => $item->amount,
+                'is_paid'        => true,
+                'paid_at'        => now(),
+                'transaction_id' => $transaction->id,
+            ]);
+        });
+
+        $year  = $monthlyPayment->year;
+        $month = str_pad($monthlyPayment->month, 2, '0', STR_PAD_LEFT);
+
+        return redirect()
+            ->route('monthly-payments.index', ['month' => "{$year}-{$month}"])
+            ->with('success', "Débito de «{$item->description}» registrado correctamente.");
     }
 
     public function markPaid(PayMonthlyPaymentRequest $request, MonthlyPayment $monthlyPayment)
@@ -85,6 +153,7 @@ class MonthlyPaymentController extends Controller
         $this->authorizePayment($monthlyPayment);
 
         abort_if($monthlyPayment->is_paid, 400, 'Este pago ya fue registrado.');
+        abort_if($monthlyPayment->is_dismissed, 400, 'Este pago está descartado.');
 
         $item = $monthlyPayment->paymentItem;
 
@@ -127,7 +196,6 @@ class MonthlyPaymentController extends Controller
         abort_if(! $monthlyPayment->is_paid, 400, 'Este pago no está marcado como pagado.');
 
         DB::transaction(function () use ($monthlyPayment) {
-            // Eliminar la transacción vinculada
             if ($monthlyPayment->transaction) {
                 $monthlyPayment->transaction->delete();
             }
@@ -147,6 +215,40 @@ class MonthlyPaymentController extends Controller
         return redirect()
             ->route('monthly-payments.index', ['month' => "{$year}-{$month}"])
             ->with('success', "Pago de «{$item->description}» desmarcado.");
+    }
+
+    /** Descartar el pago de este mes (no aplica, se pagó por otro lado, etc.). */
+    public function dismiss(MonthlyPayment $monthlyPayment)
+    {
+        $this->authorizePayment($monthlyPayment);
+
+        abort_if($monthlyPayment->is_paid, 400, 'No podés descartar un pago ya registrado.');
+
+        $monthlyPayment->update(['is_dismissed' => true]);
+
+        $item  = $monthlyPayment->paymentItem;
+        $year  = $monthlyPayment->year;
+        $month = str_pad($monthlyPayment->month, 2, '0', STR_PAD_LEFT);
+
+        return redirect()
+            ->route('monthly-payments.index', ['month' => "{$year}-{$month}"])
+            ->with('success', "«{$item->description}» descartado para este mes.");
+    }
+
+    /** Restaurar un pago descartado. */
+    public function undismiss(MonthlyPayment $monthlyPayment)
+    {
+        $this->authorizePayment($monthlyPayment);
+
+        $monthlyPayment->update(['is_dismissed' => false]);
+
+        $item  = $monthlyPayment->paymentItem;
+        $year  = $monthlyPayment->year;
+        $month = str_pad($monthlyPayment->month, 2, '0', STR_PAD_LEFT);
+
+        return redirect()
+            ->route('monthly-payments.index', ['month' => "{$year}-{$month}"])
+            ->with('success', "«{$item->description}» restaurado.");
     }
 
     private function authorizePayment(MonthlyPayment $monthlyPayment): void

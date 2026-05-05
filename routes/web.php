@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
@@ -9,14 +10,17 @@ use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\FamilyGroupController;
 use App\Http\Controllers\MonthlyPaymentController;
 use App\Http\Controllers\PaymentItemController;
-use App\Http\Controllers\RecurringExpenseController;
+use App\Http\Controllers\CardPaymentController;
+use App\Http\Controllers\LoanController;
+use App\Http\Controllers\MonthlyReportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
-// ── Auth: Google OAuth ────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
-    Route::get('/login', fn() => view('auth.login'))->name('login');
+    Route::get('/login',  fn() => view('auth.login'))->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
     Route::get('/auth/google',          [GoogleAuthController::class, 'redirect'])->name('auth.google');
     Route::get('/auth/google/switch',   [GoogleAuthController::class, 'redirectSwitch'])->name('auth.google.switch');
     Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
@@ -36,6 +40,10 @@ Route::get('/invitacion/{token}', [FamilyGroupController::class, 'acceptInvitati
 // ── Área autenticada ──────────────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
 
+    // Contraseña (no requiere grupo activo)
+    Route::get('/perfil/password',  [AuthController::class, 'showPassword'])->name('profile.password');
+    Route::post('/perfil/password', [AuthController::class, 'updatePassword'])->name('profile.password.update');
+
     // Setup de grupo familiar (sin requerir grupo activo)
     Route::get('/setup', [FamilyGroupController::class, 'setup'])->name('family-groups.setup');
     Route::post('/grupos', [FamilyGroupController::class, 'store'])->name('family-groups.store');
@@ -48,6 +56,14 @@ Route::middleware('auth')->group(function () {
 
         // Reportes
         Route::get('/reportes', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reportes/balance-mensual', [MonthlyReportController::class, 'index'])->name('reports.monthly');
+        Route::post('/reportes/balance-mensual/pdf', [MonthlyReportController::class, 'pdf'])->name('reports.monthly.pdf');
+
+        // Préstamos — plan de cuotas
+        Route::get('/prestamos/{account}/plan',                        [LoanController::class, 'setup'])->name('loans.setup');
+        Route::post('/prestamos/{account}/plan',                       [LoanController::class, 'storeSchedule'])->name('loans.store-schedule');
+        Route::delete('/prestamos/{account}/plan',                     [LoanController::class, 'destroySchedule'])->name('loans.destroy-schedule');
+        Route::post('/prestamos/cuotas/{loanInstallment}/pagar',       [LoanController::class, 'pay'])->name('loans.pay');
 
         // Cuentas
         Route::post('/cuentas/{account}/ajustar', [AccountController::class, 'adjust'])->name('accounts.adjust');
@@ -60,6 +76,10 @@ Route::middleware('auth')->group(function () {
             'update'  => 'accounts.update',
             'destroy' => 'accounts.destroy',
         ])->parameters(['cuentas' => 'account']);
+
+        // Pago de tarjeta (antes del resource para no colisionar con /{transaction})
+        Route::get('/movimientos/pago-tarjeta',  [CardPaymentController::class, 'create'])->name('card-payment.create');
+        Route::post('/movimientos/pago-tarjeta', [CardPaymentController::class, 'store'])->name('card-payment.store');
 
         // Movimientos (gastos e ingresos)
         Route::resource('movimientos', TransactionController::class)->names([
@@ -105,26 +125,21 @@ Route::middleware('auth')->group(function () {
         Route::post('/tipo-de-cambio',           [ExchangeRateController::class, 'store'])->name('exchange-rates.store');
         Route::delete('/tipo-de-cambio/{exchangeRate}', [ExchangeRateController::class, 'destroy'])->name('exchange-rates.destroy');
 
-        // Débitos fijos / gastos recurrentes
-        Route::post('/debitos/{recurringExpense}/toggle',   [RecurringExpenseController::class, 'toggle'])->name('recurring-expenses.toggle');
-        Route::post('/debitos/{recurringExpense}/confirmar', [RecurringExpenseController::class, 'confirm'])->name('recurring-expenses.confirm');
-        Route::post('/debitos/{recurringExpense}/omitir',   [RecurringExpenseController::class, 'skip'])->name('recurring-expenses.skip');
-        Route::resource('debitos', RecurringExpenseController::class)->names([
-            'index'   => 'recurring-expenses.index',
-            'create'  => 'recurring-expenses.create',
-            'store'   => 'recurring-expenses.store',
-            'edit'    => 'recurring-expenses.edit',
-            'update'  => 'recurring-expenses.update',
-            'destroy' => 'recurring-expenses.destroy',
-        ])->except(['show'])->parameters(['debitos' => 'recurringExpense']);
+        // Redirect de rutas antiguas de gastos recurrentes
+        Route::get('/debitos', fn() => redirect()->route('monthly-payments.index'))->name('recurring-expenses.index');
+        Route::get('/debitos/crear', fn() => redirect()->route('payment-items.create'))->name('recurring-expenses.create');
 
         // Checklist mensual de pendientes
         Route::get('/pendientes', [MonthlyPaymentController::class, 'index'])->name('monthly-payments.index');
-        Route::post('/pendientes/{monthlyPayment}/pagar',    [MonthlyPaymentController::class, 'markPaid'])->name('monthly-payments.mark-paid');
-        Route::post('/pendientes/{monthlyPayment}/desmarcar', [MonthlyPaymentController::class, 'markUnpaid'])->name('monthly-payments.mark-unpaid');
+        Route::post('/pendientes/{monthlyPayment}/confirmar',  [MonthlyPaymentController::class, 'confirm'])->name('monthly-payments.confirm');
+        Route::post('/pendientes/{monthlyPayment}/pagar',      [MonthlyPaymentController::class, 'markPaid'])->name('monthly-payments.mark-paid');
+        Route::post('/pendientes/{monthlyPayment}/desmarcar',  [MonthlyPaymentController::class, 'markUnpaid'])->name('monthly-payments.mark-unpaid');
+        Route::post('/pendientes/{monthlyPayment}/descartar',  [MonthlyPaymentController::class, 'dismiss'])->name('monthly-payments.dismiss');
+        Route::post('/pendientes/{monthlyPayment}/restaurar',  [MonthlyPaymentController::class, 'undismiss'])->name('monthly-payments.undismiss');
 
         // Ítems de pendientes (plantillas)
-        Route::post('/pendientes-items/{paymentItem}/toggle', [PaymentItemController::class, 'toggle'])->name('payment-items.toggle');
+        Route::post('/pendientes-items/{paymentItem}/toggle',  [PaymentItemController::class, 'toggle'])->name('payment-items.toggle');
+        Route::post('/pendientes-items/{paymentItem}/retirar', [PaymentItemController::class, 'retire'])->name('payment-items.retire');
         Route::resource('pendientes-items', PaymentItemController::class)->names([
             'index'   => 'payment-items.index',
             'create'  => 'payment-items.create',

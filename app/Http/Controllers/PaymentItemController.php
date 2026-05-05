@@ -87,6 +87,21 @@ class PaymentItemController extends Controller
             ->with('success', "Pago pendiente {$label}.");
     }
 
+    /** Dar de baja definitivamente desde el checklist mensual. */
+    public function retire(PaymentItem $paymentItem)
+    {
+        $this->authorize($paymentItem);
+
+        $paymentItem->update([
+            'is_active'   => false,
+            'is_retiring' => false,
+        ]);
+
+        return redirect()
+            ->route('monthly-payments.index')
+            ->with('success', "«{$paymentItem->description}» dado de baja. No aparecerá en futuros meses.");
+    }
+
     private function authorize(PaymentItem $paymentItem): void
     {
         abort_if(
