@@ -757,6 +757,250 @@
 
 .forecast-note { font-size: 10px; color: var(--muted); margin-top: 8px; }
 
+/* ── Tags section ────────────────────────────────────────────────────────── */
+.tag-row {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(40,40,52,0.5);
+}
+
+.tag-row:last-child { border-bottom: none; }
+
+.tag-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.tag-body { min-width: 0; }
+
+.tag-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.tag-bar-track {
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.tag-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tag-right { text-align: right; flex-shrink: 0; min-width: 100px; }
+
+.tag-expense {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--expense);
+    white-space: nowrap;
+}
+
+.tag-income {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--income);
+    margin-top: 1px;
+}
+
+.tag-pct {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+/* ── Savings opportunity section ─────────────────────────────────────────── */
+.savings-opp-card {
+    background: var(--surface);
+    border: 1px solid rgba(232,184,64,0.25);
+    border-radius: 14px;
+    padding: 22px 24px;
+    background: linear-gradient(135deg, rgba(232,184,64,0.04) 0%, transparent 60%);
+}
+
+.savings-opp-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.savings-opp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: rgba(232,184,64,0.12);
+    color: var(--warn);
+    border: 1px solid rgba(232,184,64,0.2);
+    margin-bottom: 10px;
+    width: fit-content;
+}
+
+.savings-opp-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 400px;
+}
+
+.savings-opp-total-block { text-align: right; }
+
+.savings-opp-total-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.savings-opp-total-val {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--warn);
+    line-height: 1;
+}
+
+.savings-opp-total-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.dispensable-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(232,184,64,0.04);
+    border: 1px solid rgba(232,184,64,0.1);
+    margin-bottom: 7px;
+    transition: border-color 0.15s;
+}
+
+.dispensable-item:last-child { margin-bottom: 0; }
+.dispensable-item:hover { border-color: rgba(232,184,64,0.25); }
+
+.dispensable-item.paid {
+    background: rgba(106,102,118,0.06);
+    border-color: rgba(40,40,52,0.6);
+    opacity: 0.7;
+}
+
+.disp-icon { flex-shrink: 0; color: var(--warn); }
+.disp-icon.paid { color: var(--muted); }
+
+.disp-body { flex: 1; min-width: 0; }
+
+.disp-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.disp-name.paid {
+    color: var(--muted);
+    text-decoration: line-through;
+}
+
+.disp-cat {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.disp-status {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.disp-status.pending { background: rgba(232,184,64,0.12); color: var(--warn); }
+.disp-status.paid    { background: rgba(106,102,118,0.15); color: var(--muted); }
+
+.disp-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    min-width: 90px;
+    text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.disp-amount.warn { color: var(--warn); }
+.disp-amount.muted { color: var(--muted); }
+
+.savings-opp-impact {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(232,184,64,0.15);
+}
+
+.savings-opp-impact-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.savings-opp-impact-pct {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--warn);
+}
+
+.savings-opp-track {
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.savings-opp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--warn), rgba(232,184,64,0.5));
+    border-radius: 3px;
+    transition: width 1s ease;
+}
+
 /* ── Empty states ────────────────────────────────────────────────────────── */
 .empty-state {
     text-align: center;
@@ -1025,7 +1269,50 @@
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════════════════
-     4. GASTOS HORMIGA
+     4. ETIQUETAS
+     ═══════════════════════════════════════════════════════════════════════ --}}
+@if($tagStats->isNotEmpty())
+<div class="report-section">
+    <div class="section-header">
+        <span class="section-label">Por etiqueta</span>
+        <span style="font-size:10px;color:var(--muted);font-weight:600;">transacciones etiquetadas del mes</span>
+        <div class="section-line"></div>
+        <a href="{{ route('tags.index') }}" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:700;white-space:nowrap;">Gestionar →</a>
+    </div>
+
+    <div class="panel-card">
+        @php
+            $tagExpenseTotal = $tagStats->sum('expense');
+            $hasTagIncome    = $tagStats->contains(fn($t) => $t['income'] > 0);
+        @endphp
+        @foreach($tagStats as $tag)
+        @php $tagPct = $tagExpenseTotal > 0 ? round(($tag['expense'] / $tagExpenseTotal) * 100, 1) : 0; @endphp
+        <div class="tag-row">
+            <div class="tag-dot" style="background:{{ $tag['color'] }};"></div>
+            <div class="tag-body">
+                <div class="tag-name">
+                    {{ $tag['name'] }}
+                    <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $tag['count'] }} mov.</span>
+                </div>
+                <div class="tag-bar-track">
+                    <div class="tag-bar-fill" style="width:{{ $tagPct }}%;background:{{ $tag['color'] }};"></div>
+                </div>
+            </div>
+            <div class="tag-right">
+                <div class="tag-expense">$ {{ number_format($tag['expense'], 0, ',', '.') }}</div>
+                @if($tag['income'] > 0)
+                    <div class="tag-income">+$ {{ number_format($tag['income'], 0, ',', '.') }}</div>
+                @endif
+                <div class="tag-pct">{{ $tagPct }}% del etiquetado</div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     5. GASTOS HORMIGA
      ═══════════════════════════════════════════════════════════════════════ --}}
 <div class="report-section">
     <div class="section-header">
@@ -1296,7 +1583,111 @@
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════════════════
-     7. PREVISIÓN (solo mes en curso)
+     OPORTUNIDADES DE AHORRO (solo mes en curso)
+     ═══════════════════════════════════════════════════════════════════════ --}}
+@if($isCurrentMonth && $dispensableItemsStatus->isNotEmpty())
+<div class="report-section">
+    <div class="section-header">
+        <span class="section-label">Oportunidades de ahorro</span>
+        <span style="font-size:10px;color:var(--warn);font-weight:700;display:flex;align-items:center;gap:4px;">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            gastos prescindibles
+        </span>
+        <div class="section-line"></div>
+    </div>
+
+    <div class="savings-opp-card">
+        <div class="savings-opp-header">
+            <div>
+                <div class="savings-opp-badge">
+                    <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                    Prescindibles activos este mes
+                </div>
+                <div class="savings-opp-desc">
+                    Estos ítems de pago están marcados como prescindibles. Cancelarlos o posponerlos puede liberar liquidez mensual.
+                </div>
+            </div>
+            <div class="savings-opp-total-block">
+                <div class="savings-opp-total-label">Potencial de ahorro</div>
+                <div class="savings-opp-total-val">$ {{ number_format($dispensableTotal, 0, ',', '.') }}</div>
+                @if($totalIncome > 0)
+                <div class="savings-opp-total-sub">
+                    {{ round(($dispensableTotal / $totalIncome) * 100, 1) }}% de tus ingresos del mes
+                </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Lista de ítems prescindibles --}}
+        @foreach($dispensableItemsStatus as $entry)
+        @php $item = $entry['item']; $isPaid = $entry['is_paid']; @endphp
+        <div class="dispensable-item {{ $isPaid ? 'paid' : '' }}">
+            <div class="disp-icon {{ $isPaid ? 'paid' : '' }}">
+                @if($isPaid)
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                @else
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                @endif
+            </div>
+            <div class="disp-body">
+                <div class="disp-name {{ $isPaid ? 'paid' : '' }}">{{ $item->description }}</div>
+                @if($item->category || $item->account)
+                <div class="disp-cat">
+                    @if($item->account){{ $item->account->name }}@endif
+                    @if($item->category && $item->account) · @endif
+                    @if($item->category){{ $item->category->name }}@endif
+                </div>
+                @endif
+            </div>
+            <span class="disp-status {{ $isPaid ? 'paid' : 'pending' }}">
+                {{ $isPaid ? 'Ya pagado' : 'Sin pagar' }}
+            </span>
+            @if($entry['amount_ars'] !== null)
+            <div class="disp-amount {{ $isPaid ? 'muted' : 'warn' }}">
+                $ {{ number_format($entry['amount_ars'], 0, ',', '.') }}
+            </div>
+            @elseif($item->amount)
+            <div class="disp-amount muted">
+                {{ $item->currency }} $ {{ number_format($item->amount, 0, ',', '.') }}
+            </div>
+            @else
+            <div class="disp-amount muted">—</div>
+            @endif
+        </div>
+        @endforeach
+
+        {{-- Barra de impacto sobre ingresos --}}
+        @if($totalIncome > 0)
+        @php $savingImpactPct = min(100, round(($dispensableTotal / $totalIncome) * 100)); @endphp
+        <div class="savings-opp-impact">
+            <div class="savings-opp-impact-header">
+                <span>Impacto sobre ingresos del mes</span>
+                <span class="savings-opp-impact-pct">{{ $savingImpactPct }}%</span>
+            </div>
+            <div class="savings-opp-track">
+                <div class="savings-opp-fill" style="width:{{ $savingImpactPct }}%;"></div>
+            </div>
+            @php
+                $newSavingsRate = $totalIncome > 0
+                    ? round((($totalIncome - ($totalExpense - $dispensableTotal)) / $totalIncome) * 100, 1)
+                    : 0;
+            @endphp
+            <div style="display:flex;justify-content:space-between;margin-top:10px;">
+                <span style="font-size:11px;color:var(--muted);font-weight:600;">
+                    Tasa de ahorro actual: <strong style="color:var(--text);">{{ $savingsRate }}%</strong>
+                </span>
+                <span style="font-size:11px;color:var(--muted);font-weight:600;">
+                    Sin prescindibles: <strong style="color:var(--income);">{{ $newSavingsRate }}%</strong>
+                </span>
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     PREVISIÓN (solo mes en curso)
      ═══════════════════════════════════════════════════════════════════════ --}}
 @if($isCurrentMonth && $forecast)
 <div class="report-section">

@@ -6,6 +6,7 @@ use App\Models\ExchangeRate;
 use App\Models\Installment;
 use App\Models\PaymentItem;
 use App\Models\RecurringExpense;
+use App\Models\Tag;
 use App\Models\Transaction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -249,6 +250,46 @@ class MonthlyReportController extends Controller
         $pendingPaymentsItems = $paymentItemsWithStatus->where('is_paid', false)->values();
         $paidPaymentsTotal    = round($paidPaymentsItems->sum('amount_ars'), 2);
 
+        // ── Prescindibles / oportunidades de ahorro ───────────────────────────
+        $dispensableItemsStatus = $paymentItemsWithStatus
+            ->filter(fn ($e) => $e['item']->is_dispensable)
+            ->values();
+
+        $dispensableTotal = round($dispensableItemsStatus->sum(function ($e) use ($exchangeRate) {
+            if ($e['amount_ars'] !== null) {
+                return $e['amount_ars'];
+            }
+            $baseAmt = (float) ($e['item']->amount ?? 0);
+            if ($baseAmt > 0 && $e['item']->currency === 'USD' && $exchangeRate) {
+                return $exchangeRate->convert($baseAmt, 'USD');
+            }
+            return $baseAmt;
+        }), 2);
+
+        // ── Gastos por etiqueta (mes) ─────────────────────────────────────────
+        $tagStats = Tag::where('family_group_id', $groupId)
+            ->with(['transactions' => function ($q) use ($date, $endDate, $groupId) {
+                $q->whereBetween('date', [$date->toDateString(), $endDate->toDateString()])
+                  ->where('family_group_id', $groupId)
+                  ->whereIn('type', ['expense', 'income']);
+            }])
+            ->get()
+            ->map(function ($tag) use ($exchangeRate) {
+                $txs     = $tag->transactions;
+                $expense = round($txs->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                $income  = round($txs->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                return [
+                    'name'    => $tag->name,
+                    'color'   => $tag->color,
+                    'expense' => $expense,
+                    'income'  => $income,
+                    'count'   => $txs->count(),
+                ];
+            })
+            ->filter(fn ($t) => $t['expense'] > 0 || $t['income'] > 0)
+            ->sortByDesc('expense')
+            ->values();
+
         // ── Cuentas ───────────────────────────────────────────────────────────
         $allAccounts      = $group->accounts()->where('is_active', true)->get();
         $totalAssets      = $allAccounts->filter(fn ($a) => ! $a->isLiability())->sum(fn ($a) => $a->balanceInArs($exchangeRate));
@@ -372,6 +413,11 @@ class MonthlyReportController extends Controller
             'paidPaymentsItems',
             'pendingPaymentsItems',
             'paidPaymentsTotal',
+            // Prescindibles
+            'dispensableItemsStatus',
+            'dispensableTotal',
+            // Etiquetas
+            'tagStats',
             // Cuentas
             'allAccounts',
             'totalAssets',

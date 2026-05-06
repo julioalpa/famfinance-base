@@ -7,6 +7,7 @@ use App\Models\FamilyGroup;
 use App\Models\Installment;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
+use App\Models\Tag;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -204,6 +205,30 @@ class ReportController extends Controller
             ]);
         }
 
+        // ── Gastos por etiqueta ──────────────────────────────────────────────────
+        $tagStats = Tag::where('family_group_id', $groupId)
+            ->with(['transactions' => function ($q) use ($startDate, $groupId) {
+                $q->where('date', '>=', $startDate)
+                  ->where('family_group_id', $groupId)
+                  ->whereIn('type', ['expense', 'income']);
+            }])
+            ->get()
+            ->map(function ($tag) use ($exchangeRate) {
+                $txs     = $tag->transactions;
+                $expense = round($txs->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                $income  = round($txs->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                return [
+                    'name'    => $tag->name,
+                    'color'   => $tag->color,
+                    'expense' => $expense,
+                    'income'  => $income,
+                    'count'   => $txs->count(),
+                ];
+            })
+            ->filter(fn ($t) => $t['expense'] > 0 || $t['income'] > 0)
+            ->sortByDesc('expense')
+            ->values();
+
         return view('reports.index', compact(
             'monthlyData',
             'months',
@@ -225,6 +250,7 @@ class ReportController extends Controller
             'totalLiabilities',
             'netWorth',
             'exchangeRate',
+            'tagStats',
         ));
     }
 }

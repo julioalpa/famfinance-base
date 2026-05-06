@@ -229,6 +229,73 @@
 
 </div>
 
+{{-- ── Row 3b: Gastos por etiqueta ────────────────────────────────────────── --}}
+@if($tagStats->isNotEmpty())
+<div style="margin-bottom:20px;">
+    <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gastos por etiqueta</h2>
+                <div style="font-size:12px; color:var(--muted); margin-top:2px;">Últimos {{ $months }} meses · solo transacciones etiquetadas</div>
+            </div>
+            <a href="{{ route('tags.index') }}" style="font-size:12px; color:var(--accent); text-decoration:none; font-weight:600;">Gestionar etiquetas →</a>
+        </div>
+
+        @php
+            $tagExpenseTotal = $tagStats->sum('expense');
+            $hasIncome       = $tagStats->contains(fn($t) => $t['income'] > 0);
+        @endphp
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Etiqueta</th>
+                    <th style="text-align:right;">Egresos</th>
+                    @if($hasIncome)
+                    <th style="text-align:right;">Ingresos</th>
+                    @endif
+                    <th style="text-align:center;">Movimientos</th>
+                    <th style="width:160px;">Proporción del gasto</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($tagStats as $tag)
+                @php $pct = $tagExpenseTotal > 0 ? round(($tag['expense'] / $tagExpenseTotal) * 100, 1) : 0; @endphp
+                <tr>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:9px;">
+                            <div style="width:10px; height:10px; border-radius:3px; background:{{ $tag['color'] }}; flex-shrink:0;"></div>
+                            <span style="font-weight:700; font-size:13px;">{{ $tag['name'] }}</span>
+                        </div>
+                    </td>
+                    <td style="text-align:right; font-weight:800; color:var(--expense); white-space:nowrap; font-family:'Bricolage Grotesque',sans-serif;">
+                        $ {{ number_format($tag['expense'], 0, ',', '.') }}
+                    </td>
+                    @if($hasIncome)
+                    <td style="text-align:right; font-weight:700; white-space:nowrap;">
+                        @if($tag['income'] > 0)
+                            <span style="color:var(--income);">$ {{ number_format($tag['income'], 0, ',', '.') }}</span>
+                        @else
+                            <span style="color:var(--muted);">—</span>
+                        @endif
+                    </td>
+                    @endif
+                    <td style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tag['count'] }}</td>
+                    <td style="padding-right:20px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+                                <div style="height:100%; width:{{ $pct }}%; background:{{ $tag['color'] }}; border-radius:3px; transition:width 0.6s ease;"></div>
+                            </div>
+                            <span style="font-size:11px; color:var(--muted); font-weight:700; min-width:34px; text-align:right;">{{ $pct }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 {{-- ── Row 4: Patrimonio neto ─────────────────────────────────────────────── --}}
 <div style="display:grid; grid-template-columns:1fr 2fr; gap:20px; margin-bottom:20px;">
 
