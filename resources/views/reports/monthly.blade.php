@@ -1195,7 +1195,7 @@
         </div>
         <div class="chart-card">
             <div class="chart-card-title">
-                <span>Gasto diario acumulado</span>
+                <span>Gastos e ingresos diarios</span>
                 @if($isCurrentMonth)
                     <span style="font-size:10px;color:var(--muted);font-weight:600;font-family:'Nunito',sans-serif;">día {{ now()->day }}/{{ $daysInMonth }}</span>
                 @endif
@@ -1222,7 +1222,7 @@
                 <div class="cat-rank">{{ $idx + 1 }}</div>
                 <div class="cat-body">
                     <div class="cat-name-v2">
-                        <span>{{ $cat['icon'] }}</span>
+                        @include('categories._icon', ['icon' => $cat['icon'], 'color' => $cat['color'], 'type' => $cat['type'] ?? 'expense', 'size' => 'xs'])
                         <span>{{ $cat['name'] }}</span>
                         <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $cat['count'] }} mov.</span>
                     </div>
@@ -1380,7 +1380,7 @@
                 <div class="ant-chips">
                     @foreach($antByCategory->take(8) as $ant)
                     <div class="ant-chip">
-                        <span class="ant-chip-icon">{{ $ant['icon'] }}</span>
+                        @include('categories._icon', ['icon' => $ant['icon'], 'color' => $ant['color'], 'type' => $ant['type'] ?? 'expense', 'size' => 'xs'])
                         <span class="ant-chip-name">{{ $ant['name'] }}</span>
                         <span class="ant-chip-val">$ {{ number_format($ant['total'], 0, ',', '.') }}</span>
                         <span class="ant-chip-count">({{ $ant['count'] }})</span>
@@ -1392,6 +1392,101 @@
         </div>
     </div>
 </div>
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     GASTOS EVITABLES — oportunidad de ahorro
+     ═══════════════════════════════════════════════════════════════════════ --}}
+@if($avoidableCount > 0 || true)
+<div class="report-section">
+    <div class="section-header">
+        <span class="section-label">Gastos evitables</span>
+        <span style="font-size:10px;color:var(--warn);font-weight:600;">oportunidad de ahorro</span>
+        <div class="section-line"></div>
+    </div>
+
+    <div class="panel-card">
+        <div class="ant-layout">
+            {{-- Ring score --}}
+            <div class="ant-score-ring" id="avoidableRingWrap">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle class="ant-ring-bg" cx="60" cy="60" r="50"/>
+                    <circle class="ant-ring-fill" cx="60" cy="60" r="50"
+                            id="avoidableRingFill"
+                            stroke="{{ $avoidableScore > 20 ? 'var(--expense)' : ($avoidableScore > 10 ? 'var(--warn)' : 'var(--income)') }}"
+                            stroke-dasharray="{{ round(2 * pi() * 50, 2) }}"
+                            stroke-dashoffset="{{ round(2 * pi() * 50, 2) }}"
+                            data-target="{{ round(2 * pi() * 50 * (1 - $avoidableScore / 100), 2) }}"/>
+                </svg>
+                <div class="ant-ring-center">
+                    <div class="ant-ring-pct" style="color:{{ $avoidableScore > 20 ? 'var(--expense)' : ($avoidableScore > 10 ? 'var(--warn)' : 'var(--income)') }};">{{ $avoidableScore }}%</div>
+                    <div class="ant-ring-sub">del total</div>
+                </div>
+            </div>
+
+            {{-- Derecha --}}
+            <div class="ant-right">
+                <div class="ant-summary-row">
+                    <div class="ant-total-block">
+                        <div class="ant-total-label">Total evitable</div>
+                        <div class="ant-total-val" style="color:var(--warn);">$ {{ number_format($avoidableTotal, 0, ',', '.') }}</div>
+                    </div>
+                    <div class="ant-total-block">
+                        <div class="ant-total-label">Cantidad</div>
+                        <div class="ant-total-val" style="color:var(--text);">{{ $avoidableCount }} txns</div>
+                    </div>
+                    @if($avoidableCount > 0 && $totalIncome > 0)
+                    <div class="ant-total-block">
+                        <div class="ant-total-label">% ingresos</div>
+                        <div class="ant-total-val" style="color:var(--muted);">{{ round(($avoidableTotal / $totalIncome) * 100, 1) }}%</div>
+                    </div>
+                    @endif
+                </div>
+
+                @if($avoidableCount === 0)
+                    <div class="ant-alert ant-alert-ok">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Sin gastos marcados como evitables este mes. ¡Buen control!
+                    </div>
+                @elseif($avoidableScore > 20)
+                    <div class="ant-alert ant-alert-danger">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Más del 20% de tus gastos podrían haberse evitado. Gran oportunidad de ahorro.
+                    </div>
+                @else
+                    <div class="ant-alert ant-alert-warn">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Algunos gastos pueden reducirse. Revisá si podés evitarlos el próximo mes.
+                    </div>
+                @endif
+
+                @if($avoidableByCategory->isNotEmpty())
+                <div class="ant-chips">
+                    @foreach($avoidableByCategory->take(8) as $item)
+                    <div class="ant-chip">
+                        @include('categories._icon', ['icon' => $item['icon'], 'color' => $item['color'], 'type' => 'expense', 'size' => 'xs'])
+                        <span class="ant-chip-name">{{ $item['name'] }}</span>
+                        <span class="ant-chip-val">$ {{ number_format($item['total'], 0, ',', '.') }}</span>
+                        <span class="ant-chip-count">({{ $item['count'] }})</span>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+
+                @if($avoidableCount > 0 && $totalIncome > 0)
+                @php
+                    $avoidableSavingsRate = round((($totalIncome - ($totalExpense - $avoidableTotal)) / $totalIncome) * 100, 1);
+                @endphp
+                <div style="margin-top:14px;font-size:11px;color:var(--muted);font-weight:600;">
+                    Tasa de ahorro actual: <strong style="color:var(--text);">{{ $savingsRate }}%</strong>
+                    &nbsp;→&nbsp;
+                    Sin evitables: <strong style="color:var(--income);">{{ $avoidableSavingsRate }}%</strong>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════
      5. RECURRENTES + CUOTAS
@@ -1914,13 +2009,17 @@ const gradBlue = ctxDaily.createLinearGradient(0, 0, 0, 200);
 gradBlue.addColorStop(0, 'rgba(78,155,255,0.22)');
 gradBlue.addColorStop(1, 'rgba(78,155,255,0)');
 
+const gradGreen = ctxDaily.createLinearGradient(0, 0, 0, 200);
+gradGreen.addColorStop(0, 'rgba(45,216,112,0.18)');
+gradGreen.addColorStop(1, 'rgba(45,216,112,0)');
+
 const chartDaily = new Chart(ctxDaily, {
     type: 'line',
     data: {
         labels: dailyData.map(d => d.day),
         datasets: [
             {
-                label: 'Acumulado',
+                label: 'Gasto acumulado',
                 data: dailyData.map(d => d.cumulative),
                 borderColor: C.accent2,
                 backgroundColor: gradBlue,
@@ -1933,9 +2032,32 @@ const chartDaily = new Chart(ctxDaily, {
                 pointBorderWidth: 2,
             },
             {
-                label: 'Diario',
+                label: 'Ingreso acumulado',
+                data: dailyData.map(d => d.income_cumulative),
+                borderColor: 'rgba(45,216,112,0.85)',
+                backgroundColor: gradGreen,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: isCurrent ? dailyData.map((d, i) => i + 1 === today ? 5 : 0) : 0,
+                pointBackgroundColor: 'rgba(45,216,112,1)',
+                pointBorderColor: C.surface,
+                pointBorderWidth: 2,
+            },
+            {
+                label: 'Gasto diario',
                 data: dailyData.map(d => d.amount),
                 borderColor: 'rgba(240,64,96,0.5)',
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                tension: 0.3,
+                pointRadius: 0,
+            },
+            {
+                label: 'Ingreso diario',
+                data: dailyData.map(d => d.income_amount),
+                borderColor: 'rgba(45,216,112,0.45)',
                 backgroundColor: 'transparent',
                 borderWidth: 1.5,
                 borderDash: [4, 4],
@@ -2000,6 +2122,24 @@ const chartCats = new Chart(ctxCats, {
     let start = null;
     const duration = 1200;
 
+    function step(ts) {
+        if (!start) start = ts;
+        const progress = Math.min((ts - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        ring.setAttribute('stroke-dashoffset', total - (total - target) * ease);
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+})();
+
+// ── Ring animación gastos evitables ─────────────────────────────────────
+(function animateAvoidableRing() {
+    const ring = document.getElementById('avoidableRingFill');
+    if (!ring) return;
+    const target = parseFloat(ring.dataset.target);
+    const total  = parseFloat(ring.getAttribute('stroke-dasharray'));
+    let start = null;
+    const duration = 1200;
     function step(ts) {
         if (!start) start = ts;
         const progress = Math.min((ts - start) / duration, 1);

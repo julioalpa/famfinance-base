@@ -1,3 +1,7 @@
-- Seguimiento de descuentos
+- [x] Seguimiento de descuentos
 - Presupuestos
 - Corregir prestamos, aplicar TNA y TEA
+- [x] Al grafico de gasto diario acumulado agregarle ingresos diario + acumulado
+- [x] Corregir iconos de categoria
+- [x] Cambios en movimientos previos a ajustes de saldo en cuenta, no tocar monto final
+- [x] Evitable, flag en movimientos para poder utilizar como oportunidad de ahorro en las estadisticas

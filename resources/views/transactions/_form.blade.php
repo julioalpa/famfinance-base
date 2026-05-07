@@ -207,6 +207,22 @@
             </div>
             @endif
 
+            {{-- Gasto evitable --}}
+            <div class="form-group" id="avoidable-group" style="margin-bottom: 20px; display: none;">
+                <div style="background: var(--surface2); border-radius: 8px; padding: 14px 16px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" name="is_avoidable" id="is_avoidable"
+                               value="1"
+                               {{ old('is_avoidable', $tx?->is_avoidable) ? 'checked' : '' }}
+                               style="accent-color: var(--expense); width: 14px; height: 14px;">
+                        <label for="is_avoidable" class="form-label" style="margin: 0; cursor: pointer;">Gasto evitable</label>
+                    </div>
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 6px; padding-left: 24px;">
+                        Marcá si este gasto podría haberse evitado. Se usa para calcular oportunidades de ahorro en los reportes.
+                    </div>
+                </div>
+            </div>
+
             {{-- Notas --}}
             <div class="form-group" style="margin-bottom: 20px;">
                 <label class="form-label" for="notes">Notas adicionales</label>
@@ -293,6 +309,8 @@ function applyPendingItem(id) {
         document.getElementById('target-account-group').style.display   = selected === 'transfer' ? '' : 'none';
         document.getElementById('income-source-group').style.display     = selected === 'income'   ? '' : 'none';
         document.getElementById('installments-group').style.display      = (selected === 'expense' && isCredit) ? '' : 'none';
+        document.getElementById('avoidable-group').style.display         = selected === 'expense'  ? '' : 'none';
+        if (selected !== 'expense') document.getElementById('is_avoidable').checked = false;
 
         const categoryGroup = document.getElementById('category-group');
         categoryGroup.style.display = selected === 'transfer' ? 'none' : '';

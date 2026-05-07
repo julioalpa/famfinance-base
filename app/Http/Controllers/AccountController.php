@@ -202,6 +202,7 @@ class AccountController extends Controller
             'date'                 => $request->input('date', today()->format('Y-m-d')),
             'description'          => 'Ajuste de saldo',
             'notes'                => $request->notes,
+            'balance_snapshot'     => $target,
         ]);
 
         return back()->with('success', 'Saldo ajustado. Se registró un movimiento de ajuste de ' .

@@ -113,7 +113,8 @@ class MonthlyReportController extends Controller
                     'count'   => $items->count(),
                     'percent' => $totalExpense > 0 ? round(($total / $totalExpense) * 100, 1) : 0,
                     'color'   => $items->first()->category?->color ?? '#6a6676',
-                    'icon'    => $items->first()->category?->icon ?? '📦',
+                    'icon'    => $items->first()->category?->icon ?? 'other',
+                    'type'    => $items->first()->category?->type ?? 'expense',
                 ];
             })
             ->sortByDesc('total')
@@ -131,27 +132,37 @@ class MonthlyReportController extends Controller
                 'count'   => $others->sum('count'),
                 'percent' => $othersPct,
                 'color'   => '#6a6676',
-                'icon'    => '📦',
+                'icon'    => 'other',
+                'type'    => 'expense',
             ]);
         }
 
         $byCategory = $top10->values();
 
         // ── Gasto diario ──────────────────────────────────────────────────────
-        $dailyMap = $expenseTransactions
+        $dailyExpenseMap = $expenseTransactions
             ->groupBy(fn ($t) => (int) $t->date->format('j'))
             ->map(fn ($items) => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2));
 
-        $daysInMonth   = $date->daysInMonth;
-        $dailySpending = [];
-        $cumulative    = 0;
+        $dailyIncomeMap = $incomeTransactions
+            ->groupBy(fn ($t) => (int) $t->date->format('j'))
+            ->map(fn ($items) => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2));
+
+        $daysInMonth        = $date->daysInMonth;
+        $dailySpending      = [];
+        $cumulative         = 0;
+        $incomeCumulative   = 0;
         for ($day = 1; $day <= $daysInMonth; $day++) {
-            $amount      = $dailyMap[$day] ?? 0;
-            $cumulative += $amount;
+            $amount          = $dailyExpenseMap[$day] ?? 0;
+            $incomeAmount    = $dailyIncomeMap[$day] ?? 0;
+            $cumulative     += $amount;
+            $incomeCumulative += $incomeAmount;
             $dailySpending[] = [
-                'day'        => $day,
-                'amount'     => $amount,
-                'cumulative' => round($cumulative, 2),
+                'day'               => $day,
+                'amount'            => $amount,
+                'cumulative'        => round($cumulative, 2),
+                'income_amount'     => $incomeAmount,
+                'income_cumulative' => round($incomeCumulative, 2),
             ];
         }
 
@@ -167,7 +178,26 @@ class MonthlyReportController extends Controller
                 'name'  => $name,
                 'total' => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2),
                 'count' => $items->count(),
-                'icon'  => $items->first()->category?->icon ?? '📦',
+                'icon'  => $items->first()->category?->icon ?? 'other',
+                'color' => $items->first()->category?->color ?? '#6a6676',
+                'type'  => $items->first()->category?->type ?? 'expense',
+            ])
+            ->sortByDesc('total')
+            ->values();
+
+        // ── Gastos evitables ──────────────────────────────────────────────────
+        $avoidableTx = $expenseTransactions->filter(fn ($t) => $t->is_avoidable);
+        $avoidableTotal = round($avoidableTx->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+        $avoidableCount = $avoidableTx->count();
+        $avoidableScore = $totalExpense > 0 ? round(($avoidableTotal / $totalExpense) * 100, 1) : 0;
+        $avoidableByCategory = $avoidableTx
+            ->groupBy(fn ($t) => $t->category?->name ?? 'Sin categoría')
+            ->map(fn ($items, $name) => [
+                'name'  => $name,
+                'total' => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2),
+                'count' => $items->count(),
+                'icon'  => $items->first()->category?->icon ?? 'other',
+                'color' => $items->first()->category?->color ?? '#6a6676',
             ])
             ->sortByDesc('total')
             ->values();
@@ -397,6 +427,11 @@ class MonthlyReportController extends Controller
             'antCount',
             'antScore',
             'antByCategory',
+            // Gastos evitables
+            'avoidableTotal',
+            'avoidableCount',
+            'avoidableScore',
+            'avoidableByCategory',
             // Recurrentes
             'allRecurring',
             'confirmedRecurring',

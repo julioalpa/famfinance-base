@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
+use App\Models\Promotion;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -118,6 +119,14 @@ class DashboardController extends Controller
         $pendingPaidCount  = $pendingPayments->where('is_paid', true)->count();
         $pendingTotalCount = $pendingPayments->count();
 
+        // ── Alertas de promociones próximas a vencer ─────────────────────────
+        $promotionAlerts = Promotion::where('family_group_id', $groupId)
+            ->where('is_active', true)
+            ->whereNull('alerted_at')
+            ->whereNull('deleted_at')
+            ->get()
+            ->filter(fn($p) => $p->needsAlert());
+
         return view('dashboard', compact(
             'group',
             'accounts',
@@ -136,6 +145,7 @@ class DashboardController extends Controller
             'pendingPayments',
             'pendingPaidCount',
             'pendingTotalCount',
+            'promotionAlerts',
         ));
     }
 

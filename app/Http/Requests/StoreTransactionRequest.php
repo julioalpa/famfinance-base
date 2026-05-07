@@ -29,6 +29,7 @@ class StoreTransactionRequest extends FormRequest
             'payment_item_id'    => ['nullable', 'integer', 'exists:payment_items,id'],
             'tags'               => ['nullable', 'array'],
             'tags.*'             => ['integer', 'exists:tags,id'],
+            'is_avoidable'       => ['boolean'],
         ];
     }
 
@@ -53,12 +54,11 @@ class StoreTransactionRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        // Normalizar has_installments
         $this->merge([
             'has_installments' => $this->boolean('has_installments'),
+            'is_avoidable'     => $this->type === 'expense' ? $this->boolean('is_avoidable') : false,
         ]);
 
-        // Limpiar campos de cuotas si no aplica
         if (! $this->has_installments || $this->type !== 'expense') {
             $this->merge([
                 'has_installments'   => false,

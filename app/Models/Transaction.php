@@ -32,6 +32,8 @@ class Transaction extends Model
         'notes',
         'recurring_expense_id',
         'is_card_payment',
+        'is_avoidable',
+        'balance_snapshot',
     ];
 
     protected function casts(): array
@@ -40,8 +42,10 @@ class Transaction extends Model
             'date'              => 'date',
             'has_installments'  => 'boolean',
             'is_card_payment'   => 'boolean',
+            'is_avoidable'      => 'boolean',
             'amount'            => 'decimal:2',
             'installment_amount'=> 'decimal:2',
+            'balance_snapshot'  => 'decimal:2',
         ];
     }
 

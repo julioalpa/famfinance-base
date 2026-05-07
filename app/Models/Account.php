@@ -83,26 +83,67 @@ class Account extends Model
      *  - cash/digital : ingresos − gastos + transferencias_entrantes − transferencias_salientes
      *  - credit/loan  : lo mismo pero invertido (positivo = debés)
      *
-     * Las transferencias se almacenan como un único registro:
-     *   account_id = origen, target_account_id = destino, type = 'transfer'
+     * Si existe un ajuste de saldo con balance_snapshot, ese snapshot actúa como
+     * punto de corte: los movimientos previos a ese ajuste ya están "congelados"
+     * en el snapshot y editar uno de ellos no modifica el saldo final.
      */
     public function getBalanceAttribute(): float
     {
-        $income        = (float) $this->transactions()->where('type', 'income')->sum('amount');
-        $expense       = (float) $this->transactions()->where('type', 'expense')->sum('amount');
-        $transferOut   = (float) $this->transactions()->where('type', 'transfer')->sum('amount');
-        $transferIn    = (float) DB::table('transactions')
+        $lastAdj = $this->transactions()
+            ->where('type', 'adjustment')
+            ->whereNotNull('balance_snapshot')
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastAdj === null) {
+            return $this->computeBalanceFrom(null, null);
+        }
+
+        return (float) $lastAdj->balance_snapshot
+            + $this->computeBalanceFrom($lastAdj->date, $lastAdj->id);
+    }
+
+    /**
+     * Suma el impacto neto de las transacciones después del punto de corte.
+     * Si $afterDate es null, suma todas las transacciones (comportamiento legacy).
+     */
+    private function computeBalanceFrom(?string $afterDate, ?int $afterId): float
+    {
+        $filter = function ($q) use ($afterDate, $afterId) {
+            if ($afterDate === null) return;
+            $q->where(function ($w) use ($afterDate, $afterId) {
+                $w->where('date', '>', $afterDate)
+                  ->orWhere(function ($same) use ($afterDate, $afterId) {
+                      $same->where('date', $afterDate)->where('id', '>', $afterId);
+                  });
+            });
+        };
+
+        $income      = (float) $this->transactions()->where('type', 'income')->where($filter)->sum('amount');
+        $expense     = (float) $this->transactions()->where('type', 'expense')->where($filter)->sum('amount');
+        $transferOut = (float) $this->transactions()->where('type', 'transfer')->where($filter)->sum('amount');
+        $transferIn  = (float) DB::table('transactions')
             ->where('target_account_id', $this->id)
             ->where('type', 'transfer')
             ->whereNull('deleted_at')
+            ->when($afterDate !== null, function ($q) use ($afterDate, $afterId) {
+                $q->where(function ($w) use ($afterDate, $afterId) {
+                    $w->where('date', '>', $afterDate)
+                      ->orWhere(function ($same) use ($afterDate, $afterId) {
+                          $same->where('date', $afterDate)->where('id', '>', $afterId);
+                      });
+                });
+            })
             ->sum('amount');
-        $adjustmentIn  = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'in')->sum('amount');
-        $adjustmentOut = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'out')->sum('amount');
+        $adjIn  = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'in')->where($filter)->sum('amount');
+        $adjOut = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'out')->where($filter)->sum('amount');
 
         return match ($this->type) {
-            'credit' => $expense - $income + $transferOut - $transferIn + $adjustmentOut - $adjustmentIn,
-            'loan'   => (float) ($this->initial_balance ?? 0) + $expense - $income + $transferOut - $transferIn + $adjustmentOut - $adjustmentIn,
-            default  => $income - $expense + $transferIn - $transferOut + $adjustmentIn - $adjustmentOut,
+            'credit' => $expense - $income + $transferOut - $transferIn + $adjOut - $adjIn,
+            'loan'   => ($afterDate === null ? (float) ($this->initial_balance ?? 0) : 0.0)
+                        + $expense - $income + $transferOut - $transferIn + $adjOut - $adjIn,
+            default  => $income - $expense + $transferIn - $transferOut + $adjIn - $adjOut,
         };
     }
 

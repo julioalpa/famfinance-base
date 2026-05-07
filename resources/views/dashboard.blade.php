@@ -44,6 +44,41 @@
     </div>
 </div>
 
+{{-- ── Alertas de promociones ───────────────────────────────────────────────── --}}
+@if($promotionAlerts->isNotEmpty())
+<div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px;">
+    @foreach($promotionAlerts as $promo)
+        @php $days = $promo->daysUntilExpiry(); @endphp
+        <div style="background: rgba(232,184,64,0.08); border: 1px solid rgba(232,184,64,0.35); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <svg width="18" height="18" fill="none" stroke="var(--warn)" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink: 0;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div style="flex: 1; min-width: 180px;">
+                <span style="font-size: 14px; font-weight: 700; color: var(--warn);">Promoción por vencer:</span>
+                <span style="font-size: 14px; color: var(--text); margin-left: 4px;">{{ $promo->name }}</span>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+                    {{ $days === 0 ? 'Vence hoy' : "Vence en {$days} " . ($days === 1 ? 'día' : 'días') }}
+                    ({{ $promo->expires_at->format('d/m/Y') }}) — {{ $promo->discountLabel() }} de descuento
+                    @if($promo->provider) · {{ $promo->provider }} @endif
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">
+                <a href="{{ route('promotions.index') }}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 12px;">
+                    Ver promociones
+                </a>
+                <form method="POST" action="{{ route('promotions.dismiss-alert', $promo) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-ghost" style="padding: 6px 14px; font-size: 12px; border-color: rgba(232,184,64,0.3); color: var(--warn);">
+                        Marcar como leído
+                    </button>
+                </form>
+            </div>
+        </div>
+    @endforeach
+</div>
+@endif
+
 {{-- ── Stats Cards ──────────────────────────────────────────────────────────── --}}
 <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 10px;">
     Movimientos del mes

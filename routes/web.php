@@ -14,6 +14,7 @@ use App\Http\Controllers\CardPaymentController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\MonthlyReportController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -155,5 +156,16 @@ Route::middleware('auth')->group(function () {
             'update'  => 'payment-items.update',
             'destroy' => 'payment-items.destroy',
         ])->except(['show'])->parameters(['pendientes-items' => 'paymentItem']);
+
+        // Promociones y descuentos
+        Route::post('/promociones/{promotion}/descartar-alerta', [PromotionController::class, 'dismissAlert'])->name('promotions.dismiss-alert');
+        Route::resource('promociones', PromotionController::class)->names([
+            'index'   => 'promotions.index',
+            'create'  => 'promotions.create',
+            'store'   => 'promotions.store',
+            'edit'    => 'promotions.edit',
+            'update'  => 'promotions.update',
+            'destroy' => 'promotions.destroy',
+        ])->except(['show'])->parameters(['promociones' => 'promotion']);
     });
 });
