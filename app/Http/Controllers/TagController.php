@@ -10,9 +10,27 @@ class TagController extends Controller
     public function index()
     {
         $groupId = session('active_family_group_id');
-        $tags    = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
 
-        return view('tags.index', compact('tags'));
+        $tags = Tag::where('family_group_id', $groupId)
+            ->with(['transactions', 'paymentItems'])
+            ->orderBy('name')
+            ->get();
+
+        $tags->each(function ($tag) {
+            $tag->tx_count     = $tag->transactions->count();
+            $tag->py_count     = $tag->paymentItems->count();
+            $tag->tx_amount    = (float) $tag->transactions->where('currency', 'ARS')->where('type', 'expense')->sum('amount');
+            $tag->py_amount    = (float) $tag->paymentItems->where('currency', 'ARS')->sum('amount');
+            $tag->total_amount = $tag->tx_amount + $tag->py_amount;
+        });
+
+        $grandTotal = $tags->sum('total_amount');
+
+        $tags->each(function ($tag) use ($grandTotal) {
+            $tag->percentage = $grandTotal > 0 ? round($tag->total_amount / $grandTotal * 100, 1) : 0;
+        });
+
+        return view('tags.index', compact('tags', 'grandTotal'));
     }
 
     public function store(Request $request)

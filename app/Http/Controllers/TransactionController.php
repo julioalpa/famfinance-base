@@ -22,10 +22,15 @@ class TransactionController extends Controller
         $selectedMonth = $request->input('month', now()->format('Y-m'));
         [$statsYear, $statsMonth] = explode('-', $selectedMonth);
 
+        $sortBy  = in_array($request->input('sort'), ['date', 'type', 'description', 'amount']) ? $request->input('sort') : 'date';
+        $sortDir = $request->input('dir') === 'asc' ? 'asc' : 'desc';
+
         $query = Transaction::with(['account', 'category', 'user', 'tags'])
             ->where('family_group_id', $groupId)
-            ->orderByDesc('date')
-            ->orderByDesc('id');
+            ->orderBy($sortBy, $sortDir);
+        if ($sortBy === 'date') {
+            $query->orderBy('id', $sortDir);
+        }
 
         // Filtros opcionales
         $typeFilter = $request->input('type');
@@ -99,7 +104,8 @@ class TransactionController extends Controller
 
         return view('transactions.index', compact(
             'transactions', 'categories', 'accounts',
-            'monthStats', 'monthLabel', 'filteredTotal', 'allTags'
+            'monthStats', 'monthLabel', 'filteredTotal', 'allTags',
+            'sortBy', 'sortDir'
         ));
     }
 

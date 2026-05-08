@@ -54,11 +54,27 @@
                 Sin registros todavía
             </div>
         @else
+        @php
+            $mkSort = function(string $col, string $label) use ($sortBy, $sortDir): string {
+                $active = $sortBy === $col;
+                $newDir = ($active && $sortDir === 'asc') ? 'desc' : 'asc';
+                $url    = request()->fullUrlWithQuery(['sort' => $col, 'dir' => $newDir]);
+                $upOp   = !$active ? '0.35' : ($sortDir === 'asc'  ? '1' : '0.2');
+                $dnOp   = !$active ? '0.35' : ($sortDir === 'desc' ? '1' : '0.2');
+                $aria   = $active ? ($sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+                $cls    = $active ? 'sort-link sort-active' : 'sort-link';
+                return "<a href=\"{$url}\" class=\"{$cls}\" aria-sort=\"{$aria}\">{$label}"
+                    . "<svg width=\"8\" height=\"11\" viewBox=\"0 0 8 11\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"display:inline-block;vertical-align:middle;margin-left:4px;\">"
+                    . "<path d=\"M1 4.5L4 1.5L7 4.5\" style=\"opacity:{$upOp}\"/>"
+                    . "<path d=\"M1 6.5L4 9.5L7 6.5\" style=\"opacity:{$dnOp}\"/>"
+                    . "</svg></a>";
+            };
+        @endphp
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Fecha</th>
-                        <th>Tasa</th>
+                        <th>{!! $mkSort('date', 'Fecha') !!}</th>
+                        <th>{!! $mkSort('rate', 'Tasa') !!}</th>
                         <th>Notas</th>
                         <th>Ingresado por</th>
                         <th></th>

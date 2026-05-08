@@ -123,6 +123,23 @@
 .filter-chip-x { font-size: 13px; line-height: 1; opacity: 0.7; }
 </style>
 
+@php
+    $mkSort = function(string $col, string $label) use ($sortBy, $sortDir): string {
+        $active = $sortBy === $col;
+        $newDir = ($active && $sortDir === 'asc') ? 'desc' : 'asc';
+        $url    = request()->fullUrlWithQuery(['sort' => $col, 'dir' => $newDir]);
+        $upOp   = !$active ? '0.35' : ($sortDir === 'asc'  ? '1' : '0.2');
+        $dnOp   = !$active ? '0.35' : ($sortDir === 'desc' ? '1' : '0.2');
+        $aria   = $active ? ($sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+        $cls    = $active ? 'sort-link sort-active' : 'sort-link';
+        return "<a href=\"{$url}\" class=\"{$cls}\" aria-sort=\"{$aria}\">{$label}"
+            . "<svg width=\"8\" height=\"11\" viewBox=\"0 0 8 11\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"display:inline-block;vertical-align:middle;margin-left:4px;\">"
+            . "<path d=\"M1 4.5L4 1.5L7 4.5\" style=\"opacity:{$upOp}\"/>"
+            . "<path d=\"M1 6.5L4 9.5L7 6.5\" style=\"opacity:{$dnOp}\"/>"
+            . "</svg></a>";
+    };
+@endphp
+
 {{-- Header --}}
 <div class="tx-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
     <div>
@@ -225,6 +242,8 @@
 {{-- ── Filtros desktop ────────────────────────────────────────────────────── --}}
 <div class="tx-filter-card card" style="margin-bottom: 20px;">
     <form method="GET" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+        <input type="hidden" name="sort" value="{{ $sortBy }}">
+        <input type="hidden" name="dir"  value="{{ $sortDir }}">
         <div>
             <label class="form-label">Mes</label>
             <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}" class="form-input" style="width: 160px;">
@@ -291,13 +310,13 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Fecha</th>
-                        <th>Tipo</th>
-                        <th>Descripción</th>
+                        <th>{!! $mkSort('date', 'Fecha') !!}</th>
+                        <th>{!! $mkSort('type', 'Tipo') !!}</th>
+                        <th>{!! $mkSort('description', 'Descripción') !!}</th>
                         <th>Categoría</th>
                         <th>Cuenta</th>
                         <th>Quién</th>
-                        <th style="text-align:right;">Monto</th>
+                        <th style="text-align:right;">{!! $mkSort('amount', 'Monto') !!}</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -339,8 +358,8 @@
                             <span style="font-size:12px;color:var(--muted);">—</span>
                             @endif
                         </td>
-                        <td><span class="badge badge-{{ $tx->account->type }}">{{ $tx->account->name }}</span></td>
-                        <td style="font-size: 12px; color: var(--muted);">{{ $tx->user->name }}</td>
+                        <td><span class="badge badge-{{ $tx->account?->type ?? 'neutral' }}">{{ $tx->account?->name ?? '—' }}</span></td>
+                        <td style="font-size: 12px; color: var(--muted);">{{ $tx->user?->name ?? '—' }}</td>
                         <td style="text-align: right; font-weight: 500; white-space: nowrap;">
                             @if($tx->isAdjustment())
                                 <span style="color:#a078ff;">{{ $tx->adjustment_direction === 'in' ? '+' : '−' }} {{ $tx->currency === 'USD' ? 'US$' : '$' }} {{ number_format($tx->amount, 2, ',', '.') }}</span>
@@ -397,7 +416,7 @@
                         <span>{{ $tx->category->name }}</span>
                     @endif
                     <span>·</span>
-                    <span class="badge badge-{{ $tx->account->type }}" style="font-size:10px;">{{ $tx->account->name }}</span>
+                    <span class="badge badge-{{ $tx->account?->type ?? 'neutral' }}" style="font-size:10px;">{{ $tx->account?->name ?? '—' }}</span>
                     @if($tx->has_installments)
                         <span class="badge badge-credit" style="font-size:10px;">{{ $tx->installments_count }}c</span>
                     @endif
@@ -452,6 +471,8 @@
         </div>
 
         <form method="GET" style="display:flex;flex-direction:column;gap:14px;">
+            <input type="hidden" name="sort" value="{{ $sortBy }}">
+            <input type="hidden" name="dir"  value="{{ $sortDir }}">
             <div>
                 <label class="form-label">Mes</label>
                 <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}" class="form-input">

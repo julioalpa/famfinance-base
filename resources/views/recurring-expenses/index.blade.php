@@ -58,15 +58,15 @@
     </div>
 @else
     <div class="card" style="padding: 0; overflow: hidden;">
-        <table class="data-table">
+        <table class="data-table" id="recurring-table">
             <thead>
                 <tr>
-                    <th style="width: 56px; text-align:center;">Día</th>
-                    <th>Descripción</th>
-                    <th>Cuenta</th>
-                    <th>Categoría</th>
-                    <th style="text-align:right;">Monto</th>
-                    <th style="text-align:center;">Estado</th>
+                    <th data-sort="number" style="width: 56px; text-align:center;">Día</th>
+                    <th data-sort="text">Descripción</th>
+                    <th data-sort="text">Cuenta</th>
+                    <th data-sort="text">Categoría</th>
+                    <th data-sort="number" style="text-align:right;">Monto</th>
+                    <th data-sort="text" style="text-align:center;">Estado</th>
                     <th style="text-align:center;">Este mes</th>
                     <th></th>
                 </tr>
@@ -75,7 +75,7 @@
                 @foreach($recurring as $re)
                 <tr style="{{ !$re->is_active ? 'opacity: 0.5;' : '' }}">
                     {{-- Día del mes --}}
-                    <td style="text-align:center; padding: 12px 8px;">
+                    <td data-val="{{ $re->day_of_month }}" style="text-align:center; padding: 12px 8px;">
                         <div style="
                             width: 36px; height: 36px;
                             background: {{ $re->is_active ? 'var(--accent-dim)' : 'var(--surface2)' }};
@@ -91,7 +91,7 @@
                     </td>
 
                     {{-- Descripción --}}
-                    <td>
+                    <td data-val="{{ $re->description }}">
                         <div style="font-size:14px; font-weight:600; color:var(--text);">{{ $re->description }}</div>
                         @if($re->notes)
                             <div style="font-size:11px; color:var(--muted); margin-top:2px;">{{ Str::limit($re->notes, 60) }}</div>
@@ -99,22 +99,22 @@
                     </td>
 
                     {{-- Cuenta --}}
-                    <td>
+                    <td data-val="{{ $re->account->name }}">
                         <span class="badge badge-{{ $re->account->type }}">{{ $re->account->name }}</span>
                     </td>
 
                     {{-- Categoría --}}
-                    <td style="font-size:13px; color:var(--muted);">
+                    <td data-val="{{ $re->category?->name ?? '' }}" style="font-size:13px; color:var(--muted);">
                         {{ $re->category?->name ?? '—' }}
                     </td>
 
                     {{-- Monto --}}
-                    <td style="text-align:right; font-weight:700; font-size:14px; white-space:nowrap;" class="amount-expense">
+                    <td data-val="{{ $re->amount }}" style="text-align:right; font-weight:700; font-size:14px; white-space:nowrap;" class="amount-expense">
                         {{ $re->currency === 'USD' ? 'US$' : '$' }} {{ number_format($re->amount, 2, ',', '.') }}
                     </td>
 
                     {{-- Estado activo/pausado --}}
-                    <td style="text-align:center;">
+                    <td data-val="{{ $re->is_active ? 'Activo' : 'Pausado' }}" style="text-align:center;">
                         @if($re->is_active)
                             <span class="badge badge-income">Activo</span>
                         @else
@@ -177,5 +177,7 @@
         </table>
     </div>
 @endif
+
+<script>initTableSort('recurring-table');</script>
 
 @endsection

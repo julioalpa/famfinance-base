@@ -349,6 +349,14 @@
         .data-table tbody tr { transition: background 0.1s; }
         .data-table tbody tr:hover td { background: rgba(255,255,255,0.022); }
 
+        /* ── Sortable table columns ───────────────────────────────────────── */
+        .data-table th[data-sort] { cursor:pointer;user-select:none;white-space:nowrap;transition:color 0.15s; }
+        .data-table th[data-sort]:hover { color:var(--text);background:rgba(255,255,255,0.025); }
+        .data-table th[data-sort].sort-active { color:var(--accent) !important; }
+        .sort-link { color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;transition:color 0.15s; }
+        .sort-link:hover { color:var(--text); }
+        .sort-link.sort-active { color:var(--accent); }
+
         /* ── Badges ──────────────────────────────────────────────────────────── */
         .badge {
             display: inline-flex;
@@ -647,8 +655,10 @@
         <a href="{{ route('categories.index') }}"
            class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                <circle cx="7" cy="7" r="1" fill="currentColor"/>
+                <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"/>
             </svg>
             Categorías
         </a>
@@ -657,7 +667,7 @@
            class="nav-link {{ request()->routeIs('tags.*') ? 'active' : '' }}">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                <line x1="7" y1="7" x2="7.01" y2="7" stroke-width="2.5"/>
+                <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/>
             </svg>
             Etiquetas
         </a>
@@ -675,8 +685,9 @@
            class="nav-link {{ request()->routeIs('promotions.*') ? 'active' : '' }}"
            title="Promociones y descuentos con vencimiento">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="8.5" cy="8.5" r="2.5"/>
+                <circle cx="15.5" cy="15.5" r="2.5"/>
+                <line x1="6" y1="18" x2="18" y2="6"/>
             </svg>
             Promociones
         </a>
@@ -849,6 +860,69 @@
             try { e.target.showPicker(); } catch (_) {}
         }
     });
+
+    // ── Client-side table sort ────────────────────────────────────────────
+    (function () {
+        window.initTableSort = function (tableId) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const allThs = Array.from(table.querySelector('thead tr').children);
+            let activeEl = null, dir = 1;
+
+            allThs.forEach(th => {
+                if (!th.dataset.sort) return;
+                const colIdx = allThs.indexOf(th);
+                const type   = th.dataset.sort;
+
+                const ico = document.createElement('span');
+                ico.className = 'th-sort-icon';
+                ico.innerHTML = '<svg width="8" height="11" viewBox="0 0 8 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-left:4px;opacity:0.3;transition:all 0.15s;"><path class="si-up" d="M1 4.5L4 1.5L7 4.5"/><path class="si-dn" d="M1 6.5L4 9.5L7 6.5"/></svg>';
+                th.appendChild(ico);
+
+                th.addEventListener('click', () => {
+                    const same = activeEl === th;
+                    dir = same ? -dir : 1;
+
+                    allThs.forEach(t => {
+                        if (!t.dataset.sort) return;
+                        const s = t.querySelector('.th-sort-icon svg');
+                        if (!s) return;
+                        s.style.opacity = '0.3'; s.style.color = '';
+                        s.querySelector('.si-up').style.opacity = '1';
+                        s.querySelector('.si-dn').style.opacity = '1';
+                        t.classList.remove('sort-active');
+                        t.removeAttribute('aria-sort');
+                    });
+
+                    activeEl = th;
+                    th.classList.add('sort-active');
+                    const svg = ico.querySelector('svg');
+                    svg.style.opacity = '0.9'; svg.style.color = 'var(--accent)';
+                    if (dir === 1) {
+                        svg.querySelector('.si-up').style.opacity = '1';
+                        svg.querySelector('.si-dn').style.opacity = '0.2';
+                        th.setAttribute('aria-sort', 'ascending');
+                    } else {
+                        svg.querySelector('.si-up').style.opacity = '0.2';
+                        svg.querySelector('.si-dn').style.opacity = '1';
+                        th.setAttribute('aria-sort', 'descending');
+                    }
+
+                    const tbody = table.querySelector('tbody');
+                    const rows  = Array.from(tbody.querySelectorAll('tr'));
+                    rows.sort((a, b) => {
+                        const av = a.cells[colIdx]?.dataset.val ?? a.cells[colIdx]?.textContent.trim() ?? '';
+                        const bv = b.cells[colIdx]?.dataset.val ?? b.cells[colIdx]?.textContent.trim() ?? '';
+                        const cmp = type === 'number'
+                            ? (parseFloat(av) || 0) - (parseFloat(bv) || 0)
+                            : av.localeCompare(bv, 'es', { sensitivity: 'base', numeric: true });
+                        return cmp * dir;
+                    });
+                    rows.forEach(r => tbody.appendChild(r));
+                });
+            });
+        };
+    })();
 
     // Register Service Worker (only on HTTPS or localhost)
     if ('serviceWorker' in navigator) {

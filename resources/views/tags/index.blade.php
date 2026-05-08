@@ -82,19 +82,21 @@
 </div>
 @else
 <div class="card" style="padding:0;overflow:hidden;">
-    <table class="data-table">
+    <table class="data-table" id="tags-table">
         <thead>
             <tr>
-                <th>Etiqueta</th>
-                <th style="color:var(--muted);font-weight:500;">Movimientos</th>
-                <th style="color:var(--muted);font-weight:500;">Pagos</th>
+                <th data-sort="text">Etiqueta</th>
+                <th data-sort="number" style="color:var(--muted);font-weight:500;">Movimientos</th>
+                <th data-sort="number" style="color:var(--muted);font-weight:500;">Pagos</th>
+                <th data-sort="number" style="color:var(--muted);font-weight:500;">Monto ARS</th>
+                <th data-sort="number" style="color:var(--muted);font-weight:500;">% del total</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
             @foreach($tags as $tag)
             <tr>
-                <td>
+                <td data-val="{{ $tag->name }}">
                     <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 8px;
                                  border-radius:20px;font-size:12px;font-weight:700;
                                  background:{{ $tag->color }}22;color:{{ $tag->color }};
@@ -103,8 +105,37 @@
                         {{ $tag->name }}
                     </span>
                 </td>
-                <td style="font-size:12px;color:var(--muted);">{{ $tag->transactions()->count() }}</td>
-                <td style="font-size:12px;color:var(--muted);">{{ $tag->paymentItems()->count() }}</td>
+                <td data-val="{{ $tag->tx_count }}">
+                    <span style="font-size:13px;font-weight:600;color:var(--text);">{{ $tag->tx_count }}</span>
+                    @if($tag->tx_amount > 0)
+                    <div style="font-size:11px;color:var(--muted);margin-top:1px;">$ {{ number_format($tag->tx_amount, 0, ',', '.') }}</div>
+                    @endif
+                </td>
+                <td data-val="{{ $tag->py_count }}">
+                    <span style="font-size:13px;font-weight:600;color:var(--text);">{{ $tag->py_count }}</span>
+                    @if($tag->py_amount > 0)
+                    <div style="font-size:11px;color:var(--muted);margin-top:1px;">$ {{ number_format($tag->py_amount, 0, ',', '.') }}</div>
+                    @endif
+                </td>
+                <td data-val="{{ $tag->total_amount }}" style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;">
+                    @if($tag->total_amount > 0)
+                        $ {{ number_format($tag->total_amount, 0, ',', '.') }}
+                    @else
+                        <span style="color:var(--muted);font-weight:400;">—</span>
+                    @endif
+                </td>
+                <td data-val="{{ $tag->percentage }}">
+                    @if($tag->percentage > 0)
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="flex:1;min-width:60px;height:4px;border-radius:2px;background:var(--surface2);overflow:hidden;">
+                            <div style="width:{{ min($tag->percentage, 100) }}%;height:100%;background:{{ $tag->color }};border-radius:2px;"></div>
+                        </div>
+                        <span style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;">{{ number_format($tag->percentage, 1) }}%</span>
+                    </div>
+                    @else
+                        <span style="font-size:12px;color:var(--muted);">—</span>
+                    @endif
+                </td>
                 <td style="white-space:nowrap;text-align:right;">
                     <button type="button"
                             onclick="openEditModal({{ $tag->id }}, '{{ addslashes($tag->name) }}', '{{ $tag->color }}')"
@@ -187,6 +218,8 @@ function selectEditColor(color) {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
+
+initTableSort('tags-table');
 </script>
 
 @endsection

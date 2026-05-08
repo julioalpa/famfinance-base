@@ -39,39 +39,39 @@
     </div>
 @else
     <div class="card">
-        <table class="data-table">
+        <table class="data-table" id="payment-items-table">
             <thead>
                 <tr>
-                    <th>Pago</th>
-                    <th>Cuenta</th>
-                    <th>Categoría</th>
-                    <th>Día</th>
-                    <th>Moneda</th>
-                    <th>Estado</th>
+                    <th data-sort="text">Pago</th>
+                    <th data-sort="text">Cuenta</th>
+                    <th data-sort="text">Categoría</th>
+                    <th data-sort="number">Día</th>
+                    <th data-sort="text">Moneda</th>
+                    <th data-sort="text">Estado</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($items as $item)
                 <tr style="{{ !$item->is_active ? 'opacity: 0.55;' : '' }}">
-                    <td style="font-weight: 700; font-size: 14px;">{{ $item->description }}</td>
-                    <td>
+                    <td data-val="{{ $item->description }}" style="font-weight: 700; font-size: 14px;">{{ $item->description }}</td>
+                    <td data-val="{{ $item->account->name }}">
                         <span class="badge badge-{{ $item->account->type }}">{{ $item->account->name }}</span>
                     </td>
-                    <td>
+                    <td data-val="{{ $item->category?->name ?? '' }}">
                         @if($item->category)
                             <span style="font-size: 12px; color: var(--muted);">{{ $item->category->name }}</span>
                         @else
                             <span style="color: var(--border);">—</span>
                         @endif
                     </td>
-                    <td style="font-size: 13px; color: var(--muted);">
+                    <td data-val="{{ $item->day_of_month ?? 0 }}" style="font-size: 13px; color: var(--muted);">
                         {{ $item->day_of_month ? 'día ' . $item->day_of_month : '—' }}
                     </td>
-                    <td>
+                    <td data-val="{{ $item->currency }}">
                         <span class="badge" style="background: var(--surface2); color: var(--muted);">{{ $item->currency }}</span>
                     </td>
-                    <td>
+                    <td data-val="{{ $item->is_active ? 'Activo' : 'Pausado' }}">
                         <form method="POST" action="{{ route('payment-items.toggle', $item) }}" style="display:inline;">
                             @csrf
                             <button type="submit"
@@ -103,5 +103,7 @@
         </table>
     </div>
 @endif
+
+<script>initTableSort('payment-items-table');</script>
 
 @endsection
