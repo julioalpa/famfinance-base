@@ -66,7 +66,9 @@ class TransactionService
 
     /**
      * Genera los registros de cuotas para una transacción en cuotas.
-     * La fecha de la primera cuota es el mes siguiente a la fecha de compra.
+     * La cuota 1 cae en el mes del resumen al que pertenece la compra:
+     * si se compró antes del cierre, en el mes de la compra; si fue después,
+     * en el mes siguiente.
      */
     private function generateInstallments(Transaction $transaction): void
     {
@@ -75,9 +77,8 @@ class TransactionService
         // Día de cierre de la tarjeta (default 1 si no está configurado)
         $closingDay = $account->closing_day ?? 1;
 
-        // Si la compra se hizo después del cierre, la primera cuota es en 2 meses
         $purchaseDay  = $transaction->date->day;
-        $startDate    = $transaction->date->copy()->startOfMonth()->addMonth();
+        $startDate    = $transaction->date->copy()->startOfMonth();
 
         if ($purchaseDay > $closingDay) {
             $startDate->addMonth();

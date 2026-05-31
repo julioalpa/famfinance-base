@@ -9,8 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() === 'mysql') {
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
             DB::statement("ALTER TABLE accounts MODIFY COLUMN type ENUM('cash','digital','credit','loan') NOT NULL");
+        } elseif ($driver === 'sqlite') {
+            // SQLite enforces type values at the application layer; no constraint change needed.
         } else {
             DB::statement("ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_type_check");
             DB::statement("ALTER TABLE accounts ADD CONSTRAINT accounts_type_check CHECK (type IN ('cash','digital','credit','loan'))");

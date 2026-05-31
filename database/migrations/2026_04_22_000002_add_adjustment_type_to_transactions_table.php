@@ -9,8 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() === 'mysql') {
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
             DB::statement("ALTER TABLE transactions MODIFY COLUMN type ENUM('income','expense','transfer','adjustment') NOT NULL");
+        } elseif ($driver === 'sqlite') {
+            // SQLite enforces type values at the application layer; no constraint change needed.
         } else {
             DB::statement("ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_type_check");
             DB::statement("ALTER TABLE transactions ADD CONSTRAINT transactions_type_check CHECK (type IN ('income','expense','transfer','adjustment'))");
@@ -27,8 +30,11 @@ return new class extends Migration
             $table->dropColumn('adjustment_direction');
         });
 
-        if (DB::getDriverName() === 'mysql') {
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
             DB::statement("ALTER TABLE transactions MODIFY COLUMN type ENUM('income','expense','transfer') NOT NULL");
+        } elseif ($driver === 'sqlite') {
+            // No constraint to revert in SQLite.
         } else {
             DB::statement("ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_type_check");
             DB::statement("ALTER TABLE transactions ADD CONSTRAINT transactions_type_check CHECK (type IN ('income','expense','transfer'))");

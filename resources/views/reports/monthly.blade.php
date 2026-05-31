@@ -1489,106 +1489,120 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════
-     5. RECURRENTES + CUOTAS
+     4b. POR GRUPO DE ETIQUETAS
+     ═══════════════════════════════════════════════════════════════════════ --}}
+@if($tagGroupStats->isNotEmpty() || $noGroupTotal > 0)
+<div class="report-section">
+    <div class="section-header">
+        <span class="section-label">Por grupo de etiquetas</span>
+        <span style="font-size:10px;color:var(--muted);font-weight:600;">% sobre total etiquetado del mes</span>
+        <div class="section-line"></div>
+        <a href="{{ route('tags.index') }}" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:700;white-space:nowrap;">Gestionar →</a>
+    </div>
+
+    <div class="panel-card">
+        @foreach($tagGroupStats as $tg)
+        <div class="tag-row">
+            <div class="tag-dot" style="background:{{ $tg['color'] }};border-radius:3px;"></div>
+            <div class="tag-body">
+                <div class="tag-name">
+                    {{ $tg['name'] }}
+                    <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $tg['count'] }} mov.</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px;">
+                    @foreach($tg['tags'] as $t)
+                        <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:10px;font-size:9.5px;font-weight:700;background:{{ $t['color'] }}22;color:{{ $t['color'] }};border:1px solid {{ $t['color'] }}44;">
+                            <span style="width:5px;height:5px;border-radius:50%;background:{{ $t['color'] }};"></span>
+                            {{ $t['name'] }}
+                        </span>
+                    @endforeach
+                </div>
+                <div class="tag-bar-track">
+                    <div class="tag-bar-fill" style="width:{{ min($tg['pct'], 100) }}%;background:{{ $tg['color'] }};"></div>
+                </div>
+            </div>
+            <div class="tag-right">
+                <div class="tag-expense">
+                    @if($tg['expense'] > 0)
+                        $ {{ number_format($tg['expense'], 0, ',', '.') }}
+                    @else
+                        <span style="color:var(--muted);">—</span>
+                    @endif
+                </div>
+                @if($tg['income'] > 0)
+                    <div class="tag-income">+$ {{ number_format($tg['income'], 0, ',', '.') }}</div>
+                @endif
+                <div class="tag-pct">{{ $tg['pct'] }}% del etiquetado</div>
+            </div>
+        </div>
+        @endforeach
+
+        @if($noGroupTotal > 0)
+        <div class="tag-row" style="opacity:0.65;">
+            <div class="tag-dot" style="background:var(--muted);border-radius:3px;"></div>
+            <div class="tag-body">
+                <div class="tag-name" style="color:var(--muted);">
+                    Sin grupo
+                    <span style="font-size:10px;color:var(--muted);font-weight:600;">etiquetas sin grupo asignado</span>
+                </div>
+                <div class="tag-bar-track">
+                    <div class="tag-bar-fill" style="width:{{ min($noGroupPct, 100) }}%;background:var(--muted);"></div>
+                </div>
+            </div>
+            <div class="tag-right">
+                <div class="tag-expense" style="color:var(--muted);">$ {{ number_format($noGroupTotal, 0, ',', '.') }}</div>
+                <div class="tag-pct">{{ $noGroupPct }}% del etiquetado</div>
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     5. CUOTAS DEL MES
      ═══════════════════════════════════════════════════════════════════════ --}}
 <div class="report-section">
     <div class="section-header">
-        <span class="section-label">Compromisos del mes</span>
+        <span class="section-label">Cuotas del mes</span>
         <div class="section-line"></div>
     </div>
 
-    <div class="two-col">
-        {{-- Recurrentes --}}
-        <div class="panel-card">
-            <div class="panel-title">Gastos recurrentes</div>
-            @php $totalRec = $allRecurring->count(); $paidRec = $confirmedRecurring->count(); @endphp
-            <div class="panel-subtitle">{{ $paidRec }} de {{ $totalRec }} confirmados este mes</div>
+    <div class="panel-card">
+        <div class="panel-title">Cuotas</div>
+        <div class="panel-subtitle">{{ $installments->count() }} cuota{{ $installments->count() !== 1 ? 's' : '' }} este mes</div>
 
-            @if($totalRec > 0)
-            <div class="rec-progress-row">
-                <div class="rec-progress-bar">
-                    <div class="rec-progress-fill" style="width:{{ $totalRec > 0 ? round($paidRec/$totalRec*100) : 0 }}%;"></div>
-                </div>
-                <span class="rec-counter">{{ $totalRec > 0 ? round($paidRec/$totalRec*100) : 0 }}%</span>
+        @if($installments->isNotEmpty())
+        <div style="display:flex;gap:20px;margin-bottom:14px;flex-wrap:wrap;">
+            <div>
+                <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:3px;">Total</div>
+                <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--expense);">$ {{ number_format($installmentTotal, 0, ',', '.') }}</div>
             </div>
-            @endif
-
-            @foreach($confirmedRecurring as $r)
-            <div class="rec-item-v2">
-                <div class="rec-dot confirmed"></div>
-                <div class="rec-name-v2">{{ $r->description }}</div>
-                <span class="rec-status-badge s-confirmed">Ok</span>
-                <div class="rec-amount-v2 amount-expense">{{ $r->currency }} $ {{ number_format($r->amount, 0, ',', '.') }}</div>
+            <div>
+                <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:3px;">Pagadas</div>
+                <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--income);">$ {{ number_format($paidInstallmentTotal, 0, ',', '.') }}</div>
             </div>
-            @endforeach
-
-            @foreach($skippedRecurring as $r)
-            <div class="rec-item-v2">
-                <div class="rec-dot skipped"></div>
-                <div class="rec-name-v2">{{ $r->description }}</div>
-                <span class="rec-status-badge s-skipped">Omitido</span>
-                <div class="rec-amount-v2" style="color:var(--muted);">{{ $r->currency }} $ {{ number_format($r->amount, 0, ',', '.') }}</div>
+            <div>
+                <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:3px;">Pendiente</div>
+                <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--warn);">$ {{ number_format($installmentTotal - $paidInstallmentTotal, 0, ',', '.') }}</div>
             </div>
-            @endforeach
-
-            @foreach($pendingRecurring as $r)
-            <div class="rec-item-v2">
-                <div class="rec-dot pending"></div>
-                <div class="rec-name-v2">{{ $r->description }}</div>
-                <span class="rec-status-badge s-pending">Pendiente</span>
-                <div class="rec-amount-v2" style="color:var(--muted);">{{ $r->currency }} $ {{ number_format($r->amount, 0, ',', '.') }}</div>
-            </div>
-            @endforeach
-
-            @if($allRecurring->isEmpty())
-                <div class="empty-state">Sin gastos recurrentes activos</div>
-            @endif
-
-            @if($confirmedRecurringTotal > 0)
-            <div class="panel-total-row">
-                <span class="panel-total-label">Total confirmados</span>
-                <span class="panel-total-val amount-expense">$ {{ number_format($confirmedRecurringTotal, 0, ',', '.') }}</span>
-            </div>
-            @endif
         </div>
 
-        {{-- Cuotas --}}
-        <div class="panel-card">
-            <div class="panel-title">Cuotas</div>
-            <div class="panel-subtitle">{{ $installments->count() }} cuota{{ $installments->count() !== 1 ? 's' : '' }} este mes</div>
-
-            @if($installments->isNotEmpty())
-            <div style="display:flex;gap:20px;margin-bottom:14px;flex-wrap:wrap;">
-                <div>
-                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:3px;">Total</div>
-                    <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--expense);">$ {{ number_format($installmentTotal, 0, ',', '.') }}</div>
+        <div style="max-height:320px;overflow-y:auto;">
+            @foreach($installments as $inst)
+            <div class="inst-mini-row">
+                <div class="inst-paid-dot" style="background:{{ $inst->is_paid ? 'var(--income)' : 'var(--warn)' }};"></div>
+                <div style="flex:1;min-width:0;">
+                    <div class="inst-name">{{ $inst->transaction?->description ?? 'Sin descripción' }}</div>
+                    <div class="inst-sub">{{ $inst->account?->name }} · {{ $inst->installment_number }}/{{ $inst->transaction?->installments_count ?? '?' }}</div>
                 </div>
-                <div>
-                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:3px;">Pagadas</div>
-                    <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--income);">$ {{ number_format($paidInstallmentTotal, 0, ',', '.') }}</div>
-                </div>
-                <div>
-                    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:3px;">Pendiente</div>
-                    <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--warn);">$ {{ number_format($installmentTotal - $paidInstallmentTotal, 0, ',', '.') }}</div>
-                </div>
+                <div class="inst-amount" style="color:{{ $inst->is_paid ? 'var(--muted)' : 'var(--expense)' }};">$ {{ number_format($inst->amount, 0, ',', '.') }}</div>
             </div>
-
-            <div style="max-height:220px;overflow-y:auto;">
-                @foreach($installments as $inst)
-                <div class="inst-mini-row">
-                    <div class="inst-paid-dot" style="background:{{ $inst->is_paid ? 'var(--income)' : 'var(--warn)' }};"></div>
-                    <div style="flex:1;min-width:0;">
-                        <div class="inst-name">{{ $inst->transaction?->description ?? 'Sin descripción' }}</div>
-                        <div class="inst-sub">{{ $inst->account?->name }} · {{ $inst->installment_number }}/{{ $inst->transaction?->installments_count ?? '?' }}</div>
-                    </div>
-                    <div class="inst-amount" style="color:{{ $inst->is_paid ? 'var(--muted)' : 'var(--expense)' }};">$ {{ number_format($inst->amount, 0, ',', '.') }}</div>
-                </div>
-                @endforeach
-            </div>
-            @else
-                <div class="empty-state">Sin cuotas este mes</div>
-            @endif
+            @endforeach
         </div>
+        @else
+            <div class="empty-state">Sin cuotas este mes</div>
+        @endif
     </div>
 </div>
 
@@ -1818,7 +1832,7 @@
             <div class="forecast-kpi">
                 <div class="fkpi-label">Total proyectado</div>
                 <div class="fkpi-val" style="color:var(--warn);">$ {{ number_format($forecast['projected_total'], 0, ',', '.') }}</div>
-                <div class="fkpi-sub">incl. recurrentes y cuotas</div>
+                <div class="fkpi-sub">incl. gastos fijos y cuotas</div>
             </div>
         </div>
 
@@ -1832,10 +1846,10 @@
                 <span class="fcast-label">Gasto proyectado resto del mes</span>
                 <span class="fcast-val" style="color:var(--muted);">+ $ {{ number_format($forecast['projected_expense'] - $totalExpense, 0, ',', '.') }}</span>
             </div>
-            @if($forecast['pending_recurring'] > 0)
+            @if($forecast['pending_payments'] > 0)
             <div class="fcast-row">
-                <span class="fcast-label">Recurrentes pendientes</span>
-                <span class="fcast-val" style="color:var(--warn);">+ $ {{ number_format($forecast['pending_recurring'], 0, ',', '.') }}</span>
+                <span class="fcast-label">Gastos fijos pendientes</span>
+                <span class="fcast-val" style="color:var(--warn);">+ $ {{ number_format($forecast['pending_payments'], 0, ',', '.') }}</span>
             </div>
             @endif
             @if($forecast['pending_installments'] > 0)

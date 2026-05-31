@@ -148,7 +148,9 @@
             d.onclick = () => {
                 if (isSel) sel.delete(t.id); else sel.add(t.id);
                 render();
-                actions.close();
+                const searchEl = document.getElementById(CID + '-search');
+                searchEl.value = '';
+                filterList('');
             };
             listEl.appendChild(d);
         });

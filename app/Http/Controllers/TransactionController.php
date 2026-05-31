@@ -255,6 +255,35 @@ class TransactionController extends Controller
             ->with('success', 'Movimiento eliminado.');
     }
 
+    public function syncTags(Request $request, Transaction $transaction): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeTransaction($transaction);
+
+        $request->validate([
+            'tags'   => ['array'],
+            'tags.*' => ['integer'],
+        ]);
+
+        $groupId = session('active_family_group_id');
+        $tagIds  = collect($request->input('tags', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0);
+
+        $validIds = Tag::where('family_group_id', $groupId)
+            ->whereIn('id', $tagIds)
+            ->pluck('id');
+
+        $transaction->tags()->sync($validIds);
+
+        return response()->json([
+            'tags' => $transaction->fresh()->tags->map(fn ($t) => [
+                'id'    => $t->id,
+                'name'  => $t->name,
+                'color' => $t->color,
+            ]),
+        ]);
+    }
+
     private function authorizeTransaction(Transaction $transaction): void
     {
         $groupId = session('active_family_group_id');

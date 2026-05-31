@@ -90,7 +90,7 @@ class LoanController extends Controller
         ]);
 
         $groupId      = session('active_family_group_id');
-        $loanAccount  = $installment->account;
+        $loanAccount  = $installment->account()->withTrashed()->first();
         $totalCount   = LoanInstallment::where('account_id', $installment->account_id)->count();
 
         Account::where('id', $validated['source_account_id'])
@@ -156,6 +156,7 @@ class LoanController extends Controller
     private function authorizeLoanInstallment(LoanInstallment $installment): void
     {
         $groupId = session('active_family_group_id');
-        abort_if((int) $installment->family_group_id !== (int) $groupId, 403);
+        $account = $installment->account()->withTrashed()->first();
+        abort_if(is_null($account) || (int) $account->family_group_id !== (int) $groupId, 403);
     }
 }

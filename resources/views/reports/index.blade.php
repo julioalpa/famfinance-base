@@ -229,6 +229,110 @@
 
 </div>
 
+{{-- ── Row 3b: Gastos por grupo de etiquetas ───────────────────────────────── --}}
+@if($tagGroupStats->isNotEmpty())
+<div style="margin-bottom:20px;">
+    <div class="card" style="padding:0; overflow:hidden;">
+        <div style="padding:20px 24px 16px; border-bottom:1px solid var(--border);
+                    display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div>
+                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gastos por grupo</h2>
+                <div style="font-size:12px; color:var(--muted); margin-top:2px;">
+                    Últimos {{ $months }} meses · % sobre total etiquetado
+                    @if($tagGroupStats->sum('pct') > 105)
+                        <span style="color:var(--warn); margin-left:6px;" title="Una transacción puede pertenecer a varios grupos simultáneamente">
+                            · puede superar 100% por etiquetas en múltiples grupos
+                        </span>
+                    @endif
+                </div>
+            </div>
+            <a href="{{ route('tags.index') }}" style="font-size:12px; color:var(--accent); text-decoration:none; font-weight:600;">
+                Gestionar grupos →
+            </a>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Etiquetas</th>
+                    <th style="text-align:right;">Egresos</th>
+                    <th style="text-align:center;">Movimientos</th>
+                    <th style="width:160px;">% del total etiquetado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($tagGroupStats as $tg)
+                <tr>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:9px;">
+                            <div style="width:12px; height:12px; border-radius:3px; background:{{ $tg['color'] }}; flex-shrink:0;"></div>
+                            <span style="font-weight:700; font-size:13px;">{{ $tg['name'] }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                            @forelse($tg['tags'] as $t)
+                                <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px 2px 6px;
+                                             border-radius:12px;font-size:10px;font-weight:700;
+                                             background:{{ $t['color'] }}22;color:{{ $t['color'] }};
+                                             border:1px solid {{ $t['color'] }}44;">
+                                    <span style="width:5px;height:5px;border-radius:50%;background:{{ $t['color'] }};"></span>
+                                    {{ $t['name'] }}
+                                </span>
+                            @empty
+                                <span style="font-size:11px;color:var(--muted);">Sin etiquetas asignadas</span>
+                            @endforelse
+                        </div>
+                    </td>
+                    <td style="text-align:right; font-weight:800; color:var(--expense); white-space:nowrap; font-family:'Bricolage Grotesque',sans-serif;">
+                        @if($tg['expense'] > 0)
+                            $ {{ number_format($tg['expense'], 0, ',', '.') }}
+                        @else
+                            <span style="color:var(--muted); font-weight:400;">—</span>
+                        @endif
+                    </td>
+                    <td style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tg['count'] }}</td>
+                    <td style="padding-right:20px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+                                <div style="height:100%; width:{{ min($tg['pct'], 100) }}%; background:{{ $tg['color'] }}; border-radius:3px; transition:width 0.6s ease;"></div>
+                            </div>
+                            <span style="font-size:11px; color:var(--muted); font-weight:700; min-width:38px; text-align:right;">{{ $tg['pct'] }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+
+                @if($noGroupTotal > 0)
+                <tr style="opacity:0.65;">
+                    <td>
+                        <div style="display:flex; align-items:center; gap:9px;">
+                            <div style="width:12px; height:12px; border-radius:3px; background:var(--muted); flex-shrink:0;"></div>
+                            <span style="font-weight:600; font-size:13px; color:var(--muted);">Sin grupo</span>
+                        </div>
+                    </td>
+                    <td><span style="font-size:11px; color:var(--muted);">Etiquetas sin grupo asignado</span></td>
+                    <td style="text-align:right; font-weight:700; white-space:nowrap; font-family:'Bricolage Grotesque',sans-serif; color:var(--muted);">
+                        $ {{ number_format($noGroupTotal, 0, ',', '.') }}
+                    </td>
+                    <td></td>
+                    <td style="padding-right:20px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+                                <div style="height:100%; width:{{ min($noGroupPct, 100) }}%; background:var(--muted); border-radius:3px;"></div>
+                            </div>
+                            <span style="font-size:11px; color:var(--muted); font-weight:700; min-width:38px; text-align:right;">{{ $noGroupPct }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                @endif
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 {{-- ── Row 3b: Gastos por etiqueta ────────────────────────────────────────── --}}
 @if($tagStats->isNotEmpty())
 <div style="margin-bottom:20px;">

@@ -8,6 +8,7 @@ use App\Models\Installment;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
 use App\Models\Tag;
+use App\Models\TagGroup;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,7 @@ class ReportController extends Controller
         $months = (int) $request->get('months', 6);
         $months = in_array($months, [3, 6, 12]) ? $months : 6;
 
-        $startDate    = now()->subMonths($months - 1)->startOfMonth();
+        $startDate    = now()->startOfMonth()->subMonths($months - 1);
         $exchangeRate = $group->latestExchangeRate();
 
         // ── Monthly income/expense (split por moneda para convertir USD→ARS) ──
@@ -34,7 +35,7 @@ class ReportController extends Controller
 
         $monthlyData = [];
         for ($i = $months - 1; $i >= 0; $i--) {
-            $date  = now()->subMonths($i)->startOfMonth();
+            $date  = now()->startOfMonth()->subMonths($i);
             $key   = $date->format('Y-n');
             $monthlyData[$key] = [
                 'label'   => ucfirst($date->locale('es')->isoFormat('MMM YY')),
@@ -126,7 +127,7 @@ class ReportController extends Controller
         // ── Historial de ítems de pago (pendientes) ───────────────────────────
         $monthKeys = [];
         for ($i = $months - 1; $i >= 0; $i--) {
-            $d = now()->subMonths($i)->startOfMonth();
+            $d = now()->startOfMonth()->subMonths($i);
             $monthKeys[] = [
                 'key'   => "{$d->year}-{$d->month}",
                 'label' => ucfirst($d->locale('es')->isoFormat('MMM YY')),
@@ -205,6 +206,57 @@ class ReportController extends Controller
             ]);
         }
 
+        // ── Gastos por grupo de etiquetas ────────────────────────────────────────
+        // Cargar todas las transacciones etiquetadas del período para evitar N+1
+        $taggedExpenses = Transaction::where('family_group_id', $groupId)
+            ->where('date', '>=', $startDate)
+            ->whereIn('type', ['expense', 'income'])
+            ->whereHas('tags')
+            ->with('tags')
+            ->get();
+
+        // Total etiquetado base (transacciones únicas con al menos una tag)
+        $totalTaggedExpenseBase = $taggedExpenses
+            ->where('type', 'expense')
+            ->sum(fn ($t) => $t->amountInArs($exchangeRate));
+
+        // Tag IDs de grupos existentes
+        $groupsRaw = TagGroup::where('family_group_id', $groupId)
+            ->with('tags')
+            ->orderBy('name')
+            ->get();
+
+        $tagGroupStats = $groupsRaw->map(function ($tg) use ($taggedExpenses, $totalTaggedExpenseBase, $exchangeRate) {
+            $tagIds  = $tg->tags->pluck('id')->all();
+            // Transacciones que tienen al menos una tag del grupo
+            $matched = $taggedExpenses->filter(
+                fn ($tx) => $tx->tags->pluck('id')->intersect($tagIds)->isNotEmpty()
+            );
+            $expense = round($matched->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+            $income  = round($matched->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+            $pct     = $totalTaggedExpenseBase > 0
+                ? round($expense / $totalTaggedExpenseBase * 100, 1)
+                : 0;
+            return [
+                'id'      => $tg->id,
+                'name'    => $tg->name,
+                'color'   => $tg->color,
+                'tags'    => $tg->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color]),
+                'expense' => $expense,
+                'income'  => $income,
+                'count'   => $matched->count(),
+                'pct'     => $pct,
+            ];
+        })->sortByDesc('expense')->values();
+
+        // "Sin grupo": transacciones cuyas tags no pertenecen a ningún grupo del grupo familiar
+        $allGroupedTagIds = $groupsRaw->flatMap(fn ($tg) => $tg->tags->pluck('id'))->unique()->all();
+        $noGroupExpenses  = $taggedExpenses->filter(function ($tx) use ($allGroupedTagIds) {
+            return $tx->tags->pluck('id')->intersect($allGroupedTagIds)->isEmpty();
+        });
+        $noGroupTotal = round($noGroupExpenses->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+        $noGroupPct   = $totalTaggedExpenseBase > 0 ? round($noGroupTotal / $totalTaggedExpenseBase * 100, 1) : 0;
+
         // ── Gastos por etiqueta ──────────────────────────────────────────────────
         $tagStats = Tag::where('family_group_id', $groupId)
             ->with(['transactions' => function ($q) use ($startDate, $groupId) {
@@ -230,6 +282,10 @@ class ReportController extends Controller
             ->values();
 
         return view('reports.index', compact(
+            'tagGroupStats',
+            'noGroupTotal',
+            'noGroupPct',
+            'totalTaggedExpenseBase',
             'monthlyData',
             'months',
             'avgIncome',

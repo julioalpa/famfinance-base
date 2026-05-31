@@ -16,6 +16,7 @@ use App\Http\Controllers\MonthlyReportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\TagGroupController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -65,7 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/prestamos/{account}/plan',                        [LoanController::class, 'setup'])->name('loans.setup');
         Route::post('/prestamos/{account}/plan',                       [LoanController::class, 'storeSchedule'])->name('loans.store-schedule');
         Route::delete('/prestamos/{account}/plan',                     [LoanController::class, 'destroySchedule'])->name('loans.destroy-schedule');
-        Route::post('/prestamos/cuotas/{loanInstallment}/pagar',       [LoanController::class, 'pay'])->name('loans.pay');
+        Route::post('/prestamos/cuotas/{installment}/pagar',           [LoanController::class, 'pay'])->name('loans.pay');
 
         // Cuentas
         Route::post('/cuentas/{account}/ajustar', [AccountController::class, 'adjust'])->name('accounts.adjust');
@@ -82,6 +83,9 @@ Route::middleware('auth')->group(function () {
         // Pago de tarjeta (antes del resource para no colisionar con /{transaction})
         Route::get('/movimientos/pago-tarjeta',  [CardPaymentController::class, 'create'])->name('card-payment.create');
         Route::post('/movimientos/pago-tarjeta', [CardPaymentController::class, 'store'])->name('card-payment.store');
+
+        // Sync tags desde la lista de movimientos (inline picker)
+        Route::patch('/movimientos/{transaction}/etiquetas', [TransactionController::class, 'syncTags'])->name('transactions.sync-tags');
 
         // Movimientos (gastos e ingresos)
         Route::resource('movimientos', TransactionController::class)->names([
@@ -144,6 +148,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/etiquetas',         [TagController::class, 'store'])->name('tags.store');
         Route::put('/etiquetas/{tag}',    [TagController::class, 'update'])->name('tags.update');
         Route::delete('/etiquetas/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
+
+        // Grupos de etiquetas
+        Route::post('/etiquetas/grupos',                        [TagGroupController::class, 'store'])->name('tag-groups.store');
+        Route::put('/etiquetas/grupos/{tagGroup}',              [TagGroupController::class, 'update'])->name('tag-groups.update');
+        Route::delete('/etiquetas/grupos/{tagGroup}',           [TagGroupController::class, 'destroy'])->name('tag-groups.destroy');
+        Route::patch('/etiquetas/grupos/{tagGroup}/etiquetas',  [TagGroupController::class, 'syncTags'])->name('tag-groups.sync-tags');
 
         // Ítems de pendientes (plantillas)
         Route::post('/pendientes-items/{paymentItem}/toggle',  [PaymentItemController::class, 'toggle'])->name('payment-items.toggle');

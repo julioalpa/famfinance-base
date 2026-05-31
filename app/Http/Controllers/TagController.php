@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tag;
+use App\Models\TagGroup;
 use Illuminate\Http\Request;
 
 class TagController extends Controller
@@ -30,7 +31,12 @@ class TagController extends Controller
             $tag->percentage = $grandTotal > 0 ? round($tag->total_amount / $grandTotal * 100, 1) : 0;
         });
 
-        return view('tags.index', compact('tags', 'grandTotal'));
+        $tagGroups = TagGroup::where('family_group_id', $groupId)
+            ->with('tags')
+            ->orderBy('name')
+            ->get();
+
+        return view('tags.index', compact('tags', 'grandTotal', 'tagGroups'));
     }
 
     public function store(Request $request)

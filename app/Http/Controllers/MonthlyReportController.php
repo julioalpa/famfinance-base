@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ExchangeRate;
 use App\Models\Installment;
 use App\Models\PaymentItem;
-use App\Models\RecurringExpense;
 use App\Models\Tag;
+use App\Models\TagGroup;
 use App\Models\Transaction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -62,7 +61,7 @@ class MonthlyReportController extends Controller
         $transactions = Transaction::where('family_group_id', $groupId)
             ->whereBetween('date', [$date->toDateString(), $endDate->toDateString()])
             ->whereIn('type', ['income', 'expense'])
-            ->with(['category', 'user'])
+            ->with(['category', 'user', 'tags'])
             ->get();
 
         $expenseTransactions = $transactions->where('type', 'expense');
@@ -202,25 +201,6 @@ class MonthlyReportController extends Controller
             ->sortByDesc('total')
             ->values();
 
-        // ── Gastos recurrentes del mes ────────────────────────────────────────
-        $allRecurring = RecurringExpense::where('family_group_id', $groupId)
-            ->where('is_active', true)
-            ->with(['logs' => fn ($q) => $q->where('month', $date->month)->where('year', $date->year), 'category'])
-            ->get();
-
-        $confirmedRecurring = $allRecurring->filter(
-            fn ($r) => $r->logForMonth($date->month, $date->year)?->isConfirmed()
-        );
-        $skippedRecurring = $allRecurring->filter(
-            fn ($r) => $r->logForMonth($date->month, $date->year)?->isSkipped()
-        );
-        $pendingRecurring = $allRecurring->filter(
-            fn ($r) => $r->logForMonth($date->month, $date->year) === null
-        );
-
-        $confirmedRecurringTotal = round($confirmedRecurring->sum(fn ($r) => $this->recurringAmountInArs($r, $exchangeRate)), 2);
-        $pendingRecurringTotal   = round($pendingRecurring->sum(fn ($r) => $this->recurringAmountInArs($r, $exchangeRate)), 2);
-
         // ── Cuotas del mes ────────────────────────────────────────────────────
         $installments = Installment::with(['transaction', 'account'])
             ->whereHas('account', fn ($q) => $q->where('family_group_id', $groupId))
@@ -280,6 +260,18 @@ class MonthlyReportController extends Controller
         $pendingPaymentsItems = $paymentItemsWithStatus->where('is_paid', false)->values();
         $paidPaymentsTotal    = round($paidPaymentsItems->sum('amount_ars'), 2);
 
+        // Pendientes proyectados: usa monto del MonthlyPayment si existe, si no el del PaymentItem
+        $pendingPaymentsTotal = round($pendingPaymentsItems->sum(function ($e) use ($exchangeRate) {
+            if ($e['amount_ars'] !== null) {
+                return $e['amount_ars'];
+            }
+            $baseAmt = (float) ($e['item']->amount ?? 0);
+            if ($baseAmt > 0 && $e['item']->currency === 'USD' && $exchangeRate) {
+                return $exchangeRate->convert($baseAmt, 'USD');
+            }
+            return $baseAmt;
+        }), 2);
+
         // ── Prescindibles / oportunidades de ahorro ───────────────────────────
         $dispensableItemsStatus = $paymentItemsWithStatus
             ->filter(fn ($e) => $e['item']->is_dispensable)
@@ -319,6 +311,47 @@ class MonthlyReportController extends Controller
             ->filter(fn ($t) => $t['expense'] > 0 || $t['income'] > 0)
             ->sortByDesc('expense')
             ->values();
+
+        // ── Gastos por grupo de etiquetas (mes) ──────────────────────────────
+        $taggedExpenses = $transactions->filter(fn ($t) => $t->tags->isNotEmpty());
+
+        $totalTaggedExpenseBase = $taggedExpenses
+            ->where('type', 'expense')
+            ->sum(fn ($t) => $t->amountInArs($exchangeRate));
+
+        $groupsRaw = TagGroup::where('family_group_id', $groupId)
+            ->with('tags')
+            ->orderBy('name')
+            ->get();
+
+        $tagGroupStats = $groupsRaw->map(function ($tg) use ($taggedExpenses, $totalTaggedExpenseBase, $exchangeRate) {
+            $tagIds  = $tg->tags->pluck('id')->all();
+            $matched = $taggedExpenses->filter(
+                fn ($tx) => $tx->tags->pluck('id')->intersect($tagIds)->isNotEmpty()
+            );
+            $expense = round($matched->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+            $income  = round($matched->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+            $pct     = $totalTaggedExpenseBase > 0
+                ? round($expense / $totalTaggedExpenseBase * 100, 1)
+                : 0;
+            return [
+                'id'      => $tg->id,
+                'name'    => $tg->name,
+                'color'   => $tg->color,
+                'tags'    => $tg->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color]),
+                'expense' => $expense,
+                'income'  => $income,
+                'count'   => $matched->count(),
+                'pct'     => $pct,
+            ];
+        })->sortByDesc('expense')->values();
+
+        $allGroupedTagIds = $groupsRaw->flatMap(fn ($tg) => $tg->tags->pluck('id'))->unique()->all();
+        $noGroupExpenses  = $taggedExpenses->filter(function ($tx) use ($allGroupedTagIds) {
+            return $tx->tags->pluck('id')->intersect($allGroupedTagIds)->isEmpty();
+        });
+        $noGroupTotal = round($noGroupExpenses->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+        $noGroupPct   = $totalTaggedExpenseBase > 0 ? round($noGroupTotal / $totalTaggedExpenseBase * 100, 1) : 0;
 
         // ── Cuentas ───────────────────────────────────────────────────────────
         $allAccounts      = $group->accounts()->where('is_active', true)->get();
@@ -376,7 +409,7 @@ class MonthlyReportController extends Controller
                 return $amt;
             }), 2);
 
-            $projectedTotal   = $projectedExpense + $pendingRecurringTotal + $pendingInstTotal;
+            $projectedTotal   = $projectedExpense + $pendingPaymentsTotal + $pendingInstTotal;
             $projectedBalance = $avgIncome - $projectedTotal;
 
             $forecast = [
@@ -385,7 +418,7 @@ class MonthlyReportController extends Controller
                 'days_in_month'        => $daysInMonth,
                 'daily_avg'            => round($dailyAvgSpend, 2),
                 'projected_expense'    => $projectedExpense,
-                'pending_recurring'    => $pendingRecurringTotal,
+                'pending_payments'     => $pendingPaymentsTotal,
                 'pending_installments' => $pendingInstTotal,
                 'projected_total'      => $projectedTotal,
                 'avg_income'           => $avgIncome,
@@ -432,13 +465,6 @@ class MonthlyReportController extends Controller
             'avoidableCount',
             'avoidableScore',
             'avoidableByCategory',
-            // Recurrentes
-            'allRecurring',
-            'confirmedRecurring',
-            'skippedRecurring',
-            'pendingRecurring',
-            'confirmedRecurringTotal',
-            'pendingRecurringTotal',
             // Cuotas
             'installments',
             'installmentTotal',
@@ -448,11 +474,16 @@ class MonthlyReportController extends Controller
             'paidPaymentsItems',
             'pendingPaymentsItems',
             'paidPaymentsTotal',
+            'pendingPaymentsTotal',
             // Prescindibles
             'dispensableItemsStatus',
             'dispensableTotal',
             // Etiquetas
             'tagStats',
+            'tagGroupStats',
+            'noGroupTotal',
+            'noGroupPct',
+            'totalTaggedExpenseBase',
             // Cuentas
             'allAccounts',
             'totalAssets',
@@ -465,12 +496,4 @@ class MonthlyReportController extends Controller
         );
     }
 
-    private function recurringAmountInArs(RecurringExpense $r, ?ExchangeRate $rate): float
-    {
-        $amt = (float) $r->amount;
-        if ($r->currency === 'USD' && $rate) {
-            return $rate->convert($amt, 'USD');
-        }
-        return $amt;
-    }
 }

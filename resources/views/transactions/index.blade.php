@@ -121,6 +121,54 @@
     text-decoration: none;
 }
 .filter-chip-x { font-size: 13px; line-height: 1; opacity: 0.7; }
+
+/* ── Inline tag trigger (desktop table) ──────────────────────────── */
+.itag-trigger {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 5px;
+    border: 1px dashed rgba(255,255,255,0.14);
+    background: none; color: var(--muted);
+    cursor: pointer; flex-shrink: 0; padding: 0;
+    vertical-align: middle; margin-left: 4px;
+    transition: border-color 0.15s, color 0.15s, background 0.15s, opacity 0.15s;
+    opacity: 0;
+}
+.tx-desktop-table tr:hover .itag-trigger { opacity: 1; }
+.itag-trigger:hover {
+    border-color: rgba(240,160,48,0.5);
+    color: var(--accent);
+    background: rgba(240,160,48,0.08);
+}
+.itag-trigger[data-state="saving"] { opacity: 0.6; animation: itag-spin 0.7s linear infinite; }
+.itag-trigger[data-state="saved"]  { border-color: var(--income); color: var(--income); background: rgba(45,216,112,0.08); opacity: 1; }
+.itag-trigger[data-state="error"]  { border-color: var(--danger);  color: var(--danger);  opacity: 1; }
+@keyframes itag-spin { to { transform: rotate(360deg); } }
+
+/* ── Inline tag popover (fixed, appended to body) ────────────────── */
+.itag-pop {
+    position: fixed;
+    z-index: 9999;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 260px;
+    padding: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+}
+
+/* ── Mobile tag button ───────────────────────────────────────────── */
+.itag-mobile-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    min-height: 30px; padding: 0 8px; border-radius: 6px;
+    background: none; border: none;
+    color: var(--muted); font-size: 11px; cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    transition: background 0.15s, color 0.15s;
+}
+.itag-mobile-btn:hover, .itag-mobile-btn:active { color: var(--accent); background: rgba(240,160,48,0.08); }
+.itag-mobile-btn[data-state="saving"] { animation: itag-spin 0.7s linear infinite; opacity: 0.6; }
+.itag-mobile-btn[data-state="saved"]  { color: var(--income); }
+.itag-mobile-btn[data-state="error"]  { color: var(--danger); }
 </style>
 
 @php
@@ -338,15 +386,28 @@
                             @if($tx->has_installments)
                                 <span class="badge badge-credit" style="margin-left: 6px; font-size: 10px;">{{ $tx->installments_count }} cuotas</span>
                             @endif
-                            @foreach($tx->tags as $tag)
-                                <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px 2px 5px;
-                                             border-radius:12px;font-size:10px;font-weight:700;margin-left:4px;
-                                             background:{{ $tag->color }}22;color:{{ $tag->color }};
-                                             border:1px solid {{ $tag->color }}44;">
-                                    <span style="width:6px;height:6px;border-radius:50%;background:{{ $tag->color }};"></span>
-                                    {{ $tag->name }}
-                                </span>
-                            @endforeach
+                            <span id="itag-pills-{{ $tx->id }}" style="display:contents;">
+                                @foreach($tx->tags as $tag)
+                                    <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px 2px 5px;
+                                                 border-radius:12px;font-size:10px;font-weight:700;margin-left:4px;
+                                                 background:{{ $tag->color }}22;color:{{ $tag->color }};
+                                                 border:1px solid {{ $tag->color }}44;">
+                                        <span style="width:6px;height:6px;border-radius:50%;background:{{ $tag->color }};"></span>
+                                        {{ $tag->name }}
+                                    </span>
+                                @endforeach
+                            </span>
+                            <button type="button"
+                                    id="itag-trigger-{{ $tx->id }}"
+                                    class="itag-trigger"
+                                    onclick="InlineTags.togglePopover({{ $tx->id }})"
+                                    title="Gestionar etiquetas"
+                                    aria-label="Gestionar etiquetas">
+                                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                                </svg>
+                            </button>
                         </td>
                         <td>
                             @if($tx->category)
@@ -420,15 +481,17 @@
                     @if($tx->has_installments)
                         <span class="badge badge-credit" style="font-size:10px;">{{ $tx->installments_count }}c</span>
                     @endif
-                    @foreach($tx->tags as $tag)
-                        <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px 2px 5px;
-                                     border-radius:10px;font-size:10px;font-weight:700;
-                                     background:{{ $tag->color }}22;color:{{ $tag->color }};
-                                     border:1px solid {{ $tag->color }}44;">
-                            <span style="width:5px;height:5px;border-radius:50%;background:{{ $tag->color }};"></span>
-                            {{ $tag->name }}
-                        </span>
-                    @endforeach
+                    <span id="itag-pills-m-{{ $tx->id }}" style="display:contents;">
+                        @foreach($tx->tags as $tag)
+                            <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px 2px 5px;
+                                         border-radius:10px;font-size:10px;font-weight:700;
+                                         background:{{ $tag->color }}22;color:{{ $tag->color }};
+                                         border:1px solid {{ $tag->color }}44;">
+                                <span style="width:5px;height:5px;border-radius:50%;background:{{ $tag->color }};"></span>
+                                {{ $tag->name }}
+                            </span>
+                        @endforeach
+                    </span>
                 </div>
                 <div style="display:flex;gap:4px;margin-top:2px;">
                     <a href="{{ route('transactions.edit', $tx) }}" class="tx-action-link" style="font-size:11px;min-height:30px;padding:0 8px;">Editar</a>
@@ -436,6 +499,17 @@
                         @csrf @method('DELETE')
                         <button type="submit" class="tx-action-btn" style="font-size:11px;min-height:30px;padding:0 8px;">Eliminar</button>
                     </form>
+                    <button type="button"
+                            id="itag-m-trigger-{{ $tx->id }}"
+                            class="itag-mobile-btn"
+                            onclick="InlineTags.openSheet({{ $tx->id }})"
+                            data-state="">
+                        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                            <line x1="7" y1="7" x2="7.01" y2="7"/>
+                        </svg>
+                        Etiquetas
+                    </button>
                 </div>
             </div>
             @endforeach
@@ -531,6 +605,269 @@ document.getElementById('filter-sheet')?.addEventListener('click', function(e) {
     const rect = this.getBoundingClientRect();
     if (e.clientY < rect.top) this.close();
 });
+</script>
+
+{{-- ── Desktop tag popovers (fuera del card overflow:hidden) ────────────── --}}
+@foreach($transactions as $tx)
+<div id="itag-pop-{{ $tx->id }}" class="itag-pop" style="display:none;">
+    <input type="text"
+           id="itag-search-{{ $tx->id }}"
+           class="form-input"
+           placeholder="Buscar etiqueta…"
+           style="margin-bottom:8px;font-size:12px;padding:7px 10px;"
+           oninput="InlineTags.filterList({{ $tx->id }}, this.value)"
+           onkeydown="if(event.key==='Escape')InlineTags._closePopover()">
+    <div id="itag-list-{{ $tx->id }}"
+         style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
+    </div>
+</div>
+@endforeach
+
+{{-- ── Mobile tag sheet ──────────────────────────────────────────────────── --}}
+<dialog id="itag-sheet" class="filter-sheet">
+    <div class="filter-sheet-handle"></div>
+    <div class="filter-sheet-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <span class="font-display" style="font-size:16px;font-weight:700;">Etiquetas</span>
+            <button type="button" onclick="document.getElementById('itag-sheet').close()"
+                    style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;font-size:20px;line-height:1;">×</button>
+        </div>
+        <input type="text" id="itag-sheet-search" class="form-input"
+               placeholder="Buscar etiqueta…"
+               style="margin-bottom:12px;font-size:13px;">
+        <div id="itag-sheet-list"
+             style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
+        </div>
+        <div style="padding-top:12px;margin-top:8px;border-top:1px solid var(--border);">
+            <button type="button" onclick="document.getElementById('itag-sheet').close()"
+                    class="btn btn-ghost" style="width:100%;justify-content:center;">Listo</button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+(function () {
+
+function _esc(s) {
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+}
+
+const TAG_SVG = `<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+
+window.InlineTags = {
+    state:        {},   // txId (number) → Set<tagId>
+    activeId:     null, // currently open popover txId
+    saveTimers:   {},
+    activePopEl:  null,
+
+    init(txId, tagIds) {
+        this.state[txId] = new Set(tagIds);
+    },
+
+    // ── Desktop popover ────────────────────────────────────────────
+    togglePopover(txId) {
+        if (this.activeId === txId) { this._closePopover(); return; }
+        this._closePopover();
+
+        const pop = document.getElementById(`itag-pop-${txId}`);
+        if (!pop) return;
+
+        const trigger = document.getElementById(`itag-trigger-${txId}`);
+        if (trigger) {
+            const r = trigger.getBoundingClientRect();
+            const below = window.innerHeight - r.bottom;
+            pop.style.left  = Math.min(r.left, window.innerWidth - 272) + 'px';
+            pop.style.bottom = '';
+            pop.style.top    = '';
+            if (below < 260 && r.top > 260) {
+                pop.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+            } else {
+                pop.style.top = (r.bottom + 4) + 'px';
+            }
+        }
+
+        pop.style.display = 'block';
+        this.activeId    = txId;
+        this.activePopEl = pop;
+
+        const search = document.getElementById(`itag-search-${txId}`);
+        if (search) { search.value = ''; setTimeout(() => search.focus(), 40); }
+        this._renderList(txId, '');
+    },
+
+    _closePopover() {
+        if (this.activePopEl) { this.activePopEl.style.display = 'none'; }
+        this.activeId    = null;
+        this.activePopEl = null;
+    },
+
+    filterList(txId, q) { this._renderList(txId, q); },
+
+    // ── Tag toggle + save ──────────────────────────────────────────
+    toggle(txId, tagId) {
+        const sel = this.state[txId];
+        if (!sel) return;
+        if (sel.has(tagId)) sel.delete(tagId); else sel.add(tagId);
+        this._renderPills(txId);
+        this._scheduleSave(txId);
+    },
+
+    _renderPills(txId) {
+        const sel = this.state[txId];
+        const all = window.iTagAllTags;
+        const makeHtml = (dot) => {
+            let out = '';
+            sel.forEach(id => {
+                const t = all.find(x => x.id === id);
+                if (!t) return;
+                out += `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px 2px 5px;
+                    border-radius:${dot ? '12' : '10'}px;font-size:10px;font-weight:700;margin-left:4px;
+                    background:${t.color}22;color:${t.color};border:1px solid ${t.color}44;">
+                    <span style="width:${dot ? 6 : 5}px;height:${dot ? 6 : 5}px;border-radius:50%;background:${t.color};"></span>${_esc(t.name)}</span>`;
+            });
+            return out;
+        };
+        const d = document.getElementById(`itag-pills-${txId}`);
+        if (d) d.innerHTML = makeHtml(true);
+        const m = document.getElementById(`itag-pills-m-${txId}`);
+        if (m) m.innerHTML = makeHtml(false);
+    },
+
+    _renderList(txId, q) {
+        const listEl = document.getElementById(`itag-list-${txId}`);
+        if (!listEl) return;
+        const sel = this.state[txId];
+        const lq  = q.toLowerCase();
+        const filtered = window.iTagAllTags.filter(t => t.name.toLowerCase().includes(lq));
+        listEl.innerHTML = '';
+        if (!filtered.length) {
+            listEl.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:6px 8px;">Sin resultados</div>';
+            return;
+        }
+        filtered.forEach(t => {
+            const isSel = sel.has(t.id);
+            const d = document.createElement('div');
+            d.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;transition:background 0.1s;';
+            d.innerHTML = `
+                <span style="width:10px;height:10px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
+                <span style="flex:1;">${_esc(t.name)}</span>
+                ${isSel ? `<svg width="13" height="13" fill="none" stroke="var(--income)" stroke-width="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>` : '<div style="width:13px;height:13px;"></div>'}`;
+            d.onmouseenter = () => d.style.background = 'var(--surface2)';
+            d.onmouseleave = () => d.style.background = '';
+            d.onclick = () => {
+                InlineTags.toggle(txId, t.id);
+                const s = document.getElementById(`itag-search-${txId}`);
+                if (s) s.value = '';
+                InlineTags._renderList(txId, '');
+            };
+            listEl.appendChild(d);
+        });
+    },
+
+    _scheduleSave(txId) {
+        clearTimeout(this.saveTimers[txId]);
+        this.saveTimers[txId] = setTimeout(() => this._save(txId), 700);
+    },
+
+    async _save(txId) {
+        const setBtn = state => {
+            [document.getElementById(`itag-trigger-${txId}`),
+             document.getElementById(`itag-m-trigger-${txId}`)].forEach(b => b && (b.dataset.state = state));
+        };
+        setBtn('saving');
+        try {
+            const resp = await fetch(`/movimientos/${txId}/etiquetas`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ tags: [...this.state[txId]] }),
+            });
+            if (!resp.ok) throw new Error();
+            setBtn('saved');
+            setTimeout(() => setBtn(''), 1400);
+        } catch {
+            setBtn('error');
+            setTimeout(() => setBtn(''), 2200);
+        }
+    },
+
+    // ── Mobile sheet ───────────────────────────────────────────────
+    openSheet(txId) {
+        const sheet = document.getElementById('itag-sheet');
+        if (!sheet) return;
+        sheet.dataset.txId = String(txId);
+        const search = document.getElementById('itag-sheet-search');
+        if (search) search.value = '';
+        this._renderSheetList(txId, '');
+        sheet.showModal();
+    },
+
+    _renderSheetList(txId, q) {
+        const listEl = document.getElementById('itag-sheet-list');
+        if (!listEl) return;
+        const sel = this.state[txId];
+        const lq  = q.toLowerCase();
+        const filtered = window.iTagAllTags.filter(t => t.name.toLowerCase().includes(lq));
+        listEl.innerHTML = '';
+        if (!filtered.length) {
+            listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px;">Sin resultados</div>';
+            return;
+        }
+        filtered.forEach(t => {
+            const isSel = sel.has(t.id);
+            const d = document.createElement('div');
+            d.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:8px;cursor:pointer;font-size:13px;transition:background 0.12s;${isSel ? `background:${t.color}11;` : ''}`;
+            d.innerHTML = `
+                <span style="width:12px;height:12px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
+                <span style="flex:1;font-weight:${isSel ? 600 : 400};">${_esc(t.name)}</span>
+                ${isSel ? `<svg width="15" height="15" fill="none" stroke="${t.color}" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>` : '<div style="width:15px;height:15px;"></div>'}`;
+            d.onclick = () => {
+                InlineTags.toggle(txId, t.id);
+                const q2 = document.getElementById('itag-sheet-search')?.value ?? '';
+                InlineTags._renderSheetList(txId, q2);
+            };
+            listEl.appendChild(d);
+        });
+    },
+};
+
+// Cerrar popover al hacer click fuera
+document.addEventListener('click', e => {
+    if (InlineTags.activeId === null) return;
+    const pop     = InlineTags.activePopEl;
+    const trigger = document.getElementById(`itag-trigger-${InlineTags.activeId}`);
+    if (pop && !pop.contains(e.target) && trigger && !trigger.contains(e.target)) {
+        InlineTags._closePopover();
+    }
+}, true);
+
+// Cerrar popover al hacer scroll
+window.addEventListener('scroll', () => InlineTags._closePopover(), { passive: true, capture: true });
+
+// Mobile sheet: cerrar con backdrop
+document.getElementById('itag-sheet')?.addEventListener('click', function (e) {
+    const rect = this.getBoundingClientRect();
+    if (e.clientY < rect.top) this.close();
+});
+
+// Mobile sheet: búsqueda
+document.getElementById('itag-sheet-search')?.addEventListener('input', function () {
+    const txId = parseInt(document.getElementById('itag-sheet')?.dataset.txId ?? '0');
+    if (txId) InlineTags._renderSheetList(txId, this.value);
+});
+
+// Tags globales del grupo
+window.iTagAllTags = @json($allTags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values());
+
+// Estado inicial por movimiento
+@foreach($transactions as $tx)
+InlineTags.init({{ $tx->id }}, @json($tx->tags->pluck('id')->values()));
+@endforeach
+
+})();
 </script>
 
 @endsection
