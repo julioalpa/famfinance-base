@@ -35,6 +35,7 @@
                     </select>
                     <input type="number" name="amount" id="amount"
                            class="form-input"
+                           inputmode="decimal"
                            placeholder="0,00"
                            step="0.01" min="0.01"
                            value="{{ old('amount', $re?->amount) }}"
@@ -51,6 +52,7 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <input type="number" name="day_of_month" id="day_of_month"
                            class="form-input"
+                           inputmode="numeric"
                            style="width: 100px;"
                            placeholder="Ej: 15"
                            min="1" max="31"

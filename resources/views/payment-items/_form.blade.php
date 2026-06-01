@@ -42,6 +42,7 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <input type="number" name="day_of_month" id="day_of_month"
                            class="form-input"
+                           inputmode="numeric"
                            style="width: 100px;"
                            placeholder="Ej: 10"
                            min="1" max="31"
@@ -161,7 +162,7 @@
             <div>
                 <label class="form-label" for="amount">Monto mensual *</label>
                 <input type="number" name="amount" id="amount"
-                       class="form-input" step="0.01" min="0.01"
+                       class="form-input" inputmode="decimal" step="0.01" min="0.01"
                        placeholder="0,00"
                        value="{{ old('amount', $pi?->amount) }}">
                 @error('amount')

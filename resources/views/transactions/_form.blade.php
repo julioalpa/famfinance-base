@@ -70,6 +70,7 @@
                     </select>
                     <input type="number" name="amount" id="amount"
                            class="form-input"
+                           inputmode="decimal"
                            placeholder="0,00"
                            step="0.01" min="0.01"
                            value="{{ old('amount', $tx?->amount) }}"
@@ -169,6 +170,7 @@
                         <label class="form-label" for="installments_count">Cantidad de cuotas</label>
                         <input type="number" name="installments_count" id="installments_count"
                                class="form-input"
+                               inputmode="numeric"
                                placeholder="Ej: 12"
                                min="2" max="120"
                                value="{{ old('installments_count', $tx?->installments_count) }}">

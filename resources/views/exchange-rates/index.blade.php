@@ -20,6 +20,7 @@
             <div>
                 <label class="form-label">1 USD = ? ARS *</label>
                 <input type="number" name="rate" class="form-input"
+                       inputmode="decimal"
                        placeholder="Ej: 1250.00"
                        step="0.01" min="0.01"
                        value="{{ old('rate') }}"

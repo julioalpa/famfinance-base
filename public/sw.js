@@ -1,4 +1,4 @@
-const CACHE = 'famfinance-v1';
+const CACHE = 'famfinance-v2';
 
 // On install: activate immediately, no waiting
 self.addEventListener('install', () => self.skipWaiting());
@@ -34,7 +34,7 @@ self.addEventListener('fetch', event => {
     }
 
     // Icons and manifest — cache-first
-    if (url.pathname.startsWith('/icons/') || url.pathname === '/manifest.webmanifest') {
+    if (url.pathname.startsWith('/app-icons/') || url.pathname === '/manifest.webmanifest') {
         event.respondWith(
             caches.match(request).then(cached => cached || fetch(request).then(response => {
                 const clone = response.clone();

@@ -49,6 +49,7 @@
                     <div>
                         <label class="form-label">Monto total de la deuda *</label>
                         <input type="number" name="initial_balance" class="form-input"
+                               inputmode="decimal"
                                placeholder="Ej: 500000" min="0.01" step="0.01"
                                value="{{ old('initial_balance') }}">
                         <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">El saldo inicial que pediste y debés devolver. Cada pago lo irá reduciendo.</div>
@@ -66,6 +67,7 @@
                         <div>
                             <label class="form-label">Día de cierre</label>
                             <input type="number" name="closing_day" class="form-input"
+                                   inputmode="numeric"
                                    placeholder="Ej: 13" min="1" max="31"
                                    value="{{ old('closing_day') }}">
                             @error('closing_day') <div style="font-size:11px;color:var(--danger);margin-top:3px;">{{ $message }}</div> @enderror
@@ -73,6 +75,7 @@
                         <div>
                             <label class="form-label">Día de vencimiento</label>
                             <input type="number" name="due_day" class="form-input"
+                                   inputmode="numeric"
                                    placeholder="Ej: 3" min="1" max="31"
                                    value="{{ old('due_day') }}">
                             @error('due_day') <div style="font-size:11px;color:var(--danger);margin-top:3px;">{{ $message }}</div> @enderror
@@ -80,6 +83,7 @@
                         <div>
                             <label class="form-label">Límite de crédito</label>
                             <input type="number" name="credit_limit" class="form-input"
+                                   inputmode="decimal"
                                    placeholder="Opcional" min="0" step="0.01"
                                    value="{{ old('credit_limit') }}">
                         </div>

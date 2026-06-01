@@ -11,6 +11,7 @@ use App\Models\Tag;
 use App\Models\TagGroup;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -25,11 +26,16 @@ class ReportController extends Controller
         $startDate    = now()->startOfMonth()->subMonths($months - 1);
         $exchangeRate = $group->latestExchangeRate();
 
+        $driver    = DB::connection()->getDriverName();
+        $yearExpr  = $driver === 'sqlite' ? "CAST(strftime('%Y', date) AS INTEGER)" : 'EXTRACT(YEAR FROM date)';
+        $monthExpr = $driver === 'sqlite' ? "CAST(strftime('%m', date) AS INTEGER)" : 'EXTRACT(MONTH FROM date)';
+        $dayExpr   = $driver === 'sqlite' ? "CAST(strftime('%d', date) AS INTEGER)" : 'EXTRACT(DAY FROM date)';
+
         // ── Monthly income/expense (split por moneda para convertir USD→ARS) ──
         $monthlyRaw = Transaction::where('family_group_id', $groupId)
             ->where('date', '>=', $startDate)
             ->whereIn('type', ['income', 'expense'])
-            ->selectRaw('EXTRACT(YEAR FROM date) as year, EXTRACT(MONTH FROM date) as month, type, currency, SUM(amount) as total')
+            ->selectRaw("{$yearExpr} as year, {$monthExpr} as month, type, currency, SUM(amount) as total")
             ->groupBy('year', 'month', 'type', 'currency')
             ->get();
 
@@ -84,7 +90,7 @@ class ReportController extends Controller
             ->where('type', 'expense')
             ->whereYear('date', now()->year)
             ->whereMonth('date', now()->month)
-            ->selectRaw('EXTRACT(DAY FROM date) as day, currency, SUM(amount) as total')
+            ->selectRaw("{$dayExpr} as day, currency, SUM(amount) as total")
             ->groupBy('day', 'currency')
             ->orderBy('day')
             ->get();

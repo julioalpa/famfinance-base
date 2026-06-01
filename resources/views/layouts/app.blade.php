@@ -10,7 +10,7 @@
     <title>@yield('title', 'FamFinance') — FamFinance</title>
 
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/svg+xml" href="/app-icons/icon.svg">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -46,6 +46,7 @@
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
         }
 
         .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
@@ -561,13 +562,50 @@
         }
         .fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(240,160,48,0.3); }
 
+        /* ── PWA install banner ─────────────────────────────────────────────── */
+        .pwa-install {
+            display: none;
+            position: fixed;
+            left: 16px;
+            right: 16px;
+            bottom: calc(56px + env(safe-area-inset-bottom) + 78px);
+            z-index: 250;
+            background: var(--surface2);
+            border: 1px solid var(--accent-dim);
+            border-radius: 14px;
+            padding: 14px 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+            gap: 12px;
+            align-items: center;
+        }
+        .pwa-install.visible { display: flex; }
+        .pwa-install-text { flex: 1; min-width: 0; }
+        .pwa-install-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+        .pwa-install-sub { font-size: 11px; color: var(--muted); line-height: 1.35; }
+        .pwa-install-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .pwa-install-actions button {
+            min-height: 36px;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 9px;
+            border: none;
+            cursor: pointer;
+        }
+        .pwa-install-yes { background: var(--accent); color: #1a1208; }
+        .pwa-install-yes:active { transform: scale(0.96); }
+        .pwa-install-no { background: transparent; color: var(--muted); }
+        @media (min-width: 769px) {
+            .pwa-install { left: auto; right: 24px; bottom: 24px; max-width: 360px; }
+        }
+
         /* ── Mobile: show bottom nav, hide hamburger, adjust content ─────────── */
         @media (max-width: 768px) {
             .bottom-nav { display: flex; flex-direction: column; }
             .fab { display: flex; }
             .mobile-toggle { display: none !important; }
             .main-content {
-                padding-top: 20px !important;
+                padding-top: max(20px, env(safe-area-inset-top)) !important;
                 padding-bottom: calc(56px + env(safe-area-inset-bottom) + 16px) !important;
             }
         }
@@ -783,6 +821,18 @@
     @yield('content')
 </main>
 
+{{-- ── PWA install banner ────────────────────────────────────────────────── --}}
+<div id="pwa-install-banner" class="pwa-install" role="dialog" aria-labelledby="pwa-install-title">
+    <div class="pwa-install-text">
+        <div class="pwa-install-title" id="pwa-install-title">Instalar FamFinance</div>
+        <div class="pwa-install-sub">Acceso directo desde tu pantalla de inicio, sin barra del navegador.</div>
+    </div>
+    <div class="pwa-install-actions">
+        <button type="button" class="pwa-install-no" id="pwa-install-dismiss">Ahora no</button>
+        <button type="button" class="pwa-install-yes" id="pwa-install-accept">Instalar</button>
+    </div>
+</div>
+
 {{-- ── FAB ───────────────────────────────────────────────────────────────────── --}}
 <a href="{{ route('transactions.create') }}" class="fab" aria-label="Nuevo movimiento">
     <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24">
@@ -931,6 +981,50 @@
                 .catch(() => {}); // Silently skip on HTTP non-localhost
         });
     }
+
+    // PWA install prompt
+    (function () {
+        const DISMISS_KEY = 'pwa-install-dismissed-at';
+        const DISMISS_DAYS = 14;
+        const banner = document.getElementById('pwa-install-banner');
+        if (!banner) return;
+
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
+        if (isStandalone) return;
+
+        const dismissedAt = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+        if (dismissedAt && (Date.now() - dismissedAt) < DISMISS_DAYS * 86400000) return;
+
+        let deferred = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferred = e;
+            banner.classList.add('visible');
+        });
+
+        document.getElementById('pwa-install-accept')?.addEventListener('click', async () => {
+            if (!deferred) return;
+            banner.classList.remove('visible');
+            deferred.prompt();
+            const { outcome } = await deferred.userChoice;
+            if (outcome !== 'accepted') {
+                localStorage.setItem(DISMISS_KEY, Date.now().toString());
+            }
+            deferred = null;
+        });
+
+        document.getElementById('pwa-install-dismiss')?.addEventListener('click', () => {
+            banner.classList.remove('visible');
+            localStorage.setItem(DISMISS_KEY, Date.now().toString());
+        });
+
+        window.addEventListener('appinstalled', () => {
+            banner.classList.remove('visible');
+            localStorage.removeItem(DISMISS_KEY);
+        });
+    })();
 </script>
 
 </body>

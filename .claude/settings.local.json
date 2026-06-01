@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flyctl ssh *)",
+      "Bash(curl -sSL -o /dev/null -w \"HTTP %{http_code} | tiempo %{time_total}s\\\\n\" --max-time 30 https://famfinance-falling-brook-6007.fly.dev/)",
+      "Bash(flyctl logs *)",
+      "Bash(curl -sSL -o /dev/null -w \"HTTP %{http_code} | %{time_total}s\\\\n\" --max-time 30 https://famfinance-falling-brook-6007.fly.dev/)",
+      "Bash(flyctl deploy *)"
+    ]
+  }
+}

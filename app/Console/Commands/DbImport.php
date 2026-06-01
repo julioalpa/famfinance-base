@@ -7,25 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 class DbImport extends Command
 {
-    protected $signature   = 'db:import {path : Ruta del archivo JSON exportado}';
+    protected $signature   = 'db:import {path : Ruta del archivo JSON exportado} {--force : No pedir confirmación}';
     protected $description = 'Importa datos desde un archivo JSON generado por db:export';
-
-    // Orden de truncado: hijos antes que padres (inverso al de inserción)
-    private const TRUNCATE_ORDER = [
-        'monthly_payments',
-        'payment_items',
-        'recurring_expense_logs',
-        'recurring_expenses',
-        'installments',
-        'transactions',
-        'exchange_rates',
-        'categories',
-        'accounts',
-        'invitations',
-        'family_group_user',
-        'family_groups',
-        'users',
-    ];
 
     private const INSERT_ORDER = [
         'users',
@@ -35,12 +18,41 @@ class DbImport extends Command
         'accounts',
         'categories',
         'exchange_rates',
+        'promotions',
+        'tags',
+        'tag_groups',
+        'tag_group_tag',
         'recurring_expenses',
+        'payment_items',
         'transactions',
         'installments',
-        'recurring_expense_logs',
-        'payment_items',
+        'loan_installments',
         'monthly_payments',
+        'recurring_expense_logs',
+        'taggables',
+    ];
+
+    // Orden de truncado: hijos antes que padres (inverso al de inserción)
+    private const TRUNCATE_ORDER = [
+        'taggables',
+        'recurring_expense_logs',
+        'monthly_payments',
+        'loan_installments',
+        'installments',
+        'transactions',
+        'payment_items',
+        'recurring_expenses',
+        'tag_group_tag',
+        'tag_groups',
+        'tags',
+        'promotions',
+        'exchange_rates',
+        'categories',
+        'accounts',
+        'invitations',
+        'family_group_user',
+        'family_groups',
+        'users',
     ];
 
     public function handle(): int
@@ -64,13 +76,15 @@ class DbImport extends Command
         $this->info("Importando en {$driver} (exportado desde {$export['driver']} el {$export['exported_at']})...");
         $this->newLine();
 
-        if (! $this->confirm('Esto BORRARÁ todos los datos actuales de la DB destino. ¿Continuar?')) {
+        if (! $this->option('force') && ! $this->confirm('Esto BORRARÁ todos los datos actuales de la DB destino. ¿Continuar?')) {
             return self::SUCCESS;
         }
 
         // Truncar en orden inverso
         if ($driver === 'mysql') {
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF');
         }
 
         foreach (self::TRUNCATE_ORDER as $table) {
@@ -107,6 +121,8 @@ class DbImport extends Command
 
         if ($driver === 'mysql') {
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON');
         }
 
         $this->newLine();

@@ -11,13 +11,13 @@
   "lang": "es",
   "icons": [
     {
-      "src": "/icons/icon.svg",
+      "src": "/app-icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable.svg",
+      "src": "/app-icons/icon-maskable.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
@@ -28,13 +28,13 @@
       "name": "Nuevo movimiento",
       "short_name": "Movimiento",
       "url": "/movimientos/create",
-      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "/app-icons/icon.svg", "sizes": "any" }]
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "url": "/",
-      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "/app-icons/icon.svg", "sizes": "any" }]
     }
   ]
 }

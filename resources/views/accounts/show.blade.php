@@ -153,6 +153,7 @@
                     <span style="color: var(--surface2);">(default: {{ $nextPaymentSummary['closing_default'] }})</span>
                 </label>
                 <input type="number" name="closing_override" class="form-input"
+                       inputmode="numeric"
                        style="width: 80px; padding: 6px 10px; font-size: 13px;"
                        min="1" max="31"
                        value="{{ $nextPaymentSummary['closing_used'] }}"
@@ -164,6 +165,7 @@
                     <span style="color: var(--surface2);">(default: {{ $nextPaymentSummary['due_day_default'] ?: '—' }})</span>
                 </label>
                 <input type="number" name="due_override" class="form-input"
+                       inputmode="numeric"
                        style="width: 80px; padding: 6px 10px; font-size: 13px;"
                        min="1" max="31"
                        value="{{ $nextPaymentSummary['due_day_used'] }}"
@@ -356,6 +358,7 @@
                         {{ $account->currency === 'USD' ? 'US$' : '$' }}
                     </span>
                     <input type="number" name="amount" id="payAmount" class="form-input"
+                           inputmode="decimal"
                            step="0.01" min="0.01" placeholder="0,00" required>
                 </div>
             </div>
@@ -577,7 +580,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closePayModa
                         {{ $account->currency === 'USD' ? 'US$' : '$' }}
                     </span>
                     <input type="number" name="target_balance" id="adjust-target"
-                           class="form-input" step="0.01" required
+                           class="form-input" inputmode="decimal" step="0.01" required
                            placeholder="0,00"
                            oninput="updateAdjustPreview(this.value)">
                 </div>

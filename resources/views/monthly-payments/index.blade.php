@@ -337,7 +337,7 @@
                 <div style="display:flex; gap:8px; align-items:center;">
                     <span id="modal-currency-label" style="font-size:14px; color:var(--muted); font-weight:700; white-space:nowrap; padding: 10px 0;">$</span>
                     <input type="number" name="amount" id="modal-amount"
-                           class="form-input" step="0.01" min="0.01" required
+                           class="form-input" inputmode="decimal" step="0.01" min="0.01" required
                            placeholder="0,00">
                 </div>
                 @error('amount')

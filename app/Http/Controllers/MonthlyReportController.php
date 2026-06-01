@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class MonthlyReportController extends Controller
 {
@@ -362,11 +363,15 @@ class MonthlyReportController extends Controller
         // ── Gráfico: últimos 6 meses (income vs expense para comparativa) ─────
         $chartMonths = 6;
         $chartStart  = $date->copy()->subMonths($chartMonths - 1)->startOfMonth();
+        $driver    = DB::connection()->getDriverName();
+        $yearExpr  = $driver === 'sqlite' ? "CAST(strftime('%Y', date) AS INTEGER)" : 'EXTRACT(YEAR FROM date)';
+        $monthExpr = $driver === 'sqlite' ? "CAST(strftime('%m', date) AS INTEGER)" : 'EXTRACT(MONTH FROM date)';
+
         $chartRaw    = Transaction::where('family_group_id', $groupId)
             ->where('date', '>=', $chartStart->toDateString())
             ->where('date', '<=', $endDate->toDateString())
             ->whereIn('type', ['income', 'expense'])
-            ->selectRaw('EXTRACT(YEAR FROM date) as year, EXTRACT(MONTH FROM date) as month, type, currency, SUM(amount) as total')
+            ->selectRaw("{$yearExpr} as year, {$monthExpr} as month, type, currency, SUM(amount) as total")
             ->groupBy('year', 'month', 'type', 'currency')
             ->get();
 

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('family_group_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete(); // quién la creó / es dueño
             $table->string('name');
-            $table->enum('type', ['cash', 'digital', 'credit']); // efectivo, digital, crédito
+            $table->enum('type', ['cash', 'digital', 'credit', 'loan']); // efectivo, digital, crédito, préstamo
             $table->enum('currency', ['ARS', 'USD'])->default('ARS');
 
             // Solo para cuentas de crédito

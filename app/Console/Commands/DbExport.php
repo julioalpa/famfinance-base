@@ -19,12 +19,18 @@ class DbExport extends Command
         'accounts',
         'categories',
         'exchange_rates',
+        'promotions',
+        'tags',
+        'tag_groups',
+        'tag_group_tag',
+        'recurring_expenses',
+        'payment_items',
         'transactions',
         'installments',
-        'recurring_expenses',
-        'recurring_expense_logs',
-        'payment_items',
+        'loan_installments',
         'monthly_payments',
+        'recurring_expense_logs',
+        'taggables',
     ];
 
     public function handle(): int

@@ -44,6 +44,7 @@
         <div style="position: relative;">
             <span id="discount_prefix" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none;"></span>
             <input type="number" name="discount_value" id="discount_value" class="form-input"
+                   inputmode="decimal"
                    value="{{ old('discount_value', $promotion->discount_value ?? '') }}"
                    step="0.01" min="0.01" required style="padding-left: 28px;">
         </div>
@@ -64,6 +65,7 @@
     <div class="form-group">
         <label class="form-label">Monto original</label>
         <input type="number" name="original_amount" class="form-input"
+               inputmode="decimal"
                value="{{ old('original_amount', $promotion->original_amount ?? '') }}"
                step="0.01" min="0.01" placeholder="Precio sin descuento">
         <div class="form-hint">Opcional: para calcular el precio con descuento.</div>
@@ -92,7 +94,7 @@
 <div class="form-group">
     <label class="form-label">Recordarme con cuántos días de anticipación <span style="color:var(--danger)">*</span></label>
     <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="number" name="reminder_days_before" class="form-input" style="max-width: 120px;"
+        <input type="number" name="reminder_days_before" class="form-input" inputmode="numeric" style="max-width: 120px;"
                value="{{ old('reminder_days_before', $promotion->reminder_days_before ?? 30) }}"
                min="1" max="365" required>
         <span style="font-size: 13px; color: var(--muted);">días antes del vencimiento</span>

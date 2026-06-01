@@ -47,6 +47,7 @@
                     <div>
                         <label class="form-label">Monto total de la deuda *</label>
                         <input type="number" name="initial_balance" class="form-input"
+                               inputmode="decimal"
                                placeholder="Ej: 500000" min="0.01" step="0.01"
                                value="{{ old('initial_balance', $account->initial_balance) }}">
                         <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">El saldo inicial que pediste y debés devolver. Cada pago lo irá reduciendo.</div>
@@ -61,15 +62,15 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
                         <div>
                             <label class="form-label">Día de cierre</label>
-                            <input type="number" name="closing_day" class="form-input" min="1" max="31" value="{{ old('closing_day',$account->closing_day) }}">
+                            <input type="number" name="closing_day" class="form-input" inputmode="numeric" min="1" max="31" value="{{ old('closing_day',$account->closing_day) }}">
                         </div>
                         <div>
                             <label class="form-label">Día de vencimiento</label>
-                            <input type="number" name="due_day" class="form-input" min="1" max="31" value="{{ old('due_day',$account->due_day) }}">
+                            <input type="number" name="due_day" class="form-input" inputmode="numeric" min="1" max="31" value="{{ old('due_day',$account->due_day) }}">
                         </div>
                         <div>
                             <label class="form-label">Límite</label>
-                            <input type="number" name="credit_limit" class="form-input" min="0" step="0.01" value="{{ old('credit_limit',$account->credit_limit) }}">
+                            <input type="number" name="credit_limit" class="form-input" inputmode="decimal" min="0" step="0.01" value="{{ old('credit_limit',$account->credit_limit) }}">
                         </div>
                     </div>
                 </div>
