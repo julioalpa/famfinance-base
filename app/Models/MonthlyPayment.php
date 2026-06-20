@@ -17,15 +17,17 @@ class MonthlyPayment extends Model
         'is_dismissed',
         'paid_at',
         'transaction_id',
+        'transaction_was_created_here',
     ];
 
     protected function casts(): array
     {
         return [
-            'amount'       => 'decimal:2',
-            'is_paid'      => 'boolean',
-            'is_dismissed' => 'boolean',
-            'paid_at'      => 'datetime',
+            'amount'                       => 'decimal:2',
+            'is_paid'                      => 'boolean',
+            'is_dismissed'                 => 'boolean',
+            'paid_at'                      => 'datetime',
+            'transaction_was_created_here' => 'boolean',
         ];
     }
 

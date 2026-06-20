@@ -7,6 +7,45 @@
 {{-- Chart.js CDN --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
+<style>
+/* Reports index — responsive layer */
+.rpt-page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:32px; flex-wrap:wrap; gap:16px; }
+.rpt-period { display:flex; gap:6px; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px; }
+.rpt-period a { padding:9px 14px; border-radius:7px; font-size:13px; font-weight:700; text-decoration:none; transition:all 0.15s; min-height:38px; display:inline-flex; align-items:center; justify-content:center; }
+.rpt-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
+.rpt-row { display:grid; gap:20px; margin-bottom:20px; }
+.rpt-row.col-3-2 { grid-template-columns:3fr 2fr; }
+.rpt-row.col-2-3 { grid-template-columns:2fr 3fr; }
+.rpt-row.col-1-2 { grid-template-columns:1fr 2fr; }
+.rpt-chart { position:relative; height:240px; }
+.rpt-chart.h-220 { height:220px; }
+.rpt-chart.h-200 { height:200px; }
+.rpt-tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+@media (max-width: 900px) {
+    .rpt-row,
+    .rpt-row.col-3-2,
+    .rpt-row.col-2-3,
+    .rpt-row.col-1-2 { grid-template-columns: 1fr !important; }
+    .rpt-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .rpt-page-header h1 { font-size: 22px !important; }
+    .rpt-period { width:100%; }
+    .rpt-period a { flex:1; min-height:44px; padding:11px 8px; font-size:13px; }
+    .rpt-chart { height:200px !important; }
+    .rpt-chart.h-220, .rpt-chart.h-200 { height:180px !important; }
+    .rpt-tbl-wrap table { min-width: 480px; }
+    .rpt-col-hide-md { display:none !important; }
+}
+
+@media (max-width: 480px) {
+    .rpt-stats { grid-template-columns: 1fr; }
+    .rpt-tbl-wrap table { min-width: 380px; }
+}
+</style>
+
 @php
     // Serialise data for JS
     $jsMonthLabels  = $monthlyData->pluck('label')->toJson();
@@ -20,7 +59,7 @@
 @endphp
 
 {{-- ── Header ──────────────────────────────────────────────────────────────── --}}
-<div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:32px; flex-wrap:wrap; gap:16px;">
+<div class="rpt-page-header">
     <div>
         <h1 class="font-display" style="font-size:28px; font-weight:800; letter-spacing:-0.03em; margin-bottom:4px;">Reportes</h1>
         <div style="font-size:13px; color:var(--muted); font-weight:500;">
@@ -29,11 +68,10 @@
     </div>
 
     {{-- Period picker --}}
-    <div style="display:flex; gap:6px; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:4px;">
+    <div class="rpt-period">
         @foreach([3 => '3 meses', 6 => '6 meses', 12 => '12 meses'] as $val => $label)
             <a href="{{ route('reports.index', ['months' => $val]) }}"
-               style="padding:7px 14px; border-radius:7px; font-size:13px; font-weight:700; text-decoration:none; transition:all 0.15s;
-                      {{ $months === $val ? 'background:var(--accent); color:#0c0804;' : 'color:var(--muted);' }}">
+               style="{{ $months === $val ? 'background:var(--accent); color:#0c0804;' : 'color:var(--muted);' }}">
                 {{ $label }}
             </a>
         @endforeach
@@ -41,7 +79,7 @@
 </div>
 
 {{-- ── Summary stat cards ────────────────────────────────────────────────── --}}
-<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px;">
+<div class="rpt-stats">
 
     <div class="stat-card income">
         <div style="font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; font-weight:700;">Ingreso promedio</div>
@@ -82,7 +120,7 @@
 </div>
 
 {{-- ── Row 1: Monthly bars + Balance line ────────────────────────────────── --}}
-<div style="display:grid; grid-template-columns:3fr 2fr; gap:20px; margin-bottom:20px;">
+<div class="rpt-row col-3-2">
 
     {{-- Ingresos vs Gastos --}}
     <div class="card">
@@ -100,7 +138,7 @@
                 </span>
             </div>
         </div>
-        <div style="position:relative; height:240px;">
+        <div class="rpt-chart">
             <canvas id="monthlyChart"></canvas>
         </div>
     </div>
@@ -111,14 +149,14 @@
             <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Balance mensual</h2>
             <div style="font-size:12px; color:var(--muted); margin-top:2px;">Ingreso − Gasto por mes</div>
         </div>
-        <div style="position:relative; height:240px;">
+        <div class="rpt-chart">
             <canvas id="balanceChart"></canvas>
         </div>
     </div>
 </div>
 
 {{-- ── Row 2: Category donut + Daily spending ────────────────────────────── --}}
-<div style="display:grid; grid-template-columns:2fr 3fr; gap:20px; margin-bottom:20px;">
+<div class="rpt-row col-2-3">
 
     {{-- Donut categorías --}}
     <div class="card">
@@ -132,7 +170,7 @@
         @if($expensesByCategory->isEmpty())
             <div style="text-align:center; padding:40px 0; color:var(--muted); font-size:13px;">Sin gastos en el período</div>
         @else
-            <div style="position:relative; height:200px; margin-bottom:16px;">
+            <div class="rpt-chart h-200" style="margin-bottom:16px;">
                 <canvas id="categoryChart"></canvas>
             </div>
             {{-- Legend table --}}
@@ -146,14 +184,14 @@
             <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gasto diario</h2>
             <div style="font-size:12px; color:var(--muted); margin-top:2px;">{{ now()->locale('es')->isoFormat('MMMM YYYY') }}</div>
         </div>
-        <div style="position:relative; height:220px;">
+        <div class="rpt-chart h-220">
             <canvas id="dailyChart"></canvas>
         </div>
     </div>
 </div>
 
 {{-- ── Row 3: Top categories table + By member ──────────────────────────── --}}
-<div style="display:grid; grid-template-columns:{{ $byMember->count() > 1 ? '3fr 2fr' : '1fr' }}; gap:20px; margin-bottom:20px;">
+<div class="rpt-row{{ $byMember->count() > 1 ? ' col-3-2' : '' }}">
 
     {{-- Top categorías --}}
     <div class="card" style="padding:0; overflow:hidden;">
@@ -165,6 +203,7 @@
             <div style="text-align:center; padding:40px; color:var(--muted); font-size:13px;">Sin datos</div>
         @else
         @php $catTotal = $expensesByCategory->sum(); @endphp
+        <div class="rpt-tbl-wrap">
         <table class="data-table">
             <thead>
                 <tr>
@@ -172,7 +211,7 @@
                     <th>Categoría</th>
                     <th style="text-align:right;">Total</th>
                     <th style="text-align:right;">% del gasto</th>
-                    <th style="width:120px;">Proporción</th>
+                    <th class="rpt-col-hide-md" style="width:120px;">Proporción</th>
                 </tr>
             </thead>
             <tbody>
@@ -185,7 +224,7 @@
                         $ {{ number_format($amount, 0, ',', '.') }}
                     </td>
                     <td style="text-align:right; font-size:13px; color:var(--muted); font-weight:600;">{{ $pct }}%</td>
-                    <td style="padding-right:20px;">
+                    <td class="rpt-col-hide-md" style="padding-right:20px;">
                         <div style="height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
                             <div style="height:100%; width:{{ $pct }}%; background:linear-gradient(90deg,var(--expense),rgba(240,64,96,0.5)); border-radius:3px;"></div>
                         </div>
@@ -194,6 +233,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
         @endif
     </div>
 
@@ -204,7 +244,7 @@
             <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gasto por integrante</h2>
             <div style="font-size:12px; color:var(--muted); margin-top:2px;">Últimos {{ $months }} meses</div>
         </div>
-        <div style="position:relative; height:220px; margin-bottom:20px;">
+        <div class="rpt-chart h-220" style="margin-bottom:20px;">
             <canvas id="memberChart"></canvas>
         </div>
         @php
@@ -251,13 +291,14 @@
             </a>
         </div>
 
+        <div class="rpt-tbl-wrap">
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Grupo</th>
-                    <th>Etiquetas</th>
+                    <th class="rpt-col-hide-md">Etiquetas</th>
                     <th style="text-align:right;">Egresos</th>
-                    <th style="text-align:center;">Movimientos</th>
+                    <th class="rpt-col-hide-md" style="text-align:center;">Movimientos</th>
                     <th style="width:160px;">% del total etiquetado</th>
                 </tr>
             </thead>
@@ -270,7 +311,7 @@
                             <span style="font-weight:700; font-size:13px;">{{ $tg['name'] }}</span>
                         </div>
                     </td>
-                    <td>
+                    <td class="rpt-col-hide-md">
                         <div style="display:flex; flex-wrap:wrap; gap:4px;">
                             @forelse($tg['tags'] as $t)
                                 <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px 2px 6px;
@@ -292,7 +333,7 @@
                             <span style="color:var(--muted); font-weight:400;">—</span>
                         @endif
                     </td>
-                    <td style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tg['count'] }}</td>
+                    <td class="rpt-col-hide-md" style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tg['count'] }}</td>
                     <td style="padding-right:20px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
@@ -312,11 +353,11 @@
                             <span style="font-weight:600; font-size:13px; color:var(--muted);">Sin grupo</span>
                         </div>
                     </td>
-                    <td><span style="font-size:11px; color:var(--muted);">Etiquetas sin grupo asignado</span></td>
+                    <td class="rpt-col-hide-md"><span style="font-size:11px; color:var(--muted);">Etiquetas sin grupo asignado</span></td>
                     <td style="text-align:right; font-weight:700; white-space:nowrap; font-family:'Bricolage Grotesque',sans-serif; color:var(--muted);">
                         $ {{ number_format($noGroupTotal, 0, ',', '.') }}
                     </td>
-                    <td></td>
+                    <td class="rpt-col-hide-md"></td>
                     <td style="padding-right:20px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
@@ -329,6 +370,7 @@
                 @endif
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 @endif
@@ -349,6 +391,7 @@
             $tagExpenseTotal = $tagStats->sum('expense');
             $hasIncome       = $tagStats->contains(fn($t) => $t['income'] > 0);
         @endphp
+        <div class="rpt-tbl-wrap">
         <table class="data-table">
             <thead>
                 <tr>
@@ -357,8 +400,8 @@
                     @if($hasIncome)
                     <th style="text-align:right;">Ingresos</th>
                     @endif
-                    <th style="text-align:center;">Movimientos</th>
-                    <th style="width:160px;">Proporción del gasto</th>
+                    <th class="rpt-col-hide-md" style="text-align:center;">Movimientos</th>
+                    <th class="rpt-col-hide-md" style="width:160px;">Proporción del gasto</th>
                 </tr>
             </thead>
             <tbody>
@@ -383,8 +426,8 @@
                         @endif
                     </td>
                     @endif
-                    <td style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tag['count'] }}</td>
-                    <td style="padding-right:20px;">
+                    <td class="rpt-col-hide-md" style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tag['count'] }}</td>
+                    <td class="rpt-col-hide-md" style="padding-right:20px;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
                                 <div style="height:100%; width:{{ $pct }}%; background:{{ $tag['color'] }}; border-radius:3px; transition:width 0.6s ease;"></div>
@@ -396,12 +439,13 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 @endif
 
 {{-- ── Row 4: Patrimonio neto ─────────────────────────────────────────────── --}}
-<div style="display:grid; grid-template-columns:1fr 2fr; gap:20px; margin-bottom:20px;">
+<div class="rpt-row col-1-2">
 
     {{-- Resumen --}}
     <div class="card" style="display:flex; flex-direction:column; gap:16px; justify-content:center;">
@@ -431,6 +475,7 @@
             $liabilityAccounts = $allAccounts->filter(fn($a) => $a->isLiability());
             $typeLabelsRep = ['cash' => 'Efectivo', 'digital' => 'Digital', 'credit' => 'Crédito', 'loan' => 'Préstamo'];
         @endphp
+        <div class="rpt-tbl-wrap">
         <table class="data-table">
             <tbody>
                 @if($assetAccounts->isNotEmpty())
@@ -456,6 +501,7 @@
                 @endif
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -539,13 +585,14 @@
             </div>
         </div>
 
+        <div class="rpt-tbl-wrap">
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Mes</th>
                     <th style="text-align:center;">Cuotas</th>
                     <th style="text-align:right;">Total del mes</th>
-                    <th>Detalle</th>
+                    <th class="rpt-col-hide-md">Detalle</th>
                 </tr>
             </thead>
             <tbody>
@@ -561,7 +608,7 @@
                     <td style="text-align:right; font-weight:800; font-size:14px; color:var(--expense); white-space:nowrap;">
                         $ {{ number_format($slot['total'], 0, ',', '.') }}
                     </td>
-                    <td style="font-size:12px; color:var(--muted);">
+                    <td class="rpt-col-hide-md" style="font-size:12px; color:var(--muted);">
                         @foreach($slot['items'] as $inst)
                             <span style="display:inline-block; margin-right:8px; white-space:nowrap;">
                                 <span style="color:var(--text); font-weight:600;">{{ Str::limit($inst['description'], 22) }}</span>
@@ -579,10 +626,11 @@
                     <td style="text-align:right; font-weight:800; font-size:15px; color:var(--accent); padding:14px 20px; white-space:nowrap;">
                         $ {{ number_format($installmentForecast->sum('total'), 0, ',', '.') }}
                     </td>
-                    <td></td>
+                    <td class="rpt-col-hide-md"></td>
                 </tr>
             </tfoot>
         </table>
+        </div>
     </div>
 </div>
 @endif

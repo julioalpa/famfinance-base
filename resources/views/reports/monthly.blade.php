@@ -1011,20 +1011,47 @@
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
     .stats-grid   { grid-template-columns: repeat(2, 1fr); }
     .charts-grid  { grid-template-columns: 1fr; }
     .cat-layout   { grid-template-columns: 1fr; }
     .cat-donut-card { order: -1; }
     .ant-layout   { grid-template-columns: 1fr; }
     .ant-score-ring { margin: 0 auto; }
-    .forecast-kpis { grid-template-columns: repeat(3, 1fr); }
 }
 
-@media (max-width: 700px) {
-    .stats-grid   { grid-template-columns: 1fr; }
-    .two-col      { grid-template-columns: 1fr; }
+@media (max-width: 768px) {
+    .two-col       { grid-template-columns: 1fr; }
+    .forecast-kpis { grid-template-columns: repeat(2, 1fr); }
+    .chart-wrap    { height: 180px; }
+    .report-title  { font-size: 22px; }
+    .report-header { gap: 12px; margin-bottom: 24px; }
+    .month-controls { width: 100%; }
+    .month-controls form { flex: 1; }
+    .month-controls form input { width: 100% !important; min-height: 44px; }
+    .btn-pdf { min-height: 44px; padding: 11px 14px; }
+    .stat-card-v2 { padding: 16px 16px 14px; }
+    .stat-value-v2 { font-size: 22px; }
+    .tag-right { min-width: 80px; }
+}
+
+@media (max-width: 480px) {
+    .stats-grid    { grid-template-columns: 1fr; }
     .forecast-kpis { grid-template-columns: 1fr; }
+    .btn-pdf-label { display: none; }
+    .btn-pdf { padding: 11px 12px; }
+    .savings-opp-total-val { font-size: 24px; }
+    .ant-summary-row { gap: 12px; }
+
+    /* Dispensables: cuando es muy chico, status va abajo del nombre */
+    .dispensable-item { flex-wrap: wrap; gap: 8px 12px; }
+    .disp-body { flex: 1 1 calc(100% - 130px); min-width: 0; }
+    .disp-status { order: 3; flex-basis: auto; }
+    .disp-amount { order: 2; min-width: 0; }
+
+    /* Tag row: bajar min-width del lado derecho */
+    .tag-right { min-width: 0; }
+    .tag-expense { font-size: 13px; }
 }
 
 /* ── Spin animation for PDF loading ──────────────────────────────────────── */
@@ -1065,14 +1092,14 @@
         </a>
         @endif
 
-        <button class="btn-pdf" id="btn-pdf" onclick="generarPDF()">
+        <button class="btn-pdf" id="btn-pdf" onclick="generarPDF()" aria-label="Exportar PDF">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
                 <line x1="16" y1="13" x2="8" y2="13"/>
                 <line x1="16" y1="17" x2="8" y2="17"/>
             </svg>
-            Exportar PDF
+            <span class="btn-pdf-label">Exportar PDF</span>
         </button>
     </div>
 </div>

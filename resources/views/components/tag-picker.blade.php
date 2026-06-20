@@ -38,9 +38,11 @@
 
         {{-- Dropdown --}}
         <div id="{{ $cid }}-drop"
+             class="tp-drop"
              style="display:none;position:absolute;z-index:200;left:0;top:calc(100% + 6px);
                     background:var(--surface);border:1px solid var(--border);border-radius:12px;
-                    width:270px;padding:10px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+                    width:min(270px, calc(100vw - 32px));max-width:100%;padding:10px;
+                    box-shadow:0 8px 32px rgba(0,0,0,0.4);">
 
             <input type="text"
                    id="{{ $cid }}-search"

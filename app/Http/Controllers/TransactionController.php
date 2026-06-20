@@ -177,10 +177,11 @@ class TransactionController extends Controller
 
                 if (! $mp->is_paid) {
                     $mp->update([
-                        'is_paid'        => true,
-                        'paid_at'        => now(),
-                        'amount'         => $transaction->amount,
-                        'transaction_id' => $transaction->id,
+                        'is_paid'                      => true,
+                        'paid_at'                      => now(),
+                        'amount'                       => $transaction->amount,
+                        'transaction_id'               => $transaction->id,
+                        'transaction_was_created_here' => true,
                     ]);
                 }
             }

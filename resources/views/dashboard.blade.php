@@ -5,6 +5,11 @@
 @section('content')
 
 <style>
+@media (max-width: 768px) {
+    /* Ocultar columnas no esenciales en tabla de movimientos */
+    .dash-col-hide-md { display: none !important; }
+}
+
 @media (max-width: 640px) {
     .dash-grid-3 { grid-template-columns: 1fr !important; }
     .dash-grid-2 { grid-template-columns: 1fr !important; }
@@ -13,9 +18,34 @@
     .dash-header-right form,
     .dash-header-right .btn { width: 100%; justify-content: center; }
     .dash-header-right .form-input { width: 100% !important; }
+
+    /* Exchange pill: link va abajo, full width */
     .exchange-pill { flex-wrap: wrap; gap: 6px !important; }
+    .exchange-pill .exchange-pill-link {
+        margin-left: 0 !important;
+        width: 100%;
+        padding-top: 8px;
+        margin-top: 4px;
+        border-top: 1px solid var(--border);
+    }
+
+    /* Promo alert: touch targets cómodos */
+    .promo-actions .btn {
+        min-height: 40px;
+        padding: 9px 14px !important;
+        font-size: 13px !important;
+    }
+    .promo-actions form { flex: 1; }
+    .promo-actions form .btn { width: 100%; justify-content: center; }
 }
+
 @media (max-width: 480px) {
+    /* Stats: reducir tamaño de números grandes */
+    .dash-grid-3 .stat-card .font-display { font-size: 22px !important; }
+    .dash-header h1 { font-size: 22px !important; }
+
+    /* Badge decorativo de patrimonio se oculta */
+    .dash-badge-decorative { display: none !important; }
 }
 </style>
 
@@ -63,7 +93,7 @@
                     @if($promo->provider) · {{ $promo->provider }} @endif
                 </div>
             </div>
-            <div style="display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">
+            <div class="promo-actions" style="display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">
                 <a href="{{ route('promotions.index') }}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 12px;">
                     Ver promociones
                 </a>
@@ -115,7 +145,7 @@
     <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700;">
         Situación financiera general
     </div>
-    <div style="font-size: 11px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px;">
+    <div class="dash-badge-decorative" style="font-size: 11px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px;">
         Total acumulado · todas las cuentas
     </div>
 </div>
@@ -201,9 +231,9 @@
                     </span>
                 </div>
                 @foreach($item['installments'] as $inst)
-                <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 3px 0; border-top: 1px solid var(--border);">
-                    <span>{{ $inst->transaction->description ?? 'Sin descripción' }}</span>
-                    <span>{{ $inst->installment_number }}/{{ $inst->transaction->installments_count }} — $ {{ number_format($inst->amount, 2, ',', '.') }}</span>
+                <div style="display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); padding: 3px 0; border-top: 1px solid var(--border);">
+                    <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ $inst->transaction->description ?? 'Sin descripción' }}</span>
+                    <span style="flex-shrink: 0; white-space: nowrap;">{{ $inst->installment_number }}/{{ $inst->transaction->installments_count }} — $ {{ number_format($inst->amount, 2, ',', '.') }}</span>
                 </div>
                 @endforeach
             </div>
@@ -218,7 +248,7 @@
     <span style="color: var(--muted);">TIPO DE CAMBIO VIGENTE</span>
     <span style="color: var(--warn); font-weight: 600;">1 USD = $ {{ number_format($exchangeRate->rate, 2, ',', '.') }} ARS</span>
     <span style="color: var(--muted);">· actualizado {{ $exchangeRate->date->locale('es')->diffForHumans() }}</span>
-    <a href="{{ route('exchange-rates.index') }}" style="margin-left: auto; font-size: 11px; color: var(--accent); text-decoration: none;">Actualizar →</a>
+    <a href="{{ route('exchange-rates.index') }}" class="exchange-pill-link" style="margin-left: auto; font-size: 11px; color: var(--accent); text-decoration: none;">Actualizar →</a>
 </div>
 @else
 <div style="background: rgba(255,209,102,0.06); border: 1px solid rgba(255,209,102,0.2); border-radius: 8px; padding: 12px 20px; margin-bottom: 24px; font-size: 12px; color: var(--warn); display: flex; align-items: center; justify-content: space-between;">
@@ -266,7 +296,7 @@
                     <svg width="10" height="10" fill="none" stroke="var(--income)" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
                 @endif
             </div>
-            <span style="flex: 1; font-size: 13px; font-weight: 600; color: {{ $isPaid ? 'var(--muted)' : 'var(--text)' }}; {{ $isPaid ? 'text-decoration: line-through;' : '' }}">
+            <span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; color: {{ $isPaid ? 'var(--muted)' : 'var(--text)' }}; {{ $isPaid ? 'text-decoration: line-through;' : '' }}">
                 {{ $pItem?->description }}
             </span>
             @if($dueDay && !$isPaid)
@@ -314,8 +344,8 @@
                     <th>Fecha</th>
                     <th>Descripción</th>
                     <th>Categoría</th>
-                    <th>Cuenta</th>
-                    <th>Quién</th>
+                    <th class="dash-col-hide-md">Cuenta</th>
+                    <th class="dash-col-hide-md">Quién</th>
                     <th style="text-align:right;">Monto</th>
                 </tr>
             </thead>
@@ -343,10 +373,10 @@
                             <span style="color: var(--border);">—</span>
                         @endif
                     </td>
-                    <td>
+                    <td class="dash-col-hide-md">
                         <span class="badge badge-{{ $tx->account->type }}">{{ $tx->account->name }}</span>
                     </td>
-                    <td style="font-size: 12px; color: var(--muted);">{{ $tx->user->name }}</td>
+                    <td class="dash-col-hide-md" style="font-size: 12px; color: var(--muted);">{{ $tx->user->name }}</td>
                     <td style="text-align: right; font-weight: 500; white-space: nowrap;">
                         @if($tx->isAdjustment())
                             <span style="color:#a078ff;">

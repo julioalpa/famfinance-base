@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PayMonthlyPaymentRequest;
 use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
+use App\Models\Transaction;
 use App\Services\TransactionService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -57,6 +59,38 @@ class MonthlyPaymentController extends Controller
             if ($mp->is_paid && $mp->amount && $mp->last_amount > 0) {
                 $mp->pct_change = round(((float) $mp->amount - (float) $mp->last_amount) / (float) $mp->last_amount * 100, 1);
             }
+        }
+
+        // Candidatas: transacciones que podrían asociarse a un pago pendiente.
+        // Rango = primer día del mes − 15 días  →  último día del mes + 15 días.
+        $rangeStart = Carbon::create($year, $mon, 1)->subDays(15)->format('Y-m-d');
+        $rangeEnd   = Carbon::create($year, $mon, 1)->endOfMonth()->addDays(15)->format('Y-m-d');
+
+        $linkedTxIds = MonthlyPayment::whereNotNull('transaction_id')
+            ->where('family_group_id', $groupId)
+            ->pluck('transaction_id')
+            ->all();
+
+        $eligibleTxs = Transaction::with(['account', 'category'])
+            ->where('family_group_id', $groupId)
+            ->where('type', 'expense')
+            ->whereBetween('date', [$rangeStart, $rangeEnd])
+            ->when(! empty($linkedTxIds), fn ($q) => $q->whereNotIn('id', $linkedTxIds))
+            ->orderByDesc('date')
+            ->get();
+
+        foreach ($monthlyPayments as $mp) {
+            if ($mp->is_paid || $mp->is_dismissed) {
+                $mp->candidate_transactions = collect();
+                continue;
+            }
+            $item = $mp->paymentItem;
+            $mp->candidate_transactions = $eligibleTxs->filter(function ($tx) use ($item) {
+                if (! $item) return false;
+                if ($tx->currency !== $item->currency) return false;
+                if ($item->account_id && $tx->account_id !== $item->account_id) return false;
+                return true;
+            })->values();
         }
 
         $group = Auth::user()->familyGroups()->find($groupId);
@@ -133,10 +167,11 @@ class MonthlyPaymentController extends Controller
             );
 
             $monthlyPayment->update([
-                'amount'         => $item->amount,
-                'is_paid'        => true,
-                'paid_at'        => now(),
-                'transaction_id' => $transaction->id,
+                'amount'                       => $item->amount,
+                'is_paid'                      => true,
+                'paid_at'                      => now(),
+                'transaction_id'               => $transaction->id,
+                'transaction_was_created_here' => true,
             ]);
         });
 
@@ -155,38 +190,69 @@ class MonthlyPaymentController extends Controller
         abort_if($monthlyPayment->is_paid, 400, 'Este pago ya fue registrado.');
         abort_if($monthlyPayment->is_dismissed, 400, 'Este pago está descartado.');
 
-        $item = $monthlyPayment->paymentItem;
+        $item            = $monthlyPayment->paymentItem;
+        $existingTxId    = $request->input('existing_transaction_id');
 
-        DB::transaction(function () use ($request, $monthlyPayment, $item) {
-            $transaction = $this->transactionService->create(
-                [
-                    'account_id'  => $item->account_id,
-                    'category_id' => $item->category_id,
-                    'type'        => 'expense',
-                    'amount'      => $request->amount,
-                    'currency'    => $item->currency,
-                    'date'        => $request->date,
-                    'description' => $item->description,
-                    'notes'       => $request->notes,
-                ],
-                $monthlyPayment->family_group_id,
-                auth()->id(),
-            );
+        if ($existingTxId) {
+            $existing = Transaction::where('id', $existingTxId)
+                ->where('family_group_id', $monthlyPayment->family_group_id)
+                ->where('type', 'expense')
+                ->first();
 
-            $monthlyPayment->update([
-                'amount'         => $request->amount,
-                'is_paid'        => true,
-                'paid_at'        => now(),
-                'transaction_id' => $transaction->id,
-            ]);
-        });
+            abort_if(! $existing, 422, 'El movimiento seleccionado no es válido.');
+
+            // No permitir vincular una tx que ya está atada a otro MonthlyPayment
+            $alreadyLinked = MonthlyPayment::where('transaction_id', $existing->id)
+                ->where('id', '!=', $monthlyPayment->id)
+                ->exists();
+            abort_if($alreadyLinked, 422, 'Ese movimiento ya está vinculado a otro pago del mes.');
+
+            DB::transaction(function () use ($existing, $monthlyPayment) {
+                $monthlyPayment->update([
+                    'amount'                       => $existing->amount,
+                    'is_paid'                      => true,
+                    'paid_at'                      => $existing->date,
+                    'transaction_id'               => $existing->id,
+                    'transaction_was_created_here' => false,
+                ]);
+            });
+
+            $msg = "«{$item->description}» vinculado al movimiento existente.";
+        } else {
+            DB::transaction(function () use ($request, $monthlyPayment, $item) {
+                $transaction = $this->transactionService->create(
+                    [
+                        'account_id'  => $item->account_id,
+                        'category_id' => $item->category_id,
+                        'type'        => 'expense',
+                        'amount'      => $request->amount,
+                        'currency'    => $item->currency,
+                        'date'        => $request->date,
+                        'description' => $item->description,
+                        'notes'       => $request->notes,
+                    ],
+                    $monthlyPayment->family_group_id,
+                    auth()->id(),
+                );
+
+                $monthlyPayment->update([
+                    'amount'                       => $request->amount,
+                    'is_paid'                      => true,
+                    'paid_at'                      => now(),
+                    'transaction_id'               => $transaction->id,
+                    'transaction_was_created_here' => true,
+                ]);
+            });
+
+            $msg = "Pago de «{$item->description}» registrado correctamente.";
+        }
 
         $year  = $monthlyPayment->year;
         $month = str_pad($monthlyPayment->month, 2, '0', STR_PAD_LEFT);
 
         return redirect()
             ->route('monthly-payments.index', ['month' => "{$year}-{$month}"])
-            ->with('success', "Pago de «{$item->description}» registrado correctamente.");
+            ->with('success', $msg);
     }
 
     public function markUnpaid(MonthlyPayment $monthlyPayment)
@@ -195,16 +261,21 @@ class MonthlyPaymentController extends Controller
 
         abort_if(! $monthlyPayment->is_paid, 400, 'Este pago no está marcado como pagado.');
 
+        $wasLinked = ! $monthlyPayment->transaction_was_created_here;
+
         DB::transaction(function () use ($monthlyPayment) {
-            if ($monthlyPayment->transaction) {
+            // Sólo borrar la Transaction si fue creada por este flujo.
+            // Si fue una vinculación a una tx pre-existente, sólo desvinculamos.
+            if ($monthlyPayment->transaction && $monthlyPayment->transaction_was_created_here) {
                 $monthlyPayment->transaction->delete();
             }
 
             $monthlyPayment->update([
-                'is_paid'        => false,
-                'paid_at'        => null,
-                'amount'         => null,
-                'transaction_id' => null,
+                'is_paid'                      => false,
+                'paid_at'                      => null,
+                'amount'                       => null,
+                'transaction_id'               => null,
+                'transaction_was_created_here' => true,
             ]);
         });
 
@@ -212,9 +283,13 @@ class MonthlyPaymentController extends Controller
         $year  = $monthlyPayment->year;
         $month = str_pad($monthlyPayment->month, 2, '0', STR_PAD_LEFT);
 
+        $msg = $wasLinked
+            ? "«{$item->description}» desvinculado (el movimiento se conserva)."
+            : "Pago de «{$item->description}» desmarcado.";
+
         return redirect()
             ->route('monthly-payments.index', ['month' => "{$year}-{$month}"])
-            ->with('success', "Pago de «{$item->description}» desmarcado.");
+            ->with('success', $msg);
     }
 
     /** Descartar el pago de este mes (no aplica, se pagó por otro lado, etc.). */

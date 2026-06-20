@@ -4,8 +4,108 @@
 
 @section('content')
 
+@php
+    // Candidatas (Transactions ya cargadas) por MonthlyPayment para el JS del modal.
+    $payCandidatesData = $monthlyPayments
+        ->mapWithKeys(function ($mp) {
+            if (! isset($mp->candidate_transactions) || $mp->candidate_transactions->isEmpty()) {
+                return [$mp->id => []];
+            }
+            return [$mp->id => $mp->candidate_transactions->map(function ($tx) {
+                $cur     = $tx->currency === 'USD' ? 'US$' : '$';
+                $dateStr = $tx->date->format('d/m/Y');
+                $amtStr  = number_format($tx->amount, 2, ',', '.');
+                $desc    = $tx->description ?: '(sin descripción)';
+                $acc     = $tx->account?->name ?? '';
+                $accSuffix = $acc !== '' ? " · {$acc}" : '';
+                return [
+                    'id'       => $tx->id,
+                    'amount'   => (string) $tx->amount,
+                    'date'     => $dateStr,
+                    'currency' => $tx->currency,
+                    'label'    => "{$dateStr} · {$cur} {$amtStr} · {$desc}{$accSuffix}",
+                ];
+            })->all()];
+        })->toArray();
+@endphp
+
+<style>
+/* Default labels para los tabs del modal */
+.mode-tab-short { display: none; }
+.mode-tab-full  { display: inline; }
+
+@media (max-width: 768px) {
+    .mp-header h1 { font-size: 22px !important; }
+
+    /* Progress card: stackeado vertical limpio */
+    .mp-progress-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 14px !important;
+    }
+    .mp-progress-totals {
+        justify-content: flex-start !important;
+        flex-wrap: wrap;
+    }
+
+    /* Checklist items: grid 2 filas */
+    .checklist-item {
+        display: grid !important;
+        grid-template-columns: auto 1fr auto !important;
+        grid-template-areas:
+            "check info amount"
+            "actions actions actions" !important;
+        column-gap: 12px !important;
+        row-gap: 10px !important;
+        align-items: start !important;
+        padding: 14px 14px !important;
+    }
+    .cl-check   { grid-area: check; align-self: center; }
+    .cl-info    { grid-area: info; min-width: 0; }
+    .cl-amount  { grid-area: amount; }
+    .cl-actions {
+        grid-area: actions;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .cl-actions > form { width: 100%; }
+    .cl-actions > .btn,
+    .cl-actions > form > .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    /* Sub-acciones (descartar/dar de baja/restaurar): touch target cómodo */
+    .cl-actions > div {
+        justify-content: center !important;
+        gap: 18px !important;
+    }
+    .cl-actions > div > button,
+    .cl-actions > div > form > button {
+        min-height: 36px !important;
+        padding: 8px 12px !important;
+    }
+
+    /* Link "Ver movimiento": tap area */
+    .cl-link-tx { padding: 6px 0 !important; }
+
+    /* Modal: padding más razonable + tabs con label corto */
+    #pay-modal-backdrop > div {
+        padding: 20px !important;
+    }
+    .mode-tab { padding: 11px 8px !important; }
+    .mode-tab-full  { display: none !important; }
+    .mode-tab-short { display: inline !important; }
+}
+
+@media (max-width: 480px) {
+    .cl-amount .font-display { font-size: 15px !important; }
+    .cl-info > div:first-child > span:first-child { font-size: 14px !important; }
+}
+</style>
+
 {{-- ── Header ──────────────────────────────────────────────────────────────── --}}
-<div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
+<div class="mp-header" style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
     <div>
         <h1 class="font-display" style="font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; color: var(--text);">
             Pagos del mes
@@ -42,7 +142,7 @@
     $dismissedCount = $monthlyPayments->where('is_dismissed', true)->count();
 @endphp
 <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
+    <div class="mp-progress-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 12px;">
         <div style="display: flex; align-items: center; gap: 16px;">
             <div>
                 <div class="font-display" style="font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: {{ $paidCount === $totalCount ? 'var(--income)' : 'var(--text)' }};">
@@ -62,7 +162,7 @@
                 </div>
             @endif
         </div>
-        <div style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; justify-content: flex-end;">
+        <div class="mp-progress-totals" style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; justify-content: flex-end;">
             @if($totalPaid > 0)
             <div style="text-align: right;">
                 <div class="font-display" style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--expense);">
@@ -149,6 +249,7 @@
             {{ ($isPaid || $isDismissed) ? 'opacity: 0.7;' : '' }}
         ">
             {{-- Checkbox / estado visual --}}
+            <div class="cl-check">
             @if($isDismissed)
                 <div style="width: 26px; height: 26px; border-radius: 8px; background: var(--surface2); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <svg width="12" height="12" fill="none" stroke="var(--muted)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -160,8 +261,11 @@
                     <svg width="13" height="13" fill="none" stroke="var(--income)" stroke-width="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
             @elseif($isDirectDebit)
-                <div style="width: 26px; height: 26px; border-radius: 8px; background: rgba(240,160,48,0.1); border: 2px solid rgba(240,160,48,0.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"
-                     title="Débito directo">
+                <div onclick="openPayModal({{ $mp->id }}, '{{ addslashes($item?->description) }}', '{{ $item?->amount ?? $lastAmt ?? '' }}', '{{ $item?->currency ?? 'ARS' }}', true)"
+                     style="width: 26px; height: 26px; border-radius: 8px; background: rgba(240,160,48,0.1); border: 2px solid rgba(240,160,48,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s;"
+                     onmouseenter="this.style.borderColor='rgba(240,160,48,0.7)'"
+                     onmouseleave="this.style.borderColor='rgba(240,160,48,0.4)'"
+                     title="Confirmar débito directo">
                     <svg width="12" height="12" fill="none" stroke="var(--accent)" stroke-width="2.2" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                 </div>
             @else
@@ -172,9 +276,10 @@
                      title="Marcar como pagado">
                 </div>
             @endif
+            </div>
 
             {{-- Info principal --}}
-            <div style="flex: 1; min-width: 0;">
+            <div class="cl-info" style="flex: 1; min-width: 0;">
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <span style="font-size: 15px; font-weight: 700; color: {{ ($isPaid || $isDismissed) ? 'var(--muted)' : 'var(--text)' }}; {{ $isPaid ? 'text-decoration: line-through;' : '' }}">
                         {{ $item?->description ?? '—' }}
@@ -220,6 +325,7 @@
                     @endif
                     @if($isPaid && $mp->transaction)
                         <a href="{{ route('transactions.show', $mp->transaction) }}"
+                           class="cl-link-tx"
                            style="font-size: 11px; color: var(--accent); text-decoration: none; display: flex; align-items: center; gap: 4px;">
                             <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                             Ver movimiento
@@ -229,7 +335,7 @@
             </div>
 
             {{-- Monto --}}
-            <div style="text-align: right; flex-shrink: 0;">
+            <div class="cl-amount" style="text-align: right; flex-shrink: 0;">
                 @if($isDismissed)
                     <div style="font-size: 12px; color: var(--muted);">no aplica</div>
                 @elseif($isPaid && $mp->amount)
@@ -265,15 +371,13 @@
 
             {{-- Acciones --}}
             @if(!$isDismissed && !$isPaid)
-            <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+            <div class="cl-actions" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                 @if($isDirectDebit)
-                    <form method="POST" action="{{ route('monthly-payments.confirm', $mp) }}">
-                        @csrf
-                        <button type="submit" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
-                            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                            Confirmar
-                        </button>
-                    </form>
+                    <button onclick="openPayModal({{ $mp->id }}, '{{ addslashes($item?->description) }}', '{{ $item?->amount ?? $lastAmt ?? '' }}', '{{ $item?->currency ?? 'ARS' }}', true)"
+                            class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Confirmar
+                    </button>
                 @else
                     <button onclick="openPayModal({{ $mp->id }}, '{{ addslashes($item?->description) }}', '{{ $lastAmt ?? '' }}', '{{ $item?->currency ?? 'ARS' }}')"
                             class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
@@ -298,7 +402,7 @@
                 </div>
             </div>
             @elseif($isDismissed)
-            <div style="flex-shrink: 0;">
+            <div class="cl-actions" style="flex-shrink: 0;">
                 <form method="POST" action="{{ route('monthly-payments.undismiss', $mp) }}">
                     @csrf
                     <button type="submit" class="btn btn-ghost" style="padding: 7px 14px; font-size: 12px;">
@@ -332,42 +436,83 @@
         <form id="pay-modal-form" method="POST">
             @csrf
 
-            <div style="margin-bottom:18px;">
-                <label class="form-label">Monto pagado *</label>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <span id="modal-currency-label" style="font-size:14px; color:var(--muted); font-weight:700; white-space:nowrap; padding: 10px 0;">$</span>
-                    <input type="number" name="amount" id="modal-amount"
-                           class="form-input" inputmode="decimal" step="0.01" min="0.01" required
-                           placeholder="0,00">
+            {{-- Hint para débitos directos --}}
+            <div id="modal-debit-hint" style="display:none; margin-bottom:14px; padding:8px 12px; background:rgba(240,160,48,0.08); border:1px solid rgba(240,160,48,0.25); border-radius:8px; font-size:11px; color:var(--accent); line-height:1.45;">
+                <strong style="letter-spacing:0.04em; text-transform:uppercase; font-size:10px;">Débito directo</strong>
+                — verificá el monto, especialmente si hubo un aumento.
+            </div>
+
+            {{-- Toggle: crear nuevo vs vincular existente (sólo si hay candidatas) --}}
+            <div id="modal-mode-toggle" style="display:none; margin-bottom:18px;">
+                <div style="display:flex; gap:4px; padding:4px; background:var(--surface2); border:1px solid var(--border); border-radius:10px;">
+                    <button type="button" class="mode-tab" data-mode="new"
+                            style="flex:1; padding:9px 10px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.15s;">
+                        <span class="mode-tab-full">Crear movimiento</span>
+                        <span class="mode-tab-short">Crear nuevo</span>
+                    </button>
+                    <button type="button" class="mode-tab" data-mode="link"
+                            style="flex:1; padding:9px 10px; border-radius:7px; border:none; background:transparent; color:var(--muted); font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.15s;">
+                        <span class="mode-tab-full">Vincular existente</span>
+                        <span class="mode-tab-short">Vincular</span>
+                        <span id="modal-candidates-count" style="font-size:11px; opacity:0.7; margin-left:2px;"></span>
+                    </button>
                 </div>
-                @error('amount')
-                    <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div>
-                @enderror
+                <div id="modal-mode-hint" style="font-size:11px; color:var(--muted); margin-top:7px; line-height:1.45;"></div>
             </div>
 
-            <div style="margin-bottom:18px;">
-                <label class="form-label" for="modal-date">Fecha del pago *</label>
-                <input type="date" name="date" id="modal-date"
-                       class="form-input" required
-                       value="{{ now()->format('Y-m-d') }}">
-                @error('date')
-                    <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div>
-                @enderror
+            {{-- Modo "vincular existente" --}}
+            <div id="modal-link-section" style="display:none;">
+                <div style="margin-bottom:18px;">
+                    <label class="form-label" for="modal-existing-tx">Movimiento a vincular *</label>
+                    <select name="existing_transaction_id" id="modal-existing-tx" class="form-select">
+                        <option value="">Seleccioná un movimiento</option>
+                    </select>
+                    <div id="modal-existing-tx-preview" style="font-size:12px; color:var(--accent); margin-top:8px; min-height:16px;"></div>
+                    @error('existing_transaction_id')
+                        <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div>
+                    @enderror
+                </div>
             </div>
 
-            <div style="margin-bottom:22px;">
-                <label class="form-label" for="modal-notes">Notas</label>
-                <textarea name="notes" id="modal-notes"
-                          class="form-input" rows="2"
-                          placeholder="Opcional..."
-                          style="resize:vertical;"></textarea>
+            {{-- Modo "crear nuevo" (default) --}}
+            <div id="modal-new-section">
+                <div style="margin-bottom:18px;">
+                    <label class="form-label">Monto pagado *</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span id="modal-currency-label" style="font-size:14px; color:var(--muted); font-weight:700; white-space:nowrap; padding: 10px 0;">$</span>
+                        <input type="number" name="amount" id="modal-amount"
+                               class="form-input" inputmode="decimal" step="0.01" min="0.01"
+                               placeholder="0,00">
+                    </div>
+                    @error('amount')
+                        <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div style="margin-bottom:18px;">
+                    <label class="form-label" for="modal-date">Fecha del pago *</label>
+                    <input type="date" name="date" id="modal-date"
+                           class="form-input"
+                           value="{{ now()->format('Y-m-d') }}">
+                    @error('date')
+                        <div style="font-size:12px; color:var(--danger); margin-top:4px;">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div style="margin-bottom:22px;">
+                    <label class="form-label" for="modal-notes">Notas</label>
+                    <textarea name="notes" id="modal-notes"
+                              class="form-input" rows="2"
+                              placeholder="Opcional..."
+                              style="resize:vertical;"></textarea>
+                </div>
             </div>
 
-            <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:6px;">
                 <button type="button" onclick="closePayModal()" class="btn btn-ghost">Cancelar</button>
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="modal-submit-btn">
                     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                    Confirmar pago
+                    <span id="modal-submit-label">Confirmar pago</span>
                 </button>
             </div>
         </form>
@@ -422,13 +567,70 @@
 </div>
 
 <script>
-function openPayModal(id, description, lastAmount, currency) {
+const PAY_CANDIDATES = @json($payCandidatesData);
+
+function setPayModalMode(mode) {
+    const isLink = mode === 'link';
+    document.getElementById('modal-new-section').style.display  = isLink ? 'none' : '';
+    document.getElementById('modal-link-section').style.display = isLink ? '' : 'none';
+    document.getElementById('modal-submit-label').textContent   = isLink ? 'Vincular movimiento' : 'Confirmar pago';
+    document.getElementById('modal-mode-hint').textContent      = isLink
+        ? 'El monto y fecha se tomarán del movimiento seleccionado.'
+        : 'Se creará un nuevo movimiento con los datos que ingreses.';
+
+    // Visual state de los tabs
+    document.querySelectorAll('.mode-tab').forEach(t => {
+        const active = t.dataset.mode === mode;
+        t.style.background = active ? 'var(--surface)' : 'transparent';
+        t.style.color      = active ? 'var(--text)' : 'var(--muted)';
+        t.style.boxShadow  = active ? '0 1px 2px rgba(0,0,0,0.2)' : 'none';
+    });
+
+    // Required attrs según modo
+    document.getElementById('modal-amount').required        = !isLink;
+    document.getElementById('modal-date').required          = !isLink;
+    document.getElementById('modal-existing-tx').required   = isLink;
+
+    // Si volvemos a "new", limpiar selector
+    if (!isLink) {
+        document.getElementById('modal-existing-tx').value = '';
+        document.getElementById('modal-existing-tx-preview').textContent = '';
+    }
+}
+
+function openPayModal(id, description, defaultAmount, currency, isDirectDebit = false) {
     const form = document.getElementById('pay-modal-form');
     form.action = '/pendientes/' + id + '/pagar';
     document.getElementById('modal-description').textContent = description;
-    document.getElementById('modal-amount').value = lastAmount || '';
+    document.getElementById('modal-amount').value = defaultAmount || '';
     document.getElementById('modal-currency-label').textContent = currency === 'USD' ? 'US$' : '$';
     document.getElementById('modal-notes').value = '';
+    document.getElementById('modal-debit-hint').style.display = isDirectDebit ? '' : 'none';
+
+    // Candidatas
+    const candidates = PAY_CANDIDATES[id] || [];
+    const toggle     = document.getElementById('modal-mode-toggle');
+    const sel        = document.getElementById('modal-existing-tx');
+
+    if (candidates.length > 0) {
+        toggle.style.display = '';
+        document.getElementById('modal-candidates-count').textContent = `(${candidates.length})`;
+        sel.innerHTML = '<option value="">Seleccioná un movimiento</option>';
+        candidates.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.label;
+            opt.dataset.amount   = c.amount;
+            opt.dataset.date     = c.date;
+            opt.dataset.currency = c.currency;
+            sel.appendChild(opt);
+        });
+    } else {
+        toggle.style.display = 'none';
+    }
+
+    setPayModalMode('new');
+
     const backdrop = document.getElementById('pay-modal-backdrop');
     backdrop.style.display = 'flex';
     setTimeout(() => document.getElementById('modal-amount').focus(), 50);
@@ -437,6 +639,20 @@ function openPayModal(id, description, lastAmount, currency) {
 function closePayModal() {
     document.getElementById('pay-modal-backdrop').style.display = 'none';
 }
+
+// Tab click handlers + preview de tx seleccionada
+document.querySelectorAll('.mode-tab').forEach(t => {
+    t.addEventListener('click', () => setPayModalMode(t.dataset.mode));
+});
+
+document.getElementById('modal-existing-tx')?.addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    const preview = document.getElementById('modal-existing-tx-preview');
+    if (!opt.value) { preview.textContent = ''; return; }
+    const cur = opt.dataset.currency === 'USD' ? 'US$' : '$';
+    const amt = parseFloat(opt.dataset.amount).toLocaleString('es-AR', {minimumFractionDigits:2});
+    preview.textContent = `→ ${cur} ${amt} · ${opt.dataset.date}`;
+});
 
 function confirmUnpay(id, description) {
     document.getElementById('unpay-description').textContent = description;
