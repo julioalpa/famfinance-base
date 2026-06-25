@@ -18,6 +18,7 @@ class User extends Authenticatable
         'google_id',
         'avatar',
         'password',
+        'is_admin',
     ];
 
     protected $hidden = [
@@ -30,6 +31,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
     }
 

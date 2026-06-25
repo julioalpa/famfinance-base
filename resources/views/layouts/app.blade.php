@@ -759,6 +759,16 @@
             </svg>
             Grupo familiar
         </a>
+
+        @if(auth()->user()->is_admin)
+        <div class="nav-section">Sistema</div>
+        <a href="{{ route('admin.dashboard') }}" class="nav-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M12 2l9 4.5v6c0 5-3.5 8.5-9 10-5.5-1.5-9-5-9-10v-6L12 2z"/>
+            </svg>
+            Panel admin
+        </a>
+        @endif
     </nav>
 
     {{-- User & logout --}}

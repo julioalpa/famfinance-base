@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\FamilyGroupController as AdminFamilyGroupController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CategoryController;
@@ -177,5 +180,29 @@ Route::middleware('auth')->group(function () {
             'update'  => 'promotions.update',
             'destroy' => 'promotions.destroy',
         ])->except(['show'])->parameters(['promociones' => 'promotion']);
+
+        // ── Panel de administración ───────────────────────────────────────────
+        Route::middleware(\App\Http\Middleware\EnsureUserIsAdmin::class)
+            ->prefix('admin')
+            ->name('admin.')
+            ->group(function () {
+                Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+                // Usuarios
+                Route::get('/usuarios',              [AdminUserController::class, 'index'])->name('users.index');
+                Route::get('/usuarios/{user}',       [AdminUserController::class, 'show'])->name('users.show');
+                Route::get('/usuarios/{user}/editar',[AdminUserController::class, 'edit'])->name('users.edit');
+                Route::put('/usuarios/{user}',       [AdminUserController::class, 'update'])->name('users.update');
+                Route::delete('/usuarios/{user}',    [AdminUserController::class, 'destroy'])->name('users.destroy');
+
+                // Grupos familiares
+                Route::get('/grupos',                                  [AdminFamilyGroupController::class, 'index'])->name('family-groups.index');
+                Route::get('/grupos/{familyGroup}',                    [AdminFamilyGroupController::class, 'show'])->name('family-groups.show');
+                Route::get('/grupos/{familyGroup}/editar',             [AdminFamilyGroupController::class, 'edit'])->name('family-groups.edit');
+                Route::put('/grupos/{familyGroup}',                    [AdminFamilyGroupController::class, 'update'])->name('family-groups.update');
+                Route::delete('/grupos/{familyGroup}',                 [AdminFamilyGroupController::class, 'destroy'])->name('family-groups.destroy');
+                Route::post('/grupos/{familyGroup}/miembros',          [AdminFamilyGroupController::class, 'addMember'])->name('family-groups.add-member');
+                Route::delete('/grupos/{familyGroup}/miembros/{user}', [AdminFamilyGroupController::class, 'removeMember'])->name('family-groups.remove-member');
+            });
     });
 });
