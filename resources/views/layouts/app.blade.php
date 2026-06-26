@@ -56,7 +56,8 @@
             width: var(--sidebar-w);
             background: var(--surface);
             border-right: 1px solid var(--border);
-            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh;
             position: fixed;
             top: 0; left: 0;
             display: flex;
@@ -94,7 +95,7 @@
             font-weight: 600;
         }
 
-        nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+        .sidebar > nav { flex: 1; padding: 8px 0; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; overscroll-behavior: contain; }
 
         .nav-section {
             padding: 14px 18px 6px;
