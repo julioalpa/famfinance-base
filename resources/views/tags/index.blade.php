@@ -40,9 +40,65 @@
 .tg-pop {
     position:fixed; z-index:9999;
     background:var(--surface); border:1px solid var(--border);
-    border-radius:12px; width:250px; padding:10px;
+    border-radius:12px; width:280px; padding:10px;
     box-shadow:0 8px 32px rgba(0,0,0,0.55);
 }
+.tg-backdrop { display:none; }
+.tg-sheet-header { display:none; }
+.tg-row {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 10px; border-radius:7px; cursor:pointer;
+    font-size:13px; transition:background 0.1s; user-select:none;
+}
+.tg-row.tg-active { background:var(--surface2); }
+.tg-row:hover { background:var(--surface2); }
+.tg-row .tg-check { width:14px; height:14px; flex-shrink:0; }
+.tg-row .tg-dot   { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+.tg-row .tg-name  { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tg-empty { font-size:12px; color:var(--muted); padding:10px 8px; text-align:center; }
+
+@media (max-width: 640px) {
+    .tg-pop {
+        position:fixed !important;
+        left:0 !important; right:0 !important;
+        top:auto !important; bottom:0 !important;
+        width:100% !important; max-width:100% !important;
+        border-radius:18px 18px 0 0;
+        padding:8px 16px 24px 16px;
+        box-shadow:0 -8px 40px rgba(0,0,0,0.6);
+        z-index:10001;
+        max-height:80vh;
+        display:none;
+        flex-direction:column;
+        animation:tgSlideUp 0.18s ease-out;
+    }
+    .tg-pop.tg-open { display:flex !important; }
+    .tg-backdrop.tg-open {
+        display:block !important;
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.55);
+        z-index:10000;
+        animation:tgFadeIn 0.18s ease-out;
+    }
+    .tg-sheet-header { display:block !important; padding-bottom:8px; margin-bottom:4px; }
+    .tg-sheet-grip {
+        width:36px; height:4px; border-radius:2px;
+        background:var(--border);
+        margin:4px auto 12px auto;
+    }
+    .tg-sheet-close {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:28px; height:28px;
+        background:none; border:none;
+        color:var(--muted); font-size:22px; line-height:1;
+        cursor:pointer; padding:0;
+    }
+    .tg-pop input[type=text] { font-size:16px !important; padding:12px 14px !important; }
+    .tg-row { padding:12px 10px; font-size:14px; }
+    .tg-row .tg-dot { width:13px; height:13px; }
+}
+@keyframes tgSlideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+@keyframes tgFadeIn { from { opacity:0; } to { opacity:1; } }
 </style>
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
@@ -122,16 +178,27 @@
     @endif
 </div>
 
+{{-- ── Backdrop compartido para bottom-sheet mobile ─────────────────────────── --}}
+<div id="tg-backdrop" class="tg-backdrop" onclick="closeTgPicker()"></div>
+
 {{-- ── Popovers de tag picker por grupo ────────────────────────────────────── --}}
 @foreach($tagGroups as $tg)
 <div id="tg-pop-{{ $tg->id }}" class="tg-pop" style="display:none;">
+    <div class="tg-sheet-header">
+        <div class="tg-sheet-grip"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span style="font-size:13px;font-weight:700;color:var(--text);">Agregar al grupo</span>
+            <button type="button" class="tg-sheet-close" onclick="closeTgPicker()" aria-label="Cerrar">×</button>
+        </div>
+    </div>
     <input type="text" id="tg-search-{{ $tg->id }}" class="form-input"
            placeholder="Buscar etiqueta…"
-           style="margin-bottom:8px;font-size:12px;padding:7px 10px;"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+           style="margin-bottom:8px;font-size:13px;padding:9px 12px;width:100%;"
            oninput="tgFilterList({{ $tg->id }}, this.value)"
-           onkeydown="if(event.key==='Escape')closeTgPicker()">
+           onkeydown="tgKey(event, {{ $tg->id }})">
     <div id="tg-list-{{ $tg->id }}"
-         style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
+         style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
     </div>
 </div>
 @endforeach
@@ -410,7 +477,7 @@ document.addEventListener('keydown', e => {
 
 // ── Tag groups JS ─────────────────────────────────────────────────────────
 // Declaradas antes de initTableSort para que no queden en TDZ si initTableSort lanza
-var tgActivePicker = null;  // { groupId, popEl }
+var tgActivePicker = null;  // { groupId, popEl, query, highlight }
 
 const TG_ALL_TAGS   = @json($tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values());
 const TG_GROUP_TAGS = @json($tagGroups->mapWithKeys(fn ($tg) => [$tg->id => $tg->tags->pluck('id')->values()]));
@@ -427,71 +494,165 @@ function _tgEsc(s) {
     return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 }
 
-function tgGetSel(groupId) {
-    return new Set((TG_GROUP_TAGS[groupId] || []).map(Number));
-}
+function tgIsMobile() { return window.innerWidth <= 640; }
+
+const TG_POP_W = 280;   // .tg-pop width in CSS
+const TG_MARGIN = 12;   // viewport edge margin
 
 function openTgPicker(groupId, triggerEl) {
     closeTgPicker();
     const pop = document.getElementById(`tg-pop-${groupId}`);
     if (!pop) return;
-    const rect = triggerEl.getBoundingClientRect();
-    const below = window.innerHeight - rect.bottom;
-    pop.style.left   = Math.min(rect.left, window.innerWidth - 262) + 'px';
-    pop.style.bottom = '';
-    pop.style.top    = '';
-    if (below < 220 && rect.top > 220) {
-        pop.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
-    } else {
-        pop.style.top = (rect.bottom + 4) + 'px';
+
+    // Move to document.body so position:fixed uses the viewport, not the
+    // .main-content containing block (which is offset by the sidebar because
+    // of the fadeUp animation's residual transform).
+    if (pop.parentElement !== document.body) {
+        pop.dataset.origParent = 'yes';
+        document.body.appendChild(pop);
     }
-    pop.style.display = 'block';
-    tgActivePicker = { groupId, popEl: pop };
+
+    if (tgIsMobile()) {
+        // Bottom sheet: CSS handles positioning
+        pop.classList.add('tg-open');
+        document.getElementById('tg-backdrop').classList.add('tg-open');
+        pop.style.left = '';
+        pop.style.top  = '';
+        pop.style.bottom = '';
+    } else {
+        const rect = triggerEl.getBoundingClientRect();
+        const vpW = window.innerWidth;
+        const vpH = window.innerHeight;
+
+        // Horizontal: prefer left-align with trigger; if that overflows the
+        // right edge, right-align with the trigger so it opens to the left.
+        let left = rect.left;
+        if (left + TG_POP_W + TG_MARGIN > vpW) {
+            left = Math.max(TG_MARGIN, rect.right - TG_POP_W);
+        }
+        pop.style.left = left + 'px';
+
+        // Vertical: open below if there's room, otherwise above.
+        pop.style.top    = '';
+        pop.style.bottom = '';
+        const below = vpH - rect.bottom;
+        if (below < 260 && rect.top > 260) {
+            pop.style.bottom = (vpH - rect.top + 4) + 'px';
+        } else {
+            pop.style.top = (rect.bottom + 4) + 'px';
+        }
+        pop.style.display = 'block';
+    }
+    tgActivePicker = { groupId, popEl: pop, query: '', highlight: 0 };
     const search = document.getElementById(`tg-search-${groupId}`);
-    if (search) { search.value = ''; setTimeout(() => search.focus(), 40); }
-    tgRenderList(groupId, '');
+    if (search) { search.value = ''; setTimeout(() => search.focus(), 60); }
+    tgRenderList(groupId);
 }
 
 function closeTgPicker() {
     if (tgActivePicker) {
+        tgActivePicker.popEl.classList.remove('tg-open');
         tgActivePicker.popEl.style.display = 'none';
+        document.getElementById('tg-backdrop')?.classList.remove('tg-open');
         tgActivePicker = null;
     }
 }
 
-function tgFilterList(groupId, q) { tgRenderList(groupId, q); }
+function tgFilterList(groupId, q) {
+    if (!tgActivePicker || tgActivePicker.groupId !== groupId) return;
+    tgActivePicker.query = q;
+    tgActivePicker.highlight = 0;
+    tgRenderList(groupId);
+}
 
-function tgRenderList(groupId, q) {
+function _tgComputeItems(groupId) {
+    const q = (tgActivePicker && tgActivePicker.query) || '';
+    const lq = q.trim().toLowerCase();
+    const sel = tgState[groupId] || new Set();
+    const filtered = TG_ALL_TAGS.filter(t => t.name.toLowerCase().includes(lq));
+    filtered.sort((a, b) => {
+        const aSel = sel.has(a.id) ? 1 : 0;
+        const bSel = sel.has(b.id) ? 1 : 0;
+        if (aSel !== bSel) return aSel - bSel;
+        return a.name.localeCompare(b.name);
+    });
+    return filtered;
+}
+
+function tgRenderList(groupId) {
     const listEl = document.getElementById(`tg-list-${groupId}`);
     if (!listEl) return;
     const sel = tgState[groupId] || new Set();
-    const lq  = q.toLowerCase();
-    const filtered = TG_ALL_TAGS.filter(t => t.name.toLowerCase().includes(lq));
+    const items = _tgComputeItems(groupId);
     listEl.innerHTML = '';
-    if (!filtered.length) {
-        listEl.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:6px 8px;">Sin resultados</div>';
+    if (!items.length) {
+        listEl.innerHTML = '<div class="tg-empty">Sin resultados</div>';
         return;
     }
-    filtered.forEach(t => {
+    if (tgActivePicker.highlight < 0) tgActivePicker.highlight = 0;
+    if (tgActivePicker.highlight >= items.length) tgActivePicker.highlight = items.length - 1;
+
+    items.forEach((t, i) => {
         const isSel = sel.has(t.id);
         const d = document.createElement('div');
-        d.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;transition:background 0.1s;';
+        d.className = 'tg-row' + (i === tgActivePicker.highlight ? ' tg-active' : '');
         d.innerHTML = `
-            <span style="width:10px;height:10px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
-            <span style="flex:1;">${_tgEsc(t.name)}</span>
-            ${isSel ? `<svg width="13" height="13" fill="none" stroke="var(--income)" stroke-width="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>` : '<div style="width:13px;height:13px;"></div>'}`;
-        d.onmouseenter = () => d.style.background = 'var(--surface2)';
-        d.onmouseleave = () => d.style.background = '';
-        d.onclick = () => {
-            if (sel.has(t.id)) sel.delete(t.id); else sel.add(t.id);
-            tgState[groupId] = sel;
-            tgSave(groupId);
-            const search = document.getElementById(`tg-search-${groupId}`);
-            if (search) search.value = '';
-            tgRenderList(groupId, '');
+            <span class="tg-dot" style="background:${t.color};"></span>
+            <span class="tg-name">${_tgEsc(t.name)}</span>
+            ${isSel
+                ? '<svg class="tg-check" fill="none" stroke="var(--income)" stroke-width="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'
+                : '<span class="tg-check"></span>'}`;
+        d.onmouseenter = () => {
+            tgActivePicker.highlight = i;
+            [...listEl.children].forEach((el, j) => el.classList.toggle('tg-active', j === i));
         };
+        d.onclick = () => tgToggleTag(groupId, t.id);
         listEl.appendChild(d);
     });
+    const activeEl = listEl.querySelector('.tg-active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+}
+
+function tgToggleTag(groupId, tagId) {
+    const sel = tgState[groupId] || new Set();
+    if (sel.has(tagId)) sel.delete(tagId); else sel.add(tagId);
+    tgState[groupId] = sel;
+    tgSave(groupId);
+    const search = document.getElementById(`tg-search-${groupId}`);
+    if (search) { search.value = ''; search.focus(); }
+    if (tgActivePicker) { tgActivePicker.query = ''; tgActivePicker.highlight = 0; }
+    tgRenderList(groupId);
+}
+
+function tgKey(event, groupId) {
+    if (!tgActivePicker) return;
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const items = _tgComputeItems(groupId);
+        const it = items[tgActivePicker.highlight];
+        if (it) tgToggleTag(groupId, it.id);
+    } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        const items = _tgComputeItems(groupId);
+        if (!items.length) return;
+        tgActivePicker.highlight = (tgActivePicker.highlight + 1) % items.length;
+        tgRenderList(groupId);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        const items = _tgComputeItems(groupId);
+        if (!items.length) return;
+        tgActivePicker.highlight = (tgActivePicker.highlight - 1 + items.length) % items.length;
+        tgRenderList(groupId);
+    } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeTgPicker();
+    } else if (event.key === 'Backspace') {
+        if (tgActivePicker.query) return;
+        const arr = [...(tgState[groupId] || [])];
+        if (!arr.length) return;
+        event.preventDefault();
+        tgToggleTag(groupId, arr[arr.length - 1]);
+    }
 }
 
 async function tgSave(groupId) {
@@ -530,15 +691,22 @@ function tgRenderPills(groupId, tags) {
     if (btn) pillsEl.appendChild(btn);
 }
 
-// Close tg picker on outside click
+// Close tg picker on outside click (desktop). Mobile uses backdrop.
 document.addEventListener('click', e => {
     if (!tgActivePicker) return;
+    if (tgIsMobile()) return; // handled by backdrop
     const { groupId, popEl } = tgActivePicker;
     const btn = document.getElementById(`tg-addbtn-${groupId}`);
     if (!popEl.contains(e.target) && btn && !btn.contains(e.target)) closeTgPicker();
 }, true);
 
-window.addEventListener('scroll', () => closeTgPicker(), { passive: true, capture: true });
+// Close on window scroll only when desktop-anchored (mobile sheet is fixed to viewport)
+window.addEventListener('scroll', (e) => {
+    if (!tgActivePicker || tgIsMobile()) return;
+    // Ignore scroll bubbles from inside the list itself
+    if (e.target && tgActivePicker.popEl.contains(e.target)) return;
+    closeTgPicker();
+}, { passive: true, capture: true });
 
 // ── Modal helpers: nuevo grupo ────────────────────────────────────────────
 function openNewGroupModal() {

@@ -44,6 +44,84 @@
     .rpt-stats { grid-template-columns: 1fr; }
     .rpt-tbl-wrap table { min-width: 380px; }
 }
+
+/* ── Tabla combinada Ingresos / Egresos / Neto ─────────────────────────────
+   Reusadas también en Balance mensual. Mismo naming para consistencia. */
+.cmb-nums {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(78px, 1fr));
+    gap: 10px;
+    align-items: end;
+    text-align: right;
+    font-family: 'Bricolage Grotesque', sans-serif;
+}
+.cmb-cell { display: flex; flex-direction: column; align-items: flex-end; }
+.cmb-cell-label {
+    font-family: 'Nunito', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    display: none;
+}
+.cmb-cell-val { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; }
+.cmb-cell-val.pos { color: var(--income); }
+.cmb-cell-val.neg { color: var(--expense); }
+.cmb-cell-val.zero { color: var(--muted); font-weight: 700; }
+
+.cmb-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(40,40,52,0.5);
+}
+.cmb-row:last-child { border-bottom: none; }
+.cmb-header {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: end;
+    gap: 14px;
+    padding: 12px 20px 10px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Nunito', sans-serif;
+    font-size: 9.5px;
+    font-weight: 800;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.cmb-header-nums {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(78px, 1fr));
+    gap: 10px;
+    text-align: right;
+}
+.cmb-rank {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 11px; font-weight: 800; color: var(--muted); text-align: center;
+}
+.cmb-name {
+    font-size: 13px; font-weight: 700; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 5px; display: flex; align-items: center; gap: 6px;
+}
+.cmb-bar-track { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.cmb-bar-fill  { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+@media (max-width: 620px) {
+    .cmb-nums { grid-template-columns: repeat(3, minmax(64px, auto)); gap: 8px; }
+    .cmb-cell-val { font-size: 12px; }
+    .cmb-cell-label { display: block; }
+    .cmb-header { display: none; }
+    .cmb-row { gap: 10px; padding: 12px 16px; align-items: flex-start; }
+}
+
+/* Sparkline en card savings */
+.spark-wrap { height: 34px; margin-top: 10px; position: relative; }
 </style>
 
 @php
@@ -69,10 +147,10 @@
 
     {{-- Period picker --}}
     <div class="rpt-period">
-        @foreach([3 => '3 meses', 6 => '6 meses', 12 => '12 meses'] as $val => $label)
+        @foreach([3 => '3 meses', 6 => '6 meses', 12 => '12 meses'] as $val => $periodLabel)
             <a href="{{ route('reports.index', ['months' => $val]) }}"
                style="{{ $months === $val ? 'background:var(--accent); color:#0c0804;' : 'color:var(--muted);' }}">
-                {{ $label }}
+                {{ $periodLabel }}
             </a>
         @endforeach
     </div>
@@ -103,7 +181,11 @@
              color:{{ $savingsRate >= 0 ? 'var(--income)' : 'var(--expense)' }};">
             {{ $savingsRate > 0 ? '+' : '' }}{{ $savingsRate }}%
         </div>
-        <div style="font-size:11px; color:var(--muted); margin-top:6px; font-weight:500;">del ingreso ahorrado</div>
+        <div class="spark-wrap"><canvas id="savingsSpark"></canvas></div>
+        <div style="font-size:11px; color:var(--muted); margin-top:2px; font-weight:500; display:flex; justify-content:space-between;">
+            <span>promedio período</span>
+            <span style="opacity:0.7;">últimos {{ $months }} m</span>
+        </div>
     </div>
 
     <div class="stat-card neutral">
@@ -116,6 +198,50 @@
             +$ {{ number_format($bestMonth['income'] - $bestMonth['expense'], 0, ',', '.') }} balance
         </div>
         @endif
+    </div>
+</div>
+
+{{-- Segunda fila de KPIs: cobertura gastos fijos + meses en positivo --}}
+<div class="rpt-stats" style="margin-top:-12px; margin-bottom:28px;">
+    <div class="stat-card" style="grid-column:span 2;">
+        <div style="font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; font-weight:700;">Cobertura de gastos fijos</div>
+        @if($fixedCoverageAvg !== null)
+            @php
+                $fcColor = $fixedCoverageAvg >= 100 ? 'var(--expense)' : ($fixedCoverageAvg >= 70 ? 'var(--accent)' : 'var(--income)');
+            @endphp
+            <div class="font-display" style="font-size:22px; font-weight:800; letter-spacing:-0.02em; line-height:1; color:{{ $fcColor }};">
+                {{ $fixedCoverageAvg }}%
+            </div>
+            <div style="height:5px; background:var(--surface2); border-radius:3px; overflow:hidden; margin-top:12px;">
+                <div style="height:100%; width:{{ min(100, $fixedCoverageAvg) }}%; background:{{ $fcColor }}; border-radius:3px;"></div>
+            </div>
+            <div style="font-size:11px; color:var(--muted); margin-top:8px; font-weight:500;">
+                Prom. mensual: pagos fijos $ {{ number_format($avgFixedPaidMonthly, 0, ',', '.') }} · ingreso $ {{ number_format($avgIncome, 0, ',', '.') }}
+            </div>
+        @else
+            <div class="font-display" style="font-size:22px; font-weight:800; color:var(--muted); opacity:0.5;">—</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:6px;">Sin ingresos en el período</div>
+        @endif
+    </div>
+
+    <div class="stat-card" style="grid-column:span 2;">
+        <div style="font-size:11px; letter-spacing:0.09em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; font-weight:700;">Meses en positivo</div>
+        @php $posColor = $positiveMonths >= $months ? 'var(--income)' : ($positiveMonths >= $months / 2 ? 'var(--accent)' : 'var(--expense)'); @endphp
+        <div class="font-display" style="font-size:22px; font-weight:800; letter-spacing:-0.02em; line-height:1; color:{{ $posColor }};">
+            {{ $positiveMonths }} <span style="font-size:14px; color:var(--muted); font-weight:600;">/ {{ $months }}</span>
+        </div>
+        <div style="display:flex; gap:4px; margin-top:12px;">
+            @foreach($monthlyData as $m)
+                @php $mNet = $m['income'] - $m['expense']; @endphp
+                <div style="flex:1; height:8px; border-radius:2px;
+                    background:{{ $m['income'] === 0.0 ? 'var(--surface2)' : ($mNet > 0 ? 'var(--income)' : 'var(--expense)') }};
+                    opacity:{{ $m['income'] === 0.0 ? '0.4' : '1' }};"
+                    title="{{ $m['label'] }}: {{ $mNet >= 0 ? '+' : '' }}$ {{ number_format($mNet, 0, ',', '.') }}"></div>
+            @endforeach
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-top:8px; font-weight:500;">
+            Meses del período en los que el ingreso superó al gasto
+        </div>
     </div>
 </div>
 
@@ -193,74 +319,95 @@
 {{-- ── Row 3: Top categories table + By member ──────────────────────────── --}}
 <div class="rpt-row{{ $byMember->count() > 1 ? ' col-3-2' : '' }}">
 
-    {{-- Top categorías --}}
+    {{-- Categorías: Ing/Egr/Neto --}}
     <div class="card" style="padding:0; overflow:hidden;">
         <div style="padding:20px 24px 16px; border-bottom:1px solid var(--border);">
-            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Top categorías de gasto</h2>
-            <div style="font-size:12px; color:var(--muted); margin-top:2px;">Últimos {{ $months }} meses</div>
+            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Categorías del período</h2>
+            <div style="font-size:12px; color:var(--muted); margin-top:2px;">Últimos {{ $months }} meses · ingresos, egresos y neto</div>
         </div>
-        @if($expensesByCategory->isEmpty())
+        @if($categoryStats->isEmpty())
             <div style="text-align:center; padding:40px; color:var(--muted); font-size:13px;">Sin datos</div>
         @else
-        @php $catTotal = $expensesByCategory->sum(); @endphp
-        <div class="rpt-tbl-wrap">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Categoría</th>
-                    <th style="text-align:right;">Total</th>
-                    <th style="text-align:right;">% del gasto</th>
-                    <th class="rpt-col-hide-md" style="width:120px;">Proporción</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($expensesByCategory as $cat => $amount)
-                @php $pct = $catTotal > 0 ? round(($amount / $catTotal) * 100, 1) : 0; @endphp
-                <tr>
-                    <td style="color:var(--muted); font-size:12px; width:32px;">{{ $loop->iteration }}</td>
-                    <td style="font-weight:600; font-size:13px;">{{ $cat }}</td>
-                    <td style="text-align:right; font-weight:700; color:var(--expense); white-space:nowrap;">
-                        $ {{ number_format($amount, 0, ',', '.') }}
-                    </td>
-                    <td style="text-align:right; font-size:13px; color:var(--muted); font-weight:600;">{{ $pct }}%</td>
-                    <td class="rpt-col-hide-md" style="padding-right:20px;">
-                        <div style="height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
-                            <div style="height:100%; width:{{ $pct }}%; background:linear-gradient(90deg,var(--expense),rgba(240,64,96,0.5)); border-radius:3px;"></div>
-                        </div>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <div class="cmb-header">
+            <div></div>
+            <div>Categoría</div>
+            <div class="cmb-header-nums">
+                <div>Entra</div>
+                <div>Sale</div>
+                <div>Neto</div>
+            </div>
         </div>
+        @foreach($categoryStats as $idx => $cat)
+        <div class="cmb-row">
+            <div class="cmb-rank">{{ $idx + 1 }}</div>
+            <div style="min-width:0;">
+                <div class="cmb-name">
+                    @include('categories._icon', ['icon' => $cat['icon'], 'color' => $cat['color'], 'type' => $cat['type'] ?? 'expense', 'size' => 'xs', 'label' => null])
+                    <span>{{ $cat['name'] }}</span>
+                    <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $cat['count'] }} mov.</span>
+                </div>
+                <div class="cmb-bar-track">
+                    <div class="cmb-bar-fill" style="width:{{ max($cat['percent'], $cat['income_pct']) }}%; background:{{ $cat['color'] }};"></div>
+                </div>
+            </div>
+            <div class="cmb-nums">
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Entra</div>
+                    <div class="cmb-cell-val {{ $cat['income']  > 0 ? 'pos'  : 'zero' }}">{{ $cat['income']  > 0 ? '$ ' . number_format($cat['income'],  0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Sale</div>
+                    <div class="cmb-cell-val {{ $cat['expense'] > 0 ? 'neg'  : 'zero' }}">{{ $cat['expense'] > 0 ? '$ ' . number_format($cat['expense'], 0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Neto</div>
+                    <div class="cmb-cell-val {{ $cat['net'] > 0 ? 'pos' : ($cat['net'] < 0 ? 'neg' : 'zero') }}">
+                        {{ $cat['net'] > 0 ? '+$ ' : ($cat['net'] < 0 ? '-$ ' : '$ ') }}{{ number_format(abs($cat['net']), 0, ',', '.') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endforeach
         @endif
     </div>
 
-    {{-- Por miembro --}}
+    {{-- Por miembro (Ing/Egr/Neto) --}}
     @if($byMember->count() > 1)
     <div class="card">
-        <div style="margin-bottom:20px;">
-            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gasto por integrante</h2>
-            <div style="font-size:12px; color:var(--muted); margin-top:2px;">Últimos {{ $months }} meses</div>
+        <div style="margin-bottom:16px;">
+            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Por integrante</h2>
+            <div style="font-size:12px; color:var(--muted); margin-top:2px;">Últimos {{ $months }} meses · ingresos y egresos</div>
         </div>
         <div class="rpt-chart h-220" style="margin-bottom:20px;">
             <canvas id="memberChart"></canvas>
         </div>
         @php
-            $memberTotal = $byMember->sum();
             $memberColors = ['#f0a030','#4e9bff','#2dd870','#f04060','#e8b840','#a855f7'];
         @endphp
-        @foreach($byMember as $name => $amount)
-        @php $pct = $memberTotal > 0 ? round(($amount / $memberTotal) * 100, 1) : 0; @endphp
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <div style="width:10px; height:10px; border-radius:50%; background:{{ $memberColors[$loop->index % count($memberColors)] }};"></div>
-                <span style="font-size:13px; font-weight:600;">{{ $name }}</span>
+        @foreach($byMember as $name => $m)
+        <div style="padding:10px 0; border-bottom:1px solid rgba(40,40,52,0.5);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:10px; height:10px; border-radius:50%; background:{{ $memberColors[$loop->index % count($memberColors)] }};"></div>
+                    <span style="font-size:13px; font-weight:700;">{{ $name }}</span>
+                    <span style="font-size:10px; color:var(--muted); font-weight:600;">{{ $m['count'] }} mov.</span>
+                </div>
+                @php $mNet = $m['net']; @endphp
+                <div class="font-display" style="font-size:13px; font-weight:800; color:{{ $mNet > 0 ? 'var(--income)' : ($mNet < 0 ? 'var(--expense)' : 'var(--muted)') }};">
+                    {{ $mNet > 0 ? '+$ ' : ($mNet < 0 ? '-$ ' : '$ ') }}{{ number_format(abs($mNet), 0, ',', '.') }}
+                </div>
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:13px; font-weight:700; color:var(--expense);">$ {{ number_format($amount, 0, ',', '.') }}</div>
-                <div style="font-size:11px; color:var(--muted);">{{ $pct }}%</div>
+            <div style="display:flex; gap:16px; font-size:11px; font-family:'Nunito',sans-serif;">
+                <div><span style="color:var(--muted); font-weight:700;">Entra:</span>
+                    <span style="color:{{ $m['income'] > 0 ? 'var(--income)' : 'var(--muted)' }}; font-weight:800; font-family:'Bricolage Grotesque',sans-serif;">
+                        {{ $m['income'] > 0 ? '$ ' . number_format($m['income'], 0, ',', '.') : '—' }}
+                    </span>
+                </div>
+                <div><span style="color:var(--muted); font-weight:700;">Sale:</span>
+                    <span style="color:{{ $m['expense'] > 0 ? 'var(--expense)' : 'var(--muted)' }}; font-weight:800; font-family:'Bricolage Grotesque',sans-serif;">
+                        {{ $m['expense'] > 0 ? '$ ' . number_format($m['expense'], 0, ',', '.') : '—' }}
+                    </span>
+                </div>
             </div>
         </div>
         @endforeach
@@ -269,21 +416,16 @@
 
 </div>
 
-{{-- ── Row 3b: Gastos por grupo de etiquetas ───────────────────────────────── --}}
+{{-- ── Grupos de etiquetas: Ing/Egr/Neto ───────────────────────────────── --}}
 @if($tagGroupStats->isNotEmpty())
 <div style="margin-bottom:20px;">
     <div class="card" style="padding:0; overflow:hidden;">
         <div style="padding:20px 24px 16px; border-bottom:1px solid var(--border);
                     display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
             <div>
-                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gastos por grupo</h2>
+                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Por grupo de etiquetas</h2>
                 <div style="font-size:12px; color:var(--muted); margin-top:2px;">
-                    Últimos {{ $months }} meses · % sobre total etiquetado
-                    @if($tagGroupStats->sum('pct') > 105)
-                        <span style="color:var(--warn); margin-left:6px;" title="Una transacción puede pertenecer a varios grupos simultáneamente">
-                            · puede superar 100% por etiquetas en múltiples grupos
-                        </span>
-                    @endif
+                    Últimos {{ $months }} meses · ingresos, egresos y neto
                 </div>
             </div>
             <a href="{{ route('tags.index') }}" style="font-size:12px; color:var(--accent); text-decoration:none; font-weight:600;">
@@ -291,97 +433,88 @@
             </a>
         </div>
 
-        <div class="rpt-tbl-wrap">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Grupo</th>
-                    <th class="rpt-col-hide-md">Etiquetas</th>
-                    <th style="text-align:right;">Egresos</th>
-                    <th class="rpt-col-hide-md" style="text-align:center;">Movimientos</th>
-                    <th style="width:160px;">% del total etiquetado</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($tagGroupStats as $tg)
-                <tr>
-                    <td>
-                        <div style="display:flex; align-items:center; gap:9px;">
-                            <div style="width:12px; height:12px; border-radius:3px; background:{{ $tg['color'] }}; flex-shrink:0;"></div>
-                            <span style="font-weight:700; font-size:13px;">{{ $tg['name'] }}</span>
-                        </div>
-                    </td>
-                    <td class="rpt-col-hide-md">
-                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                            @forelse($tg['tags'] as $t)
-                                <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px 2px 6px;
-                                             border-radius:12px;font-size:10px;font-weight:700;
-                                             background:{{ $t['color'] }}22;color:{{ $t['color'] }};
-                                             border:1px solid {{ $t['color'] }}44;">
-                                    <span style="width:5px;height:5px;border-radius:50%;background:{{ $t['color'] }};"></span>
-                                    {{ $t['name'] }}
-                                </span>
-                            @empty
-                                <span style="font-size:11px;color:var(--muted);">Sin etiquetas asignadas</span>
-                            @endforelse
-                        </div>
-                    </td>
-                    <td style="text-align:right; font-weight:800; color:var(--expense); white-space:nowrap; font-family:'Bricolage Grotesque',sans-serif;">
-                        @if($tg['expense'] > 0)
-                            $ {{ number_format($tg['expense'], 0, ',', '.') }}
-                        @else
-                            <span style="color:var(--muted); font-weight:400;">—</span>
-                        @endif
-                    </td>
-                    <td class="rpt-col-hide-md" style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tg['count'] }}</td>
-                    <td style="padding-right:20px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
-                                <div style="height:100%; width:{{ min($tg['pct'], 100) }}%; background:{{ $tg['color'] }}; border-radius:3px; transition:width 0.6s ease;"></div>
-                            </div>
-                            <span style="font-size:11px; color:var(--muted); font-weight:700; min-width:38px; text-align:right;">{{ $tg['pct'] }}%</span>
-                        </div>
-                    </td>
-                </tr>
-                @endforeach
-
-                @if($noGroupTotal > 0)
-                <tr style="opacity:0.65;">
-                    <td>
-                        <div style="display:flex; align-items:center; gap:9px;">
-                            <div style="width:12px; height:12px; border-radius:3px; background:var(--muted); flex-shrink:0;"></div>
-                            <span style="font-weight:600; font-size:13px; color:var(--muted);">Sin grupo</span>
-                        </div>
-                    </td>
-                    <td class="rpt-col-hide-md"><span style="font-size:11px; color:var(--muted);">Etiquetas sin grupo asignado</span></td>
-                    <td style="text-align:right; font-weight:700; white-space:nowrap; font-family:'Bricolage Grotesque',sans-serif; color:var(--muted);">
-                        $ {{ number_format($noGroupTotal, 0, ',', '.') }}
-                    </td>
-                    <td class="rpt-col-hide-md"></td>
-                    <td style="padding-right:20px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
-                                <div style="height:100%; width:{{ min($noGroupPct, 100) }}%; background:var(--muted); border-radius:3px;"></div>
-                            </div>
-                            <span style="font-size:11px; color:var(--muted); font-weight:700; min-width:38px; text-align:right;">{{ $noGroupPct }}%</span>
-                        </div>
-                    </td>
-                </tr>
-                @endif
-            </tbody>
-        </table>
+        @php $tgSorted = $tagGroupStats->sortByDesc(fn ($g) => $g['expense'] + $g['income'])->values(); @endphp
+        <div class="cmb-header">
+            <div></div>
+            <div>Grupo</div>
+            <div class="cmb-header-nums">
+                <div>Entra</div>
+                <div>Sale</div>
+                <div>Neto</div>
+            </div>
         </div>
+        @foreach($tgSorted as $tg)
+        @php $tgNet = $tg['income'] - $tg['expense']; @endphp
+        <div class="cmb-row" style="grid-template-columns:14px 1fr auto;align-items:flex-start;">
+            <div style="width:12px;height:12px;border-radius:3px;background:{{ $tg['color'] }};flex-shrink:0;margin-top:5px;"></div>
+            <div style="min-width:0;">
+                <div class="cmb-name" style="gap:8px;">
+                    <span>{{ $tg['name'] }}</span>
+                    <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $tg['count'] }} mov.</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px;">
+                    @forelse($tg['tags'] as $t)
+                        <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:10px;font-size:9.5px;font-weight:700;background:{{ $t['color'] }}22;color:{{ $t['color'] }};border:1px solid {{ $t['color'] }}44;">
+                            <span style="width:5px;height:5px;border-radius:50%;background:{{ $t['color'] }};"></span>
+                            {{ $t['name'] }}
+                        </span>
+                    @empty
+                        <span style="font-size:11px;color:var(--muted);">Sin etiquetas asignadas</span>
+                    @endforelse
+                </div>
+                <div class="cmb-bar-track">
+                    <div class="cmb-bar-fill" style="width:{{ min($tg['pct'], 100) }}%;background:{{ $tg['color'] }};"></div>
+                </div>
+            </div>
+            <div class="cmb-nums" style="align-self:center;">
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Entra</div>
+                    <div class="cmb-cell-val {{ $tg['income']  > 0 ? 'pos'  : 'zero' }}">{{ $tg['income']  > 0 ? '$ ' . number_format($tg['income'],  0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Sale</div>
+                    <div class="cmb-cell-val {{ $tg['expense'] > 0 ? 'neg'  : 'zero' }}">{{ $tg['expense'] > 0 ? '$ ' . number_format($tg['expense'], 0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Neto</div>
+                    <div class="cmb-cell-val {{ $tgNet > 0 ? 'pos' : ($tgNet < 0 ? 'neg' : 'zero') }}">
+                        {{ $tgNet > 0 ? '+$ ' : ($tgNet < 0 ? '-$ ' : '$ ') }}{{ number_format(abs($tgNet), 0, ',', '.') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endforeach
+
+        @if($noGroupTotal > 0)
+        <div class="cmb-row" style="grid-template-columns:14px 1fr auto;opacity:0.7;">
+            <div style="width:12px;height:12px;border-radius:3px;background:var(--muted);flex-shrink:0;align-self:center;"></div>
+            <div style="min-width:0;">
+                <div class="cmb-name" style="color:var(--muted);gap:8px;">
+                    <span>Sin grupo</span>
+                    <span style="font-size:10px;color:var(--muted);font-weight:600;">etiquetas sin grupo asignado</span>
+                </div>
+                <div class="cmb-bar-track">
+                    <div class="cmb-bar-fill" style="width:{{ min($noGroupPct, 100) }}%;background:var(--muted);"></div>
+                </div>
+            </div>
+            <div class="cmb-nums">
+                <div class="cmb-cell"><div class="cmb-cell-label">Entra</div><div class="cmb-cell-val zero">—</div></div>
+                <div class="cmb-cell"><div class="cmb-cell-label">Sale</div><div class="cmb-cell-val neg">$ {{ number_format($noGroupTotal, 0, ',', '.') }}</div></div>
+                <div class="cmb-cell"><div class="cmb-cell-label">Neto</div><div class="cmb-cell-val neg">-$ {{ number_format($noGroupTotal, 0, ',', '.') }}</div></div>
+            </div>
+        </div>
+        @endif
     </div>
 </div>
 @endif
 
-{{-- ── Row 3b: Gastos por etiqueta ────────────────────────────────────────── --}}
+{{-- ── Etiquetas: Ing/Egr/Neto ────────────────────────────────────────── --}}
 @if($tagStats->isNotEmpty())
 <div style="margin-bottom:20px;">
     <div class="card" style="padding:0; overflow:hidden;">
         <div style="padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
             <div>
-                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gastos por etiqueta</h2>
+                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Por etiqueta</h2>
                 <div style="font-size:12px; color:var(--muted); margin-top:2px;">Últimos {{ $months }} meses · solo transacciones etiquetadas</div>
             </div>
             <a href="{{ route('tags.index') }}" style="font-size:12px; color:var(--accent); text-decoration:none; font-weight:600;">Gestionar etiquetas →</a>
@@ -389,57 +522,54 @@
 
         @php
             $tagExpenseTotal = $tagStats->sum('expense');
-            $hasIncome       = $tagStats->contains(fn($t) => $t['income'] > 0);
+            $tagIncomeTotal  = $tagStats->sum('income');
+            $tagRefTotal     = max($tagExpenseTotal, $tagIncomeTotal, 1);
+            $tagsSorted      = $tagStats->sortByDesc(fn ($t) => $t['expense'] + $t['income'])->values();
         @endphp
-        <div class="rpt-tbl-wrap">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Etiqueta</th>
-                    <th style="text-align:right;">Egresos</th>
-                    @if($hasIncome)
-                    <th style="text-align:right;">Ingresos</th>
-                    @endif
-                    <th class="rpt-col-hide-md" style="text-align:center;">Movimientos</th>
-                    <th class="rpt-col-hide-md" style="width:160px;">Proporción del gasto</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($tagStats as $tag)
-                @php $pct = $tagExpenseTotal > 0 ? round(($tag['expense'] / $tagExpenseTotal) * 100, 1) : 0; @endphp
-                <tr>
-                    <td>
-                        <div style="display:flex; align-items:center; gap:9px;">
-                            <div style="width:10px; height:10px; border-radius:3px; background:{{ $tag['color'] }}; flex-shrink:0;"></div>
-                            <span style="font-weight:700; font-size:13px;">{{ $tag['name'] }}</span>
-                        </div>
-                    </td>
-                    <td style="text-align:right; font-weight:800; color:var(--expense); white-space:nowrap; font-family:'Bricolage Grotesque',sans-serif;">
-                        $ {{ number_format($tag['expense'], 0, ',', '.') }}
-                    </td>
-                    @if($hasIncome)
-                    <td style="text-align:right; font-weight:700; white-space:nowrap;">
-                        @if($tag['income'] > 0)
-                            <span style="color:var(--income);">$ {{ number_format($tag['income'], 0, ',', '.') }}</span>
-                        @else
-                            <span style="color:var(--muted);">—</span>
-                        @endif
-                    </td>
-                    @endif
-                    <td class="rpt-col-hide-md" style="text-align:center; font-size:12px; color:var(--muted); font-weight:600;">{{ $tag['count'] }}</td>
-                    <td class="rpt-col-hide-md" style="padding-right:20px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <div style="flex:1; height:5px; background:var(--surface2); border-radius:3px; overflow:hidden;">
-                                <div style="height:100%; width:{{ $pct }}%; background:{{ $tag['color'] }}; border-radius:3px; transition:width 0.6s ease;"></div>
-                            </div>
-                            <span style="font-size:11px; color:var(--muted); font-weight:700; min-width:34px; text-align:right;">{{ $pct }}%</span>
-                        </div>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <div class="cmb-header">
+            <div></div>
+            <div>Etiqueta</div>
+            <div class="cmb-header-nums">
+                <div>Entra</div>
+                <div>Sale</div>
+                <div>Neto</div>
+            </div>
         </div>
+        @foreach($tagsSorted as $tag)
+        @php
+            $tagNet    = $tag['income'] - $tag['expense'];
+            $tagBar    = max($tag['expense'], $tag['income']);
+            $tagBarPct = $tagRefTotal > 0 ? min(100, round(($tagBar / $tagRefTotal) * 100)) : 0;
+        @endphp
+        <div class="cmb-row" style="grid-template-columns:14px 1fr auto;">
+            <div style="width:10px;height:10px;border-radius:3px;background:{{ $tag['color'] }};flex-shrink:0;align-self:center;"></div>
+            <div style="min-width:0;">
+                <div class="cmb-name" style="gap:8px;">
+                    <span>{{ $tag['name'] }}</span>
+                    <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $tag['count'] }} mov.</span>
+                </div>
+                <div class="cmb-bar-track">
+                    <div class="cmb-bar-fill" style="width:{{ $tagBarPct }}%;background:{{ $tag['color'] }};"></div>
+                </div>
+            </div>
+            <div class="cmb-nums">
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Entra</div>
+                    <div class="cmb-cell-val {{ $tag['income']  > 0 ? 'pos'  : 'zero' }}">{{ $tag['income']  > 0 ? '$ ' . number_format($tag['income'],  0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Sale</div>
+                    <div class="cmb-cell-val {{ $tag['expense'] > 0 ? 'neg'  : 'zero' }}">{{ $tag['expense'] > 0 ? '$ ' . number_format($tag['expense'], 0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Neto</div>
+                    <div class="cmb-cell-val {{ $tagNet > 0 ? 'pos' : ($tagNet < 0 ? 'neg' : 'zero') }}">
+                        {{ $tagNet > 0 ? '+$ ' : ($tagNet < 0 ? '-$ ' : '$ ') }}{{ number_format(abs($tagNet), 0, ',', '.') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endforeach
     </div>
 </div>
 @endif
@@ -854,42 +984,95 @@
         },
     });
 
-    // ── By member doughnut ───────────────────────────────────────────────────
+    // ── By member: barras Ingresos + Egresos ─────────────────────────────────
     @if($byMember->count() > 1)
     new Chart(document.getElementById('memberChart'), {
-        type: 'doughnut',
+        type: 'bar',
         data: {
             labels: {!! $byMember->keys()->toJson() !!},
-            datasets: [{
-                data: {!! $byMember->values()->toJson() !!},
-                backgroundColor: C.cats.slice(0, {{ $byMember->count() }}),
-                borderColor: '#111115',
-                borderWidth: 3,
-                hoverOffset: 6,
-            }],
+            datasets: [
+                {
+                    label: 'Ingresos',
+                    data: {!! $byMember->pluck('income')->toJson() !!},
+                    backgroundColor: 'rgba(45,216,112,0.85)',
+                    borderRadius: 5,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'Egresos',
+                    data: {!! $byMember->pluck('expense')->toJson() !!},
+                    backgroundColor: 'rgba(240,64,96,0.85)',
+                    borderRadius: 5,
+                    borderSkipped: false,
+                },
+            ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '65%',
             plugins: {
-                legend: { display: false },
+                legend: { position: 'bottom', labels: { padding: 10, boxWidth: 10, boxHeight: 10, usePointStyle: true, font: { size: 11 } } },
                 tooltip: {
                     backgroundColor: '#111115',
                     borderColor: '#282834',
                     borderWidth: 1,
-                    titleColor: '#eeebe4',
-                    bodyColor: '#6a6676',
-                    padding: 12,
+                    padding: 10,
                     cornerRadius: 8,
-                    callbacks: {
-                        label: ctx => ' $ ' + ctx.parsed.toLocaleString('es-AR', { minimumFractionDigits: 0 }),
-                    },
+                    callbacks: { label: ctx => ` ${ctx.dataset.label}: $ ${ctx.parsed.y.toLocaleString('es-AR')}` },
+                },
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: {
+                    grid: { color: C.border },
+                    ticks: { callback: v => '$ ' + (v >= 1000 ? Math.round(v/1000) + 'k' : v) },
                 },
             },
         },
     });
     @endif
+
+    // ── Sparkline: tasa de ahorro por mes ────────────────────────────────────
+    (function(){
+        const canvas = document.getElementById('savingsSpark');
+        if (!canvas) return;
+        const data = @json($monthlyData->values());
+        if (!data.length) return;
+        const numeric = data.map(m => m.rate === null ? 0 : m.rate);
+        new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: data.map(m => m.label),
+                datasets: [{
+                    data: numeric,
+                    borderColor: 'rgba(240,160,48,0.9)',
+                    backgroundColor: 'rgba(240,160,48,0.15)',
+                    borderWidth: 1.8,
+                    pointRadius: numeric.map((_, i) => i === numeric.length - 1 ? 3 : 0),
+                    pointBackgroundColor: 'rgba(240,160,48,1)',
+                    fill: true,
+                    tension: 0.35,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.parsed.y}%`,
+                            title: ctx => ctx[0].label,
+                        },
+                    },
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false, grace: '10%' },
+                },
+            },
+        });
+    })();
 
 })();
 </script>

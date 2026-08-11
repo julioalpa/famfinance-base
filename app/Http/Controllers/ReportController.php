@@ -74,16 +74,50 @@ class ReportController extends Controller
         $totalPeriodExpense = $monthlyData->sum('expense');
         $totalPeriodIncome  = $monthlyData->sum('income');
 
-        // ── Expenses by category (period) ─────────────────────────────────────
-        $expensesByCategory = Transaction::where('family_group_id', $groupId)
+        // Meses en positivo (income > expense) y tasa de ahorro por mes (sparkline)
+        $positiveMonths = $monthlyData->filter(fn ($m) => $m['income'] > $m['expense'] && $m['income'] > 0)->count();
+        $monthlyData    = $monthlyData->map(function ($m) {
+            $m['rate'] = $m['income'] > 0
+                ? round((($m['income'] - $m['expense']) / $m['income']) * 100, 1)
+                : null;
+            return $m;
+        });
+
+        // ── Ingresos y egresos por categoría (Ing/Egr/Neto sobre el período) ──
+        $periodTx = Transaction::where('family_group_id', $groupId)
             ->where('date', '>=', $startDate)
-            ->where('type', 'expense')
-            ->with('category')
-            ->get()
-            ->groupBy(fn($t) => $t->category?->name ?? 'Sin categoría')
-            ->map(fn($items) => round($items->sum(fn($t) => $t->amountInArs($exchangeRate)), 2))
-            ->sortDesc()
-            ->take(10);
+            ->whereIn('type', ['income', 'expense'])
+            ->with(['category', 'user'])
+            ->get();
+
+        $categoryStats = $periodTx
+            ->groupBy(fn ($t) => $t->category?->name ?? 'Sin categoría')
+            ->map(function ($items, $name) use ($exchangeRate, $totalPeriodExpense, $totalPeriodIncome) {
+                $expense = round($items->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                $income  = round($items->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                $first   = $items->first();
+                return [
+                    'name'       => $name,
+                    'income'     => $income,
+                    'expense'    => $expense,
+                    'net'        => round($income - $expense, 2),
+                    'count'      => $items->count(),
+                    'percent'    => $totalPeriodExpense > 0 ? round(($expense / $totalPeriodExpense) * 100, 1) : 0,
+                    'income_pct' => $totalPeriodIncome  > 0 ? round(($income  / $totalPeriodIncome)  * 100, 1) : 0,
+                    'color'      => $first->category?->color ?? '#6a6676',
+                    'icon'       => $first->category?->icon  ?? 'other',
+                    'type'       => $first->category?->type  ?? 'expense',
+                ];
+            })
+            ->sortByDesc(fn ($c) => $c['expense'] + $c['income'])
+            ->values();
+
+        // Legacy para donut y JS: mapa "nombre => total expense"
+        $expensesByCategory = $categoryStats
+            ->filter(fn ($c) => $c['expense'] > 0)
+            ->sortByDesc('expense')
+            ->take(10)
+            ->mapWithKeys(fn ($c) => [$c['name'] => $c['expense']]);
 
         // ── Daily spending (current month, split por moneda) ─────────────────
         $dailyRaw = Transaction::where('family_group_id', $groupId)
@@ -112,15 +146,20 @@ class ReportController extends Controller
             ];
         }
 
-        // ── Expense by member ─────────────────────────────────────────────────
-        $byMember = Transaction::where('family_group_id', $groupId)
-            ->where('date', '>=', $startDate)
-            ->where('type', 'expense')
-            ->with('user')
-            ->get()
-            ->groupBy(fn($t) => $t->user->name)
-            ->map(fn($items) => round($items->sum(fn($t) => $t->amountInArs($exchangeRate)), 2))
-            ->sortDesc();
+        // ── Movimientos por integrante (Ing/Egr/Neto) ────────────────────────
+        $byMember = $periodTx
+            ->groupBy(fn ($t) => $t->user?->name ?? '—')
+            ->map(function ($items) use ($exchangeRate) {
+                $expense = round($items->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                $income  = round($items->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                return [
+                    'income'  => $income,
+                    'expense' => $expense,
+                    'net'     => round($income - $expense, 2),
+                    'count'   => $items->count(),
+                ];
+            })
+            ->sortByDesc(fn ($m) => $m['expense'] + $m['income']);
 
         // ── Patrimonio neto (convertido a ARS) ───────────────────────────────
         $allAccounts      = $group->accounts()->where('is_active', true)->get();
@@ -287,6 +326,34 @@ class ReportController extends Controller
             ->sortByDesc('expense')
             ->values();
 
+        // ── Cobertura promedio de gastos fijos ────────────────────────────────
+        // Gastos fijos promedio del período = suma de MonthlyPayments pagados +
+        // cuotas del período (ya incluidas en las transacciones), promediado por mes.
+        $avgFixedPaidMonthly = MonthlyPayment::where('family_group_id', $groupId)
+            ->where('is_paid', true)
+            ->whereIn('payment_item_id', $activePaymentItems->pluck('id'))
+            ->where(function ($q) use ($monthKeys) {
+                foreach ($monthKeys as $mk) {
+                    $q->orWhere(function ($qq) use ($mk) {
+                        $qq->where('year', $mk['year'])->where('month', $mk['month']);
+                    });
+                }
+            })
+            ->get()
+            ->sum(function ($mp) use ($exchangeRate, $activePaymentItems) {
+                $item = $activePaymentItems->firstWhere('id', $mp->payment_item_id);
+                $amount = (float) ($mp->amount ?? $item?->amount ?? 0);
+                if ($amount > 0 && $item?->currency === 'USD' && $exchangeRate) {
+                    return $exchangeRate->convert($amount, 'USD');
+                }
+                return $amount;
+            }) / max($months, 1);
+
+        $avgFixedPaidMonthly = round($avgFixedPaidMonthly, 2);
+        $fixedCoverageAvg = $avgIncome > 0
+            ? round(($avgFixedPaidMonthly / $avgIncome) * 100, 1)
+            : null;
+
         return view('reports.index', compact(
             'tagGroupStats',
             'noGroupTotal',
@@ -301,6 +368,10 @@ class ReportController extends Controller
             'totalPeriodExpense',
             'totalPeriodIncome',
             'expensesByCategory',
+            'categoryStats',
+            'positiveMonths',
+            'avgFixedPaidMonthly',
+            'fixedCoverageAvg',
             'dailySpending',
             'byMember',
             'startDate',

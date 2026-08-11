@@ -79,10 +79,21 @@
     border: none;
     border-radius: 20px 20px 0 0;
     background: var(--surface);
+    color: var(--text);
+    color-scheme: dark;
     border-top: 1px solid var(--border);
     overflow: auto;
     -webkit-overflow-scrolling: touch;
 }
+.filter-sheet .form-input,
+.filter-sheet input[type=text] {
+    background: var(--surface2, #2a2a35);
+    color: var(--text);
+    border: 1px solid var(--border);
+    width: 100%;
+}
+.filter-sheet .form-input::placeholder,
+.filter-sheet input[type=text]::placeholder { color: var(--muted); }
 .filter-sheet::backdrop {
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(4px);
@@ -614,11 +625,12 @@ document.getElementById('filter-sheet')?.addEventListener('click', function(e) {
            id="itag-search-{{ $tx->id }}"
            class="form-input"
            placeholder="Buscar etiqueta…"
-           style="margin-bottom:8px;font-size:12px;padding:7px 10px;"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+           style="margin-bottom:8px;font-size:13px;padding:9px 12px;width:100%;"
            oninput="InlineTags.filterList({{ $tx->id }}, this.value)"
-           onkeydown="if(event.key==='Escape')InlineTags._closePopover()">
+           onkeydown="InlineTags._key(event, {{ $tx->id }})">
     <div id="itag-list-{{ $tx->id }}"
-         style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
+         style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
     </div>
 </div>
 @endforeach
@@ -628,13 +640,14 @@ document.getElementById('filter-sheet')?.addEventListener('click', function(e) {
     <div class="filter-sheet-handle"></div>
     <div class="filter-sheet-body">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <span class="font-display" style="font-size:16px;font-weight:700;">Etiquetas</span>
+            <span class="font-display" style="font-size:16px;font-weight:700;color:var(--text);">Etiquetas</span>
             <button type="button" onclick="document.getElementById('itag-sheet').close()"
-                    style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;font-size:20px;line-height:1;">×</button>
+                    style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;font-size:24px;line-height:1;">×</button>
         </div>
         <input type="text" id="itag-sheet-search" class="form-input"
                placeholder="Buscar etiqueta…"
-               style="margin-bottom:12px;font-size:13px;">
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               style="margin-bottom:12px;font-size:16px;padding:12px 14px;">
         <div id="itag-sheet-list"
              style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">
         </div>
@@ -656,12 +669,30 @@ const TAG_SVG = `<svg width="11" height="11" fill="none" stroke="currentColor" s
 
 window.InlineTags = {
     state:        {},   // txId (number) → Set<tagId>
-    activeId:     null, // currently open popover txId
+    activeId:     null, // currently open popover txId (desktop)
     saveTimers:   {},
     activePopEl:  null,
+    popQ:         '',
+    popHi:        0,
+    sheetQ:       '',
+    sheetHi:      0,
+    sheetTxId:    null,
 
     init(txId, tagIds) {
         this.state[txId] = new Set(tagIds);
+    },
+
+    _sortedFiltered(txId, q) {
+        const sel = this.state[txId] || new Set();
+        const lq = String(q).trim().toLowerCase();
+        const filtered = window.iTagAllTags.filter(t => t.name.toLowerCase().includes(lq));
+        filtered.sort((a, b) => {
+            const aS = sel.has(a.id) ? 1 : 0;
+            const bS = sel.has(b.id) ? 1 : 0;
+            if (aS !== bS) return aS - bS;
+            return a.name.localeCompare(b.name);
+        });
+        return filtered;
     },
 
     // ── Desktop popover ────────────────────────────────────────────
@@ -672,15 +703,25 @@ window.InlineTags = {
         const pop = document.getElementById(`itag-pop-${txId}`);
         if (!pop) return;
 
+        // Move to document.body so position:fixed is relative to the viewport,
+        // not to .main-content (whose fadeUp animation leaves a residual
+        // transform that creates a containing block offset by the sidebar).
+        if (pop.parentElement !== document.body) document.body.appendChild(pop);
+
         const trigger = document.getElementById(`itag-trigger-${txId}`);
         if (trigger) {
             const r = trigger.getBoundingClientRect();
-            const below = window.innerHeight - r.bottom;
-            pop.style.left  = Math.min(r.left, window.innerWidth - 272) + 'px';
+            const vpW = window.innerWidth, vpH = window.innerHeight;
+            const POP_W = 260, MARGIN = 12;
+            // Prefer left-aligned with trigger; if overflows right edge, right-align.
+            let left = r.left;
+            if (left + POP_W + MARGIN > vpW) left = Math.max(MARGIN, r.right - POP_W);
+            pop.style.left  = left + 'px';
             pop.style.bottom = '';
             pop.style.top    = '';
+            const below = vpH - r.bottom;
             if (below < 260 && r.top > 260) {
-                pop.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+                pop.style.bottom = (vpH - r.top + 4) + 'px';
             } else {
                 pop.style.top = (r.bottom + 4) + 'px';
             }
@@ -689,9 +730,11 @@ window.InlineTags = {
         pop.style.display = 'block';
         this.activeId    = txId;
         this.activePopEl = pop;
+        this.popQ = '';
+        this.popHi = 0;
 
         const search = document.getElementById(`itag-search-${txId}`);
-        if (search) { search.value = ''; setTimeout(() => search.focus(), 40); }
+        if (search) { search.value = ''; setTimeout(() => search.focus(), 60); }
         this._renderList(txId, '');
     },
 
@@ -701,7 +744,47 @@ window.InlineTags = {
         this.activePopEl = null;
     },
 
-    filterList(txId, q) { this._renderList(txId, q); },
+    filterList(txId, q) {
+        this.popQ = q;
+        this.popHi = 0;
+        this._renderList(txId, q);
+    },
+
+    _key(event, txId) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const items = this._sortedFiltered(txId, this.popQ);
+            const it = items[this.popHi];
+            if (!it) return;
+            this.toggle(txId, it.id);
+            const s = document.getElementById(`itag-search-${txId}`);
+            if (s) { s.value = ''; s.focus(); }
+            this.popQ = ''; this.popHi = 0;
+            this._renderList(txId, '');
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            const items = this._sortedFiltered(txId, this.popQ);
+            if (!items.length) return;
+            this.popHi = (this.popHi + 1) % items.length;
+            this._renderList(txId, this.popQ);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            const items = this._sortedFiltered(txId, this.popQ);
+            if (!items.length) return;
+            this.popHi = (this.popHi - 1 + items.length) % items.length;
+            this._renderList(txId, this.popQ);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            this._closePopover();
+        } else if (event.key === 'Backspace') {
+            if (this.popQ) return;
+            const arr = [...(this.state[txId] || [])];
+            if (!arr.length) return;
+            event.preventDefault();
+            this.toggle(txId, arr[arr.length - 1]);
+            this._renderList(txId, '');
+        }
+    },
 
     // ── Tag toggle + save ──────────────────────────────────────────
     toggle(txId, tagId) {
@@ -737,31 +820,40 @@ window.InlineTags = {
         const listEl = document.getElementById(`itag-list-${txId}`);
         if (!listEl) return;
         const sel = this.state[txId];
-        const lq  = q.toLowerCase();
-        const filtered = window.iTagAllTags.filter(t => t.name.toLowerCase().includes(lq));
+        const items = this._sortedFiltered(txId, q);
         listEl.innerHTML = '';
-        if (!filtered.length) {
-            listEl.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:6px 8px;">Sin resultados</div>';
+        if (!items.length) {
+            listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px;text-align:center;">Sin resultados</div>';
             return;
         }
-        filtered.forEach(t => {
+        if (this.popHi < 0) this.popHi = 0;
+        if (this.popHi >= items.length) this.popHi = items.length - 1;
+        items.forEach((t, i) => {
             const isSel = sel.has(t.id);
+            const active = i === this.popHi;
             const d = document.createElement('div');
-            d.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;transition:background 0.1s;';
+            d.style.cssText = `display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s;${active ? 'background:var(--surface2);' : ''}`;
             d.innerHTML = `
-                <span style="width:10px;height:10px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
-                <span style="flex:1;">${_esc(t.name)}</span>
-                ${isSel ? `<svg width="13" height="13" fill="none" stroke="var(--income)" stroke-width="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>` : '<div style="width:13px;height:13px;"></div>'}`;
-            d.onmouseenter = () => d.style.background = 'var(--surface2)';
-            d.onmouseleave = () => d.style.background = '';
+                <span style="width:11px;height:11px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
+                <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(t.name)}</span>
+                ${isSel ? `<svg width="14" height="14" fill="none" stroke="var(--income)" stroke-width="2.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>` : '<span style="width:14px;height:14px;"></span>'}`;
+            d.onmouseenter = () => {
+                this.popHi = i;
+                [...listEl.children].forEach((el, j) => {
+                    el.style.background = j === i ? 'var(--surface2)' : '';
+                });
+            };
             d.onclick = () => {
                 InlineTags.toggle(txId, t.id);
                 const s = document.getElementById(`itag-search-${txId}`);
-                if (s) s.value = '';
+                if (s) { s.value = ''; s.focus(); }
+                InlineTags.popQ = ''; InlineTags.popHi = 0;
                 InlineTags._renderList(txId, '');
             };
             listEl.appendChild(d);
         });
+        const activeEl = listEl.children[this.popHi];
+        if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
     },
 
     _scheduleSave(txId) {
@@ -799,35 +891,82 @@ window.InlineTags = {
         const sheet = document.getElementById('itag-sheet');
         if (!sheet) return;
         sheet.dataset.txId = String(txId);
+        this.sheetTxId = txId;
+        this.sheetQ = '';
+        this.sheetHi = 0;
         const search = document.getElementById('itag-sheet-search');
         if (search) search.value = '';
         this._renderSheetList(txId, '');
         sheet.showModal();
+        // Focus AFTER dialog is open. Two attempts because iOS/Chrome sometimes eat the first.
+        setTimeout(() => search && search.focus(), 120);
+        setTimeout(() => {
+            if (search && document.activeElement !== search) search.focus();
+        }, 350);
+    },
+
+    _sheetKey(event) {
+        const txId = this.sheetTxId;
+        if (!txId) return;
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const items = this._sortedFiltered(txId, this.sheetQ);
+            const it = items[this.sheetHi];
+            if (!it) return;
+            this.toggle(txId, it.id);
+            const s = document.getElementById('itag-sheet-search');
+            if (s) { s.value = ''; s.focus(); }
+            this.sheetQ = ''; this.sheetHi = 0;
+            this._renderSheetList(txId, '');
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            const items = this._sortedFiltered(txId, this.sheetQ);
+            if (!items.length) return;
+            this.sheetHi = (this.sheetHi + 1) % items.length;
+            this._renderSheetList(txId, this.sheetQ);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            const items = this._sortedFiltered(txId, this.sheetQ);
+            if (!items.length) return;
+            this.sheetHi = (this.sheetHi - 1 + items.length) % items.length;
+            this._renderSheetList(txId, this.sheetQ);
+        } else if (event.key === 'Backspace') {
+            if (this.sheetQ) return;
+            const arr = [...(this.state[txId] || [])];
+            if (!arr.length) return;
+            event.preventDefault();
+            this.toggle(txId, arr[arr.length - 1]);
+            this._renderSheetList(txId, '');
+        }
     },
 
     _renderSheetList(txId, q) {
         const listEl = document.getElementById('itag-sheet-list');
         if (!listEl) return;
         const sel = this.state[txId];
-        const lq  = q.toLowerCase();
-        const filtered = window.iTagAllTags.filter(t => t.name.toLowerCase().includes(lq));
+        const items = this._sortedFiltered(txId, q);
         listEl.innerHTML = '';
-        if (!filtered.length) {
-            listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px;">Sin resultados</div>';
+        if (!items.length) {
+            listEl.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:12px 8px;text-align:center;">Sin resultados</div>';
             return;
         }
-        filtered.forEach(t => {
+        if (this.sheetHi < 0) this.sheetHi = 0;
+        if (this.sheetHi >= items.length) this.sheetHi = items.length - 1;
+        items.forEach((t, i) => {
             const isSel = sel.has(t.id);
+            const active = i === this.sheetHi;
             const d = document.createElement('div');
-            d.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:8px;cursor:pointer;font-size:13px;transition:background 0.12s;${isSel ? `background:${t.color}11;` : ''}`;
+            d.style.cssText = `display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);transition:background 0.12s;${active ? 'background:var(--surface2);' : (isSel ? `background:${t.color}11;` : '')}`;
             d.innerHTML = `
-                <span style="width:12px;height:12px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
-                <span style="flex:1;font-weight:${isSel ? 600 : 400};">${_esc(t.name)}</span>
-                ${isSel ? `<svg width="15" height="15" fill="none" stroke="${t.color}" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>` : '<div style="width:15px;height:15px;"></div>'}`;
+                <span style="width:14px;height:14px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
+                <span style="flex:1;font-weight:${isSel ? 600 : 400};color:var(--text);">${_esc(t.name)}</span>
+                ${isSel ? `<svg width="17" height="17" fill="none" stroke="${t.color}" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>` : '<span style="width:17px;height:17px;"></span>'}`;
             d.onclick = () => {
                 InlineTags.toggle(txId, t.id);
-                const q2 = document.getElementById('itag-sheet-search')?.value ?? '';
-                InlineTags._renderSheetList(txId, q2);
+                const s = document.getElementById('itag-sheet-search');
+                if (s) { s.value = ''; s.focus(); }
+                InlineTags.sheetQ = ''; InlineTags.sheetHi = 0;
+                InlineTags._renderSheetList(txId, '');
             };
             listEl.appendChild(d);
         });
@@ -856,7 +995,22 @@ document.getElementById('itag-sheet')?.addEventListener('click', function (e) {
 // Mobile sheet: búsqueda
 document.getElementById('itag-sheet-search')?.addEventListener('input', function () {
     const txId = parseInt(document.getElementById('itag-sheet')?.dataset.txId ?? '0');
-    if (txId) InlineTags._renderSheetList(txId, this.value);
+    if (!txId) return;
+    InlineTags.sheetQ = this.value;
+    InlineTags.sheetHi = 0;
+    InlineTags._renderSheetList(txId, this.value);
+});
+
+// Mobile sheet: teclado (Enter/flechas/backspace)
+document.getElementById('itag-sheet-search')?.addEventListener('keydown', function (e) {
+    InlineTags._sheetKey(e);
+});
+
+// Cleanup state al cerrar el sheet
+document.getElementById('itag-sheet')?.addEventListener('close', function () {
+    InlineTags.sheetTxId = null;
+    InlineTags.sheetQ = '';
+    InlineTags.sheetHi = 0;
 });
 
 // Tags globales del grupo

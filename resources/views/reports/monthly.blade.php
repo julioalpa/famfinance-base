@@ -388,6 +388,78 @@
     margin-top: 1px;
 }
 
+/* ── Tabla combinada Ingresos / Egresos / Neto (categorías, etiquetas) ── */
+.cmb-nums {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(78px, 1fr));
+    gap: 10px;
+    align-items: end;
+    text-align: right;
+    font-family: 'Bricolage Grotesque', sans-serif;
+}
+.cmb-cell { display: flex; flex-direction: column; align-items: flex-end; }
+.cmb-cell-label {
+    font-family: 'Nunito', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    display: none;                         /* desktop: el header muestra las labels */
+}
+.cmb-cell-val   { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; }
+.cmb-cell-val.pos { color: var(--income); }
+.cmb-cell-val.neg { color: var(--expense); }
+.cmb-cell-val.zero { color: var(--muted); font-weight: 700; }
+
+/* Row 2-columns: nombre+bar a la izq, 3 números a la der */
+.cmb-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(40,40,52,0.5);
+}
+.cmb-row:last-child { border-bottom: none; }
+.cmb-row .cat-rank { align-self: center; }
+.cmb-row .cat-body { align-self: center; }
+
+/* Header row (labels visibles solo una vez, no en cada fila) */
+.cmb-header {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: end;
+    gap: 14px;
+    padding: 0 0 8px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+.cmb-header-nums {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(78px, 1fr));
+    gap: 10px;
+    text-align: right;
+    font-family: 'Nunito', sans-serif;
+    font-size: 9.5px;
+    font-weight: 800;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 620px) {
+    .cmb-nums {
+        grid-template-columns: repeat(3, minmax(64px, auto));
+        gap: 8px;
+    }
+    .cmb-cell-val { font-size: 12px; }
+    .cmb-cell-label { display: block; }       /* mobile: mostrar labels por celda */
+    .cmb-header { display: none; }            /* mobile: ocultar header (queda en las filas) */
+    .cmb-row { gap: 10px; align-items: flex-start; padding: 12px 0; }
+}
+
 .donut-label-center {
     position: absolute;
     inset: 0;
@@ -1127,8 +1199,13 @@
             <div class="stat-value-v2 amount-income">$ {{ number_format($totalIncome, 0, ',', '.') }}</div>
             <div class="stat-footer">
                 @if($incomeVsPrev !== null)
-                    <span class="delta-pill {{ $incomeVsPrev >= 0 ? 'delta-neu' : 'delta-good' }}">
+                    <span class="delta-pill {{ $incomeVsPrev >= 0 ? 'delta-good' : 'delta-bad' }}" title="vs mes anterior">
                         {{ $incomeVsPrev >= 0 ? '▲' : '▼' }} {{ abs($incomeVsPrev) }}% vs mes anterior
+                    </span>
+                @endif
+                @if($incomeVsAvg !== null)
+                    <span class="delta-pill {{ $incomeVsAvg > 0 ? 'delta-good' : ($incomeVsAvg < -10 ? 'delta-bad' : 'delta-neu') }}" title="vs promedio 3 meses">
+                        {{ $incomeVsAvg >= 0 ? '▲' : '▼' }} {{ abs($incomeVsAvg) }}% vs promedio
                     </span>
                 @endif
                 @if($avgIncome > 0)
@@ -1196,10 +1273,79 @@
             <div class="savings-bar-wrap">
                 <div class="savings-bar-fill" style="width:{{ max(0,min(100,$savingsRate)) }}%;background:{{ $savingsRate >= 20 ? 'var(--income)' : ($savingsRate >= 0 ? 'var(--accent)' : 'var(--expense)') }};"></div>
             </div>
-            <div class="stat-footer" style="margin-top:8px;">
+            <div style="margin-top:10px;height:36px;position:relative;">
+                <canvas id="chartSavingsSpark" style="width:100%;height:100%;"></canvas>
+            </div>
+            <div class="stat-footer" style="margin-top:6px;justify-content:space-between;">
                 @php $avgSavings = $avgIncome > 0 ? round((($avgIncome-$avgExpense)/$avgIncome)*100,1) : 0; @endphp
                 <span class="stat-sub">Prom. 3m: {{ $avgSavings }}%</span>
+                <span class="stat-sub" style="opacity:0.7;">últimos 6 meses</span>
             </div>
+        </div>
+    </div>
+
+    {{-- Sub-row: cobertura de fijos + break-even --}}
+    <div class="stats-grid" style="margin-top:12px;">
+        {{-- Cobertura de gastos fijos --}}
+        <div class="stat-card-v2" style="grid-column:span 2;">
+            <div class="stat-top">
+                <div>
+                    <div class="stat-label-v2">Cobertura de gastos fijos</div>
+                </div>
+                <div class="stat-icon">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+            </div>
+            @if($fixedCoveragePct !== null)
+                @php
+                    $fcColor = $fixedCoveragePct >= 100 ? 'var(--expense)' : ($fixedCoveragePct >= 70 ? 'var(--accent)' : 'var(--income)');
+                    $fcTone  = $fixedCoveragePct >= 100 ? 'amount-expense' : 'amount-neutral';
+                @endphp
+                <div class="stat-value-v2 {{ $fcTone }}">{{ $fixedCoveragePct }}%</div>
+                <div class="savings-bar-wrap">
+                    <div class="savings-bar-fill" style="width:{{ min(100, $fixedCoveragePct) }}%;background:{{ $fcColor }};"></div>
+                </div>
+                <div class="stat-footer" style="margin-top:8px;">
+                    <span class="stat-sub">Pagos fijos + cuotas: $ {{ number_format($fixedCostsTotal, 0, ',', '.') }} · ingreso $ {{ number_format($totalIncome, 0, ',', '.') }}</span>
+                </div>
+            @else
+                <div class="stat-value-v2 amount-neutral" style="opacity:0.5;">—</div>
+                <div class="stat-footer"><span class="stat-sub">Sin ingresos para comparar</span></div>
+            @endif
+        </div>
+
+        {{-- Break-even day --}}
+        <div class="stat-card-v2" style="grid-column:span 2;">
+            <div class="stat-top">
+                <div>
+                    <div class="stat-label-v2">Punto de equilibrio</div>
+                </div>
+                <div class="stat-icon">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+            </div>
+            @if($breakEvenDay !== null)
+                @php
+                    $bePct = round(($breakEvenDay / $daysInMonth) * 100);
+                    $beColor = $breakEvenDay <= 10 ? 'var(--income)' : ($breakEvenDay <= 20 ? 'var(--accent)' : 'var(--expense)');
+                @endphp
+                <div class="stat-value-v2 amount-neutral">Día {{ $breakEvenDay }} <span style="font-size:14px;color:var(--muted);font-weight:600;">/ {{ $daysInMonth }}</span></div>
+                <div class="savings-bar-wrap">
+                    <div class="savings-bar-fill" style="width:{{ $bePct }}%;background:{{ $beColor }};"></div>
+                </div>
+                <div class="stat-footer" style="margin-top:8px;">
+                    <span class="stat-sub">Día en que lo que entró iguala o supera lo que salió</span>
+                </div>
+            @else
+                <div class="stat-value-v2 amount-expense" style="font-size:22px;">Aún no</div>
+                <div class="stat-footer" style="margin-top:8px;">
+                    @if($totalIncome > 0)
+                        <span class="stat-sub">Los gastos acumulados superan los ingresos del mes</span>
+                    @else
+                        <span class="stat-sub">Sin ingresos registrados este mes</span>
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 </div>
@@ -1233,19 +1379,30 @@
 </div>
 
 {{-- ═══════════════════════════════════════════════════════════════════════
-     3. CATEGORÍAS
+     3. CATEGORÍAS — Ingresos / Egresos / Neto
      ═══════════════════════════════════════════════════════════════════════ --}}
 <div class="report-section">
     <div class="section-header">
-        <span class="section-label">Gastos por categoría</span>
+        <span class="section-label">Por categoría</span>
+        <span style="font-size:10px;color:var(--muted);font-weight:600;">ingresos, egresos y neto</span>
         <div class="section-line"></div>
     </div>
 
     <div class="cat-layout">
-        {{-- Lista --}}
+        {{-- Lista combinada Ing/Egr/Neto --}}
         <div class="cat-list-card">
-            @forelse($byCategory as $idx => $cat)
-            <div class="cat-row-v2">
+            @if($categoryCombined->isNotEmpty())
+            <div class="cmb-header">
+                <div></div>
+                <div style="font-family:'Nunito',sans-serif;font-size:9.5px;font-weight:800;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;">Categoría</div>
+                <div class="cmb-header-nums">
+                    <div>Entra</div>
+                    <div>Sale</div>
+                    <div>Neto</div>
+                </div>
+            </div>
+            @foreach($categoryCombined as $idx => $cat)
+            <div class="cmb-row">
                 <div class="cat-rank">{{ $idx + 1 }}</div>
                 <div class="cat-body">
                     <div class="cat-name-v2">
@@ -1254,43 +1411,87 @@
                         <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $cat['count'] }} mov.</span>
                     </div>
                     <div class="cat-bar-track">
-                        <div class="cat-bar-fill" style="width:{{ $cat['percent'] }}%; background:{{ $cat['color'] }};"></div>
+                        <div class="cat-bar-fill" style="width:{{ max($cat['percent'], $cat['income_pct']) }}%; background:{{ $cat['color'] }};"></div>
                     </div>
                 </div>
-                <div class="cat-right">
-                    <div class="cat-amount-v2">$ {{ number_format($cat['total'], 0, ',', '.') }}</div>
-                    <div class="cat-pct-v2">{{ $cat['percent'] }}%</div>
+                <div class="cmb-nums">
+                    <div class="cmb-cell">
+                        <div class="cmb-cell-label">Entra</div>
+                        <div class="cmb-cell-val {{ $cat['income']  > 0 ? 'pos'  : 'zero' }}">{{ $cat['income']  > 0 ? '$ ' . number_format($cat['income'],  0, ',', '.') : '—' }}</div>
+                    </div>
+                    <div class="cmb-cell">
+                        <div class="cmb-cell-label">Sale</div>
+                        <div class="cmb-cell-val {{ $cat['expense'] > 0 ? 'neg'  : 'zero' }}">{{ $cat['expense'] > 0 ? '$ ' . number_format($cat['expense'], 0, ',', '.') : '—' }}</div>
+                    </div>
+                    <div class="cmb-cell">
+                        <div class="cmb-cell-label">Neto</div>
+                        <div class="cmb-cell-val {{ $cat['net'] > 0 ? 'pos' : ($cat['net'] < 0 ? 'neg' : 'zero') }}">
+                            {{ $cat['net'] > 0 ? '+$ ' : ($cat['net'] < 0 ? '-$ ' : '$ ') }}{{ number_format(abs($cat['net']), 0, ',', '.') }}
+                        </div>
+                    </div>
                 </div>
             </div>
-            @empty
-                <div class="empty-state">Sin egresos este mes</div>
-            @endforelse
+            @endforeach
+            @else
+                <div class="empty-state">Sin movimientos este mes</div>
+            @endif
         </div>
 
-        {{-- Donut --}}
-        <div class="cat-donut-card">
-            <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;text-align:center;">Distribución</div>
-            <div style="position:relative;width:180px;height:180px;margin:0 auto;">
-                <canvas id="chartCategories" width="180" height="180"></canvas>
-                <div class="donut-label-center">
-                    <div class="donut-center-val">$ {{ number_format($totalExpense / 1000, 0, ',', '.') }}k</div>
-                    <div class="donut-center-label">Total</div>
+        {{-- Donuts (gastos arriba, ingresos abajo) --}}
+        <div style="display:flex;flex-direction:column;gap:14px;">
+            {{-- Gastos --}}
+            <div class="cat-donut-card">
+                <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;text-align:center;">Distribución de gastos</div>
+                <div style="position:relative;width:180px;height:180px;margin:0 auto;">
+                    <canvas id="chartCategories" width="180" height="180"></canvas>
+                    <div class="donut-label-center">
+                        <div class="donut-center-val">$ {{ number_format($totalExpense / 1000, 0, ',', '.') }}k</div>
+                        <div class="donut-center-label">Total gasto</div>
+                    </div>
                 </div>
-            </div>
-            @if($byCategory->isNotEmpty())
-            <div style="margin-top:16px;display:flex;flex-direction:column;gap:5px;width:100%;">
-                @foreach($byCategory->take(5) as $idx => $cat)
-                <div style="display:flex;align-items:center;gap:7px;">
-                    <div style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:{{ $cat['color'] }};"></div>
-                    <div style="flex:1;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $cat['name'] }}</div>
-                    <div style="font-size:10px;font-weight:800;color:var(--text);">{{ $cat['percent'] }}%</div>
+                @if($byCategory->isNotEmpty())
+                <div style="margin-top:16px;display:flex;flex-direction:column;gap:5px;width:100%;">
+                    @foreach($byCategory->take(5) as $idx => $cat)
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <div style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:{{ $cat['color'] }};"></div>
+                        <div style="flex:1;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $cat['name'] }}</div>
+                        <div style="font-size:10px;font-weight:800;color:var(--text);">{{ $cat['percent'] }}%</div>
+                    </div>
+                    @endforeach
+                    @if($byCategory->count() > 5)
+                        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px;">+ {{ $byCategory->count() - 5 }} más</div>
+                    @endif
                 </div>
-                @endforeach
-                @if($byCategory->count() > 5)
-                    <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px;">+ {{ $byCategory->count() - 5 }} más</div>
                 @endif
             </div>
-            @endif
+
+            {{-- Ingresos --}}
+            <div class="cat-donut-card">
+                <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;text-align:center;">Distribución de ingresos</div>
+                @if($byCategoryIncome->isNotEmpty() && $totalIncome > 0)
+                <div style="position:relative;width:180px;height:180px;margin:0 auto;">
+                    <canvas id="chartCategoriesIncome" width="180" height="180"></canvas>
+                    <div class="donut-label-center">
+                        <div class="donut-center-val" style="color:var(--income);">$ {{ number_format($totalIncome / 1000, 0, ',', '.') }}k</div>
+                        <div class="donut-center-label">Total ingreso</div>
+                    </div>
+                </div>
+                <div style="margin-top:16px;display:flex;flex-direction:column;gap:5px;width:100%;">
+                    @foreach($byCategoryIncome->take(5) as $idx => $cat)
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <div style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:{{ $cat['color'] }};"></div>
+                        <div style="flex:1;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $cat['name'] }}</div>
+                        <div style="font-size:10px;font-weight:800;color:var(--text);">{{ $cat['income_pct'] }}%</div>
+                    </div>
+                    @endforeach
+                    @if($byCategoryIncome->count() > 5)
+                        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px;">+ {{ $byCategoryIncome->count() - 5 }} más</div>
+                    @endif
+                </div>
+                @else
+                <div style="text-align:center;padding:32px 12px;font-size:12px;color:var(--muted);">Sin ingresos este mes</div>
+                @endif
+            </div>
         </div>
     </div>
 </div>
@@ -1310,27 +1511,51 @@
     <div class="panel-card">
         @php
             $tagExpenseTotal = $tagStats->sum('expense');
-            $hasTagIncome    = $tagStats->contains(fn($t) => $t['income'] > 0);
+            $tagIncomeTotal  = $tagStats->sum('income');
+            $tagRefTotal     = max($tagExpenseTotal, $tagIncomeTotal, 1);
+            $tagStatsSorted  = $tagStats->sortByDesc(fn ($t) => $t['expense'] + $t['income'])->values();
         @endphp
-        @foreach($tagStats as $tag)
-        @php $tagPct = $tagExpenseTotal > 0 ? round(($tag['expense'] / $tagExpenseTotal) * 100, 1) : 0; @endphp
-        <div class="tag-row">
-            <div class="tag-dot" style="background:{{ $tag['color'] }};"></div>
-            <div class="tag-body">
-                <div class="tag-name">
-                    {{ $tag['name'] }}
+        <div class="cmb-header">
+            <div></div>
+            <div style="font-family:'Nunito',sans-serif;font-size:9.5px;font-weight:800;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;">Etiqueta</div>
+            <div class="cmb-header-nums">
+                <div>Entra</div>
+                <div>Sale</div>
+                <div>Neto</div>
+            </div>
+        </div>
+        @foreach($tagStatsSorted as $tag)
+        @php
+            $tagNet   = $tag['income'] - $tag['expense'];
+            $tagBar   = max($tag['expense'], $tag['income']);
+            $tagBarPct = $tagRefTotal > 0 ? min(100, round(($tagBar / $tagRefTotal) * 100)) : 0;
+        @endphp
+        <div class="cmb-row" style="grid-template-columns: 14px 1fr auto;">
+            <div class="tag-dot" style="background:{{ $tag['color'] }};align-self:center;"></div>
+            <div class="cat-body">
+                <div class="cat-name-v2" style="gap:8px;">
+                    <span>{{ $tag['name'] }}</span>
                     <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $tag['count'] }} mov.</span>
                 </div>
-                <div class="tag-bar-track">
-                    <div class="tag-bar-fill" style="width:{{ $tagPct }}%;background:{{ $tag['color'] }};"></div>
+                <div class="cat-bar-track">
+                    <div class="cat-bar-fill" style="width:{{ $tagBarPct }}%;background:{{ $tag['color'] }};"></div>
                 </div>
             </div>
-            <div class="tag-right">
-                <div class="tag-expense">$ {{ number_format($tag['expense'], 0, ',', '.') }}</div>
-                @if($tag['income'] > 0)
-                    <div class="tag-income">+$ {{ number_format($tag['income'], 0, ',', '.') }}</div>
-                @endif
-                <div class="tag-pct">{{ $tagPct }}% del etiquetado</div>
+            <div class="cmb-nums">
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Entra</div>
+                    <div class="cmb-cell-val {{ $tag['income']  > 0 ? 'pos'  : 'zero' }}">{{ $tag['income']  > 0 ? '$ ' . number_format($tag['income'],  0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Sale</div>
+                    <div class="cmb-cell-val {{ $tag['expense'] > 0 ? 'neg'  : 'zero' }}">{{ $tag['expense'] > 0 ? '$ ' . number_format($tag['expense'], 0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Neto</div>
+                    <div class="cmb-cell-val {{ $tagNet > 0 ? 'pos' : ($tagNet < 0 ? 'neg' : 'zero') }}">
+                        {{ $tagNet > 0 ? '+$ ' : ($tagNet < 0 ? '-$ ' : '$ ') }}{{ number_format(abs($tagNet), 0, ',', '.') }}
+                    </div>
+                </div>
             </div>
         </div>
         @endforeach
@@ -1528,15 +1753,28 @@
     </div>
 
     <div class="panel-card">
-        @foreach($tagGroupStats as $tg)
-        <div class="tag-row">
-            <div class="tag-dot" style="background:{{ $tg['color'] }};border-radius:3px;"></div>
-            <div class="tag-body">
-                <div class="tag-name">
-                    {{ $tg['name'] }}
+        <div class="cmb-header">
+            <div></div>
+            <div style="font-family:'Nunito',sans-serif;font-size:9.5px;font-weight:800;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;">Grupo</div>
+            <div class="cmb-header-nums">
+                <div>Entra</div>
+                <div>Sale</div>
+                <div>Neto</div>
+            </div>
+        </div>
+        @php
+            $tgSorted = $tagGroupStats->sortByDesc(fn ($g) => $g['expense'] + $g['income'])->values();
+        @endphp
+        @foreach($tgSorted as $tg)
+        @php $tgNet = $tg['income'] - $tg['expense']; @endphp
+        <div class="cmb-row" style="grid-template-columns: 14px 1fr auto;align-items:flex-start;">
+            <div class="tag-dot" style="background:{{ $tg['color'] }};border-radius:3px;margin-top:6px;"></div>
+            <div class="cat-body">
+                <div class="cat-name-v2" style="gap:8px;">
+                    <span>{{ $tg['name'] }}</span>
                     <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $tg['count'] }} mov.</span>
                 </div>
-                <div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px;">
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px;">
                     @foreach($tg['tags'] as $t)
                         <span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:10px;font-size:9.5px;font-weight:700;background:{{ $t['color'] }}22;color:{{ $t['color'] }};border:1px solid {{ $t['color'] }}44;">
                             <span style="width:5px;height:5px;border-radius:50%;background:{{ $t['color'] }};"></span>
@@ -1544,41 +1782,54 @@
                         </span>
                     @endforeach
                 </div>
-                <div class="tag-bar-track">
-                    <div class="tag-bar-fill" style="width:{{ min($tg['pct'], 100) }}%;background:{{ $tg['color'] }};"></div>
+                <div class="cat-bar-track">
+                    <div class="cat-bar-fill" style="width:{{ min($tg['pct'], 100) }}%;background:{{ $tg['color'] }};"></div>
                 </div>
             </div>
-            <div class="tag-right">
-                <div class="tag-expense">
-                    @if($tg['expense'] > 0)
-                        $ {{ number_format($tg['expense'], 0, ',', '.') }}
-                    @else
-                        <span style="color:var(--muted);">—</span>
-                    @endif
+            <div class="cmb-nums" style="align-self:center;">
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Entra</div>
+                    <div class="cmb-cell-val {{ $tg['income']  > 0 ? 'pos'  : 'zero' }}">{{ $tg['income']  > 0 ? '$ ' . number_format($tg['income'],  0, ',', '.') : '—' }}</div>
                 </div>
-                @if($tg['income'] > 0)
-                    <div class="tag-income">+$ {{ number_format($tg['income'], 0, ',', '.') }}</div>
-                @endif
-                <div class="tag-pct">{{ $tg['pct'] }}% del etiquetado</div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Sale</div>
+                    <div class="cmb-cell-val {{ $tg['expense'] > 0 ? 'neg'  : 'zero' }}">{{ $tg['expense'] > 0 ? '$ ' . number_format($tg['expense'], 0, ',', '.') : '—' }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Neto</div>
+                    <div class="cmb-cell-val {{ $tgNet > 0 ? 'pos' : ($tgNet < 0 ? 'neg' : 'zero') }}">
+                        {{ $tgNet > 0 ? '+$ ' : ($tgNet < 0 ? '-$ ' : '$ ') }}{{ number_format(abs($tgNet), 0, ',', '.') }}
+                    </div>
+                </div>
             </div>
         </div>
         @endforeach
 
         @if($noGroupTotal > 0)
-        <div class="tag-row" style="opacity:0.65;">
-            <div class="tag-dot" style="background:var(--muted);border-radius:3px;"></div>
-            <div class="tag-body">
-                <div class="tag-name" style="color:var(--muted);">
-                    Sin grupo
+        <div class="cmb-row" style="grid-template-columns: 14px 1fr auto;opacity:0.7;">
+            <div class="tag-dot" style="background:var(--muted);border-radius:3px;align-self:center;"></div>
+            <div class="cat-body">
+                <div class="cat-name-v2" style="color:var(--muted);gap:8px;">
+                    <span>Sin grupo</span>
                     <span style="font-size:10px;color:var(--muted);font-weight:600;">etiquetas sin grupo asignado</span>
                 </div>
-                <div class="tag-bar-track">
-                    <div class="tag-bar-fill" style="width:{{ min($noGroupPct, 100) }}%;background:var(--muted);"></div>
+                <div class="cat-bar-track">
+                    <div class="cat-bar-fill" style="width:{{ min($noGroupPct, 100) }}%;background:var(--muted);"></div>
                 </div>
             </div>
-            <div class="tag-right">
-                <div class="tag-expense" style="color:var(--muted);">$ {{ number_format($noGroupTotal, 0, ',', '.') }}</div>
-                <div class="tag-pct">{{ $noGroupPct }}% del etiquetado</div>
+            <div class="cmb-nums">
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Entra</div>
+                    <div class="cmb-cell-val zero">—</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Sale</div>
+                    <div class="cmb-cell-val neg">$ {{ number_format($noGroupTotal, 0, ',', '.') }}</div>
+                </div>
+                <div class="cmb-cell">
+                    <div class="cmb-cell-label">Neto</div>
+                    <div class="cmb-cell-val neg">-$ {{ number_format($noGroupTotal, 0, ',', '.') }}</div>
+                </div>
             </div>
         </div>
         @endif
@@ -2124,7 +2375,7 @@ const chartDaily = new Chart(ctxDaily, {
     },
 });
 
-// ── Donut categorías ─────────────────────────────────────────────────────
+// ── Donut categorías (gastos) ────────────────────────────────────────────
 const catData  = @json($byCategory);
 const ctxCats  = document.getElementById('chartCategories').getContext('2d');
 const chartCats = new Chart(ctxCats, {
@@ -2153,6 +2404,38 @@ const chartCats = new Chart(ctxCats, {
     },
 });
 
+// ── Donut categorías (ingresos) ──────────────────────────────────────────
+const incCatData = @json($byCategoryIncome);
+const ctxIncCats = document.getElementById('chartCategoriesIncome');
+let chartIncCats = null;
+if (ctxIncCats && incCatData.length) {
+    chartIncCats = new Chart(ctxIncCats.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: incCatData.map(c => c.name),
+            datasets: [{
+                data: incCatData.map(c => c.income),
+                backgroundColor: incCatData.map(c => c.color || C.muted),
+                borderWidth: 2,
+                borderColor: '#111115',
+                hoverOffset: 6,
+            }],
+        },
+        options: {
+            responsive: false,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` $ ${ctx.parsed.toLocaleString('es-AR')} (${incCatData[ctx.dataIndex].income_pct}%)`,
+                    },
+                },
+            },
+        },
+    });
+}
+
 // ── Ring animación gastos hormiga ────────────────────────────────────────
 (function animateAntRing() {
     const ring   = document.getElementById('antRingFill');
@@ -2171,6 +2454,50 @@ const chartCats = new Chart(ctxCats, {
         if (progress < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+})();
+
+// ── Sparkline: tasa de ahorro últimos 6 meses ───────────────────────────
+(function drawSavingsSpark() {
+    const canvas = document.getElementById('chartSavingsSpark');
+    if (!canvas) return;
+    const data = @json($savingsHistory);
+    if (!data.length) return;
+    const points = data.map(m => m.rate === null ? null : m.rate);
+    // Reemplazamos nulls por 0 para dibujar
+    const numeric = points.map(v => v === null ? 0 : v);
+    new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: data.map(m => m.label),
+            datasets: [{
+                data: numeric,
+                borderColor: C.accent,
+                backgroundColor: 'rgba(240,160,48,0.15)',
+                borderWidth: 1.8,
+                pointRadius: numeric.map((_, i) => i === numeric.length - 1 ? 3 : 0),
+                pointBackgroundColor: C.accent,
+                fill: true,
+                tension: 0.35,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.parsed.y}%`,
+                        title: ctx => ctx[0].label,
+                    },
+                },
+            },
+            scales: {
+                x: { display: false },
+                y: { display: false, grace: '10%' },
+            },
+        },
+    });
 })();
 
 // ── Ring animación gastos evitables ─────────────────────────────────────

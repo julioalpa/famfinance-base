@@ -6,7 +6,15 @@
       "Bash(flyctl logs *)",
       "Bash(curl -sSL -o /dev/null -w \"HTTP %{http_code} | %{time_total}s\\\\n\" --max-time 30 https://famfinance-falling-brook-6007.fly.dev/)",
       "Bash(flyctl deploy *)",
-      "Bash(php artisan *)"
+      "Bash(php artisan *)",
+      "Bash(docker exec *)",
+      "Bash(rm -f /tmp/famcookie.txt)",
+      "Bash(curl -s -c /tmp/famcookie.txt -o /tmp/login.html http://localhost:8000/login)",
+      "Bash(curl *)",
+      "Bash(firefox --headless --screenshot=/tmp/test-picker.png \"file:///tmp/tag-picker-test.html\")",
+      "Bash(command -v geckodriver)",
+      "Bash(command -v pip3)",
+      "Bash(python3 -c \"import selenium\")"
     ]
   }
 }

@@ -101,43 +101,89 @@ class MonthlyReportController extends Controller
         $avgIncome  = $avgMonths > 0 ? round($avgTx->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)) / $avgMonths, 2) : 0;
         $avgExpense = $avgMonths > 0 ? round($avgTx->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)) / $avgMonths, 2) : 0;
         $expenseVsAvg = $avgExpense > 0 ? round((($totalExpense - $avgExpense) / $avgExpense) * 100, 1) : null;
+        $incomeVsAvg  = $avgIncome  > 0 ? round((($totalIncome  - $avgIncome)  / $avgIncome)  * 100, 1) : null;
 
-        // ── Por categoría (top 10 + Otros) ───────────────────────────────────
-        $allCategories = $expenseTransactions
+        // ── Por categoría: ingresos, egresos y neto ──────────────────────────
+        // Agrupamos TODAS las transacciones (income + expense) por categoría
+        // para poder mostrar la fila combinada.
+        $categoryStats = $transactions
             ->groupBy(fn ($t) => $t->category?->name ?? 'Sin categoría')
-            ->map(function ($items, $name) use ($exchangeRate, $totalExpense) {
-                $total = round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+            ->map(function ($items, $name) use ($exchangeRate, $totalExpense, $totalIncome) {
+                $expense = round($items->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                $income  = round($items->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+                $first   = $items->first();
                 return [
-                    'name'    => $name,
-                    'total'   => $total,
-                    'count'   => $items->count(),
-                    'percent' => $totalExpense > 0 ? round(($total / $totalExpense) * 100, 1) : 0,
-                    'color'   => $items->first()->category?->color ?? '#6a6676',
-                    'icon'    => $items->first()->category?->icon ?? 'other',
-                    'type'    => $items->first()->category?->type ?? 'expense',
+                    'name'          => $name,
+                    'income'        => $income,
+                    'expense'       => $expense,
+                    'net'           => round($income - $expense, 2),
+                    'total'         => $expense,                             // legacy — donut / textos existentes
+                    'count'         => $items->count(),
+                    'percent'       => $totalExpense > 0 ? round(($expense / $totalExpense) * 100, 1) : 0,
+                    'income_pct'    => $totalIncome  > 0 ? round(($income  / $totalIncome)  * 100, 1) : 0,
+                    'color'         => $first->category?->color ?? '#6a6676',
+                    'icon'          => $first->category?->icon  ?? 'other',
+                    'type'          => $first->category?->type  ?? 'expense',
                 ];
             })
-            ->sortByDesc('total')
+            ->sortByDesc(fn ($c) => $c['expense'] + $c['income'])
             ->values();
 
-        $top10      = $allCategories->take(10);
-        $others     = $allCategories->slice(10);
-        $othersTotal = round($others->sum('total'), 2);
+        // Donut / bloque de expense mantiene el top-10 por gasto (compat)
+        $expenseCatSorted = $categoryStats->sortByDesc('expense')->values();
+        $top10       = $expenseCatSorted->take(10);
+        $others      = $expenseCatSorted->slice(10);
+        $othersTotal = round($others->sum('expense'), 2);
         $othersPct   = $totalExpense > 0 ? round(($othersTotal / $totalExpense) * 100, 1) : 0;
 
         if ($others->isNotEmpty()) {
             $top10->push([
-                'name'    => 'Otros',
-                'total'   => $othersTotal,
-                'count'   => $others->sum('count'),
-                'percent' => $othersPct,
-                'color'   => '#6a6676',
-                'icon'    => 'other',
-                'type'    => 'expense',
+                'name'       => 'Otros',
+                'income'     => round($others->sum('income'), 2),
+                'expense'    => $othersTotal,
+                'net'        => round($others->sum('income') - $othersTotal, 2),
+                'total'      => $othersTotal,
+                'count'      => $others->sum('count'),
+                'percent'    => $othersPct,
+                'income_pct' => 0,
+                'color'      => '#6a6676',
+                'icon'       => 'other',
+                'type'       => 'expense',
             ]);
         }
-
         $byCategory = $top10->values();
+
+        // Tabla combinada Ing/Egr/Neto: incluye categorías que solo tienen ingresos
+        $categoryCombined = $categoryStats
+            ->filter(fn ($c) => $c['expense'] > 0 || $c['income'] > 0)
+            ->values();
+
+        // Donut de ingresos (espeja el de gastos): top 10 por income + Otros
+        $incomeCatSorted = $categoryStats
+            ->filter(fn ($c) => $c['income'] > 0)
+            ->sortByDesc('income')
+            ->values();
+        $incTop10       = $incomeCatSorted->take(10);
+        $incOthers      = $incomeCatSorted->slice(10);
+        $incOthersTotal = round($incOthers->sum('income'), 2);
+        $incOthersPct   = $totalIncome > 0 ? round(($incOthersTotal / $totalIncome) * 100, 1) : 0;
+
+        if ($incOthers->isNotEmpty()) {
+            $incTop10->push([
+                'name'       => 'Otros',
+                'income'     => $incOthersTotal,
+                'expense'    => 0.0,
+                'net'        => $incOthersTotal,
+                'total'      => 0.0,
+                'count'      => $incOthers->sum('count'),
+                'percent'    => 0,
+                'income_pct' => $incOthersPct,
+                'color'      => '#6a6676',
+                'icon'       => 'other',
+                'type'       => 'income',
+            ]);
+        }
+        $byCategoryIncome = $incTop10->values();
 
         // ── Gasto diario ──────────────────────────────────────────────────────
         $dailyExpenseMap = $expenseTransactions
@@ -397,6 +443,62 @@ class MonthlyReportController extends Controller
         }
         $chartData = collect(array_values($chartData));
 
+        // ── Cobertura de gastos fijos ─────────────────────────────────────────
+        // % del ingreso que se va en pagos fijos del mes (pagados + pendientes).
+        // Incluye también cuotas del mes para tener el cuadro completo de fijos.
+        $fixedCostsTotal = round($paidPaymentsTotal + $pendingPaymentsTotal + $installmentTotal, 2);
+        $fixedCoveragePct = $totalIncome > 0
+            ? round(($fixedCostsTotal / $totalIncome) * 100, 1)
+            : null;
+
+        // ── Día de break-even (ingresos acumulados ≥ gastos acumulados) ──────
+        // Devuelve el número de día del mes, o null si en el mes no se alcanza.
+        $breakEvenDay = null;
+        foreach ($dailySpending as $d) {
+            if ($d['income_cumulative'] >= $d['cumulative'] && $d['income_cumulative'] > 0) {
+                $breakEvenDay = $d['day'];
+                break;
+            }
+        }
+
+        // ── Historial de tasa de ahorro (últimos 6 meses incluido el actual) ─
+        // Para mini-sparkline en el card de savings rate.
+        $savingsHistoryMonths = 6;
+        $savingsHistStart = $date->copy()->subMonths($savingsHistoryMonths - 1)->startOfMonth();
+        $savingsHistRaw = Transaction::where('family_group_id', $groupId)
+            ->whereBetween('date', [$savingsHistStart->toDateString(), $endDate->toDateString()])
+            ->whereIn('type', ['income', 'expense'])
+            ->selectRaw("{$yearExpr} as year, {$monthExpr} as month, type, currency, SUM(amount) as total")
+            ->groupBy('year', 'month', 'type', 'currency')
+            ->get();
+
+        $savingsHistory = [];
+        for ($i = $savingsHistoryMonths - 1; $i >= 0; $i--) {
+            $d = $date->copy()->subMonths($i)->startOfMonth();
+            $savingsHistory[$d->format('Y-n')] = [
+                'label'   => ucfirst($d->locale('es')->isoFormat('MMM')),
+                'income'  => 0.0,
+                'expense' => 0.0,
+                'rate'    => null,
+            ];
+        }
+        foreach ($savingsHistRaw as $row) {
+            $key = "{$row->year}-{$row->month}";
+            if (! isset($savingsHistory[$key])) continue;
+            $amount = (float) $row->total;
+            if ($row->currency === 'USD' && $exchangeRate) {
+                $amount = $exchangeRate->convert($amount, 'USD');
+            }
+            $savingsHistory[$key][$row->type] += $amount;
+        }
+        foreach ($savingsHistory as $k => &$row) {
+            $row['rate'] = $row['income'] > 0
+                ? round((($row['income'] - $row['expense']) / $row['income']) * 100, 1)
+                : null;
+        }
+        unset($row);
+        $savingsHistory = collect(array_values($savingsHistory));
+
         // ── Previsión (solo mes en curso) ─────────────────────────────────────
         $forecast = null;
         if ($isCurrentMonth) {
@@ -455,8 +557,16 @@ class MonthlyReportController extends Controller
             'avgIncome',
             'avgExpense',
             'expenseVsAvg',
+            'incomeVsAvg',
+            // Indicadores adicionales
+            'fixedCostsTotal',
+            'fixedCoveragePct',
+            'breakEvenDay',
+            'savingsHistory',
             // Por categoría
             'byCategory',
+            'byCategoryIncome',
+            'categoryCombined',
             // Gasto diario
             'dailySpending',
             'daysInMonth',
