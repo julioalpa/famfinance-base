@@ -391,14 +391,11 @@
                             Dar de baja
                         </button>
                     @endif
-                    <form method="POST" action="{{ route('monthly-payments.dismiss', $mp) }}">
-                        @csrf
-                        <button type="submit"
-                                style="background: none; border: none; font-size: 11px; color: var(--muted); cursor: pointer; font-family: 'Nunito', sans-serif; font-weight: 600; padding: 2px 0; text-decoration: underline; text-underline-offset: 2px;"
-                                onclick="return confirm('¿Descartar este pago para el mes?')">
-                            Descartar
-                        </button>
-                    </form>
+                    <button type="button"
+                            onclick="openDismissModal({{ $mp->id }}, '{{ addslashes($item?->description) }}')"
+                            style="background: none; border: none; font-size: 11px; color: var(--muted); cursor: pointer; font-family: 'Nunito', sans-serif; font-weight: 600; padding: 6px 10px; text-decoration: underline; text-underline-offset: 2px; border-radius: 6px;">
+                        Descartar
+                    </button>
                 </div>
             </div>
             @elseif($isDismissed)
@@ -542,6 +539,29 @@
     </div>
 </div>
 
+{{-- ── Modal descartar ─────────────────────────────────────────────────────── --}}
+<div id="dismiss-modal-backdrop"
+     onclick="closeDismissModal()"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:500; align-items:center; justify-content:center;">
+    <div onclick="event.stopPropagation()"
+         style="background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:28px; width:100%; max-width:380px; margin:16px;">
+        <h3 class="font-display" style="font-size:17px; font-weight:800; letter-spacing:-0.02em; margin-bottom:10px;">¿Descartar este pago?</h3>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:6px;">
+            «<span id="dismiss-description" style="color:var(--text); font-weight:600;"></span>» no aparecerá como pendiente este mes.
+        </p>
+        <p style="font-size:12px; color:var(--muted); margin-bottom:22px;">Podés restaurarlo desde el filtro de descartados si cambiás de opinión.</p>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" onclick="closeDismissModal()" class="btn btn-ghost">Cancelar</button>
+            <form id="dismiss-form" method="POST" style="display:inline;">
+                @csrf
+                <button type="submit" class="btn btn-primary">
+                    Descartar
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- ── Modal de desmarcar ──────────────────────────────────────────────────── --}}
 <div id="unpay-modal-backdrop"
      onclick="closeUnpayModal()"
@@ -675,11 +695,22 @@ function closeRetireModal() {
     document.getElementById('retire-modal-backdrop').style.display = 'none';
 }
 
+function openDismissModal(id, description) {
+    document.getElementById('dismiss-description').textContent = description;
+    document.getElementById('dismiss-form').action = '/pendientes/' + id + '/descartar';
+    document.getElementById('dismiss-modal-backdrop').style.display = 'flex';
+}
+
+function closeDismissModal() {
+    document.getElementById('dismiss-modal-backdrop').style.display = 'none';
+}
+
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closePayModal();
         closeUnpayModal();
         closeRetireModal();
+        closeDismissModal();
     }
 });
 

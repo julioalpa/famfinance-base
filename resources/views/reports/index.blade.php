@@ -112,6 +112,33 @@
 .cmb-bar-track { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
 .cmb-bar-fill  { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
 
+/* Diverging bar: centered axis, positive → right, negative → left */
+.cmb-bar-diverging {
+    position: relative;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+}
+.cmb-bar-diverging::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -2px;
+    bottom: -2px;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.22);
+    transform: translateX(-0.5px);
+    pointer-events: none;
+}
+.cmb-bar-diverging .cmb-bar-fill {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    max-width: 50%;
+}
+.cmb-bar-diverging .cmb-bar-fill--pos { left: 50%; }
+.cmb-bar-diverging .cmb-bar-fill--neg { right: 50%; }
+
 @media (max-width: 620px) {
     .cmb-nums { grid-template-columns: repeat(3, minmax(64px, auto)); gap: 8px; }
     .cmb-cell-val { font-size: 12px; }
@@ -328,6 +355,9 @@
         @if($categoryStats->isEmpty())
             <div style="text-align:center; padding:40px; color:var(--muted); font-size:13px;">Sin datos</div>
         @else
+        @php
+            $catMaxAbsNet = max($categoryStats->max(fn ($c) => abs($c['net'])), 1);
+        @endphp
         <div class="cmb-header">
             <div></div>
             <div>Categoría</div>
@@ -338,6 +368,10 @@
             </div>
         </div>
         @foreach($categoryStats as $idx => $cat)
+        @php
+            $catNetPct   = min(50, abs($cat['net']) / $catMaxAbsNet * 50);
+            $catNetColor = $cat['net'] > 0 ? 'var(--income)' : ($cat['net'] < 0 ? 'var(--expense)' : 'var(--muted)');
+        @endphp
         <div class="cmb-row">
             <div class="cmb-rank">{{ $idx + 1 }}</div>
             <div style="min-width:0;">
@@ -346,8 +380,12 @@
                     <span>{{ $cat['name'] }}</span>
                     <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $cat['count'] }} mov.</span>
                 </div>
-                <div class="cmb-bar-track">
-                    <div class="cmb-bar-fill" style="width:{{ max($cat['percent'], $cat['income_pct']) }}%; background:{{ $cat['color'] }};"></div>
+                <div class="cmb-bar-diverging">
+                    @if($cat['net'] >= 0)
+                        <div class="cmb-bar-fill cmb-bar-fill--pos" style="width:{{ $catNetPct }}%;background:{{ $catNetColor }};"></div>
+                    @else
+                        <div class="cmb-bar-fill cmb-bar-fill--neg" style="width:{{ $catNetPct }}%;background:{{ $catNetColor }};"></div>
+                    @endif
                 </div>
             </div>
             <div class="cmb-nums">
@@ -433,7 +471,14 @@
             </a>
         </div>
 
-        @php $tgSorted = $tagGroupStats->sortByDesc(fn ($g) => $g['expense'] + $g['income'])->values(); @endphp
+        @php
+            $tgSorted    = $tagGroupStats->sortByDesc(fn ($g) => $g['expense'] + $g['income'])->values();
+            $tgMaxAbsNet = max(
+                $tgSorted->max(fn ($g) => abs($g['income'] - $g['expense'])) ?? 0,
+                $noGroupTotal ?? 0,
+                1
+            );
+        @endphp
         <div class="cmb-header">
             <div></div>
             <div>Grupo</div>
@@ -444,7 +489,11 @@
             </div>
         </div>
         @foreach($tgSorted as $tg)
-        @php $tgNet = $tg['income'] - $tg['expense']; @endphp
+        @php
+            $tgNet      = $tg['income'] - $tg['expense'];
+            $tgNetPct   = min(50, abs($tgNet) / $tgMaxAbsNet * 50);
+            $tgNetColor = $tgNet > 0 ? 'var(--income)' : ($tgNet < 0 ? 'var(--expense)' : 'var(--muted)');
+        @endphp
         <div class="cmb-row" style="grid-template-columns:14px 1fr auto;align-items:flex-start;">
             <div style="width:12px;height:12px;border-radius:3px;background:{{ $tg['color'] }};flex-shrink:0;margin-top:5px;"></div>
             <div style="min-width:0;">
@@ -462,8 +511,12 @@
                         <span style="font-size:11px;color:var(--muted);">Sin etiquetas asignadas</span>
                     @endforelse
                 </div>
-                <div class="cmb-bar-track">
-                    <div class="cmb-bar-fill" style="width:{{ min($tg['pct'], 100) }}%;background:{{ $tg['color'] }};"></div>
+                <div class="cmb-bar-diverging">
+                    @if($tgNet >= 0)
+                        <div class="cmb-bar-fill cmb-bar-fill--pos" style="width:{{ $tgNetPct }}%;background:{{ $tgNetColor }};"></div>
+                    @else
+                        <div class="cmb-bar-fill cmb-bar-fill--neg" style="width:{{ $tgNetPct }}%;background:{{ $tgNetColor }};"></div>
+                    @endif
                 </div>
             </div>
             <div class="cmb-nums" style="align-self:center;">
@@ -493,8 +546,8 @@
                     <span>Sin grupo</span>
                     <span style="font-size:10px;color:var(--muted);font-weight:600;">etiquetas sin grupo asignado</span>
                 </div>
-                <div class="cmb-bar-track">
-                    <div class="cmb-bar-fill" style="width:{{ min($noGroupPct, 100) }}%;background:var(--muted);"></div>
+                <div class="cmb-bar-diverging">
+                    <div class="cmb-bar-fill cmb-bar-fill--neg" style="width:{{ min(50, $noGroupTotal / $tgMaxAbsNet * 50) }}%;background:var(--expense);"></div>
                 </div>
             </div>
             <div class="cmb-nums">
@@ -521,10 +574,8 @@
         </div>
 
         @php
-            $tagExpenseTotal = $tagStats->sum('expense');
-            $tagIncomeTotal  = $tagStats->sum('income');
-            $tagRefTotal     = max($tagExpenseTotal, $tagIncomeTotal, 1);
-            $tagsSorted      = $tagStats->sortByDesc(fn ($t) => $t['expense'] + $t['income'])->values();
+            $tagsSorted    = $tagStats->sortByDesc(fn ($t) => $t['expense'] + $t['income'])->values();
+            $tagMaxAbsNet  = max($tagsSorted->max(fn ($t) => abs($t['income'] - $t['expense'])), 1);
         @endphp
         <div class="cmb-header">
             <div></div>
@@ -537,9 +588,9 @@
         </div>
         @foreach($tagsSorted as $tag)
         @php
-            $tagNet    = $tag['income'] - $tag['expense'];
-            $tagBar    = max($tag['expense'], $tag['income']);
-            $tagBarPct = $tagRefTotal > 0 ? min(100, round(($tagBar / $tagRefTotal) * 100)) : 0;
+            $tagNet      = $tag['income'] - $tag['expense'];
+            $tagNetPct   = min(50, abs($tagNet) / $tagMaxAbsNet * 50);
+            $tagNetColor = $tagNet > 0 ? 'var(--income)' : ($tagNet < 0 ? 'var(--expense)' : 'var(--muted)');
         @endphp
         <div class="cmb-row" style="grid-template-columns:14px 1fr auto;">
             <div style="width:10px;height:10px;border-radius:3px;background:{{ $tag['color'] }};flex-shrink:0;align-self:center;"></div>
@@ -548,8 +599,12 @@
                     <span>{{ $tag['name'] }}</span>
                     <span style="font-size:10px;color:var(--muted);font-weight:600;">{{ $tag['count'] }} mov.</span>
                 </div>
-                <div class="cmb-bar-track">
-                    <div class="cmb-bar-fill" style="width:{{ $tagBarPct }}%;background:{{ $tag['color'] }};"></div>
+                <div class="cmb-bar-diverging">
+                    @if($tagNet >= 0)
+                        <div class="cmb-bar-fill cmb-bar-fill--pos" style="width:{{ $tagNetPct }}%;background:{{ $tagNetColor }};"></div>
+                    @else
+                        <div class="cmb-bar-fill cmb-bar-fill--neg" style="width:{{ $tagNetPct }}%;background:{{ $tagNetColor }};"></div>
+                    @endif
                 </div>
             </div>
             <div class="cmb-nums">
