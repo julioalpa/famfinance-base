@@ -47,7 +47,45 @@
     /* Badge decorativo de patrimonio se oculta */
     .dash-badge-decorative { display: none !important; }
 }
+
+/* ── Delta pills (comparativas en tarjetas del mes) ─────────────────────── */
+.dash-deltas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+.dash-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.dash-delta-good { background: rgba(45,216,112,0.12); color: var(--income); }
+.dash-delta-bad  { background: rgba(240,64,96,0.12);  color: var(--expense); }
+.dash-delta-neu  { background: rgba(78,155,255,0.12); color: var(--accent2); }
+.dash-delta-sub  { font-size: 11px; color: var(--muted); font-weight: 600; }
 </style>
+
+@php
+    // Helper de presentación para las comparativas del mes.
+    // $goodWhenUp: true para ingresos (subir es bueno), false para gastos.
+    $deltaClass = function (?float $pct, bool $goodWhenUp) {
+        if ($pct === null) return 'dash-delta-neu';
+        if ($goodWhenUp) {
+            return $pct >= 0 ? 'dash-delta-good' : 'dash-delta-bad';
+        }
+        // Gastos: subir es malo, bajar es bueno; variaciones chicas → neutro.
+        if ($pct > 5)  return 'dash-delta-bad';
+        if ($pct < -5) return 'dash-delta-good';
+        return 'dash-delta-neu';
+    };
+@endphp
 
 {{-- ── Header ──────────────────────────────────────────────────────────────── --}}
 <div class="dash-header" style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px;">
@@ -109,6 +147,41 @@
 </div>
 @endif
 
+{{-- ── Alertas de presupuesto ───────────────────────────────────────────────── --}}
+@if($budgetAlerts->isNotEmpty())
+<div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px;">
+    @foreach($budgetAlerts as $alert)
+        @php
+            $over = $alert['status'] === 'over';
+            $col  = $over ? 'var(--expense)' : 'var(--warn)';
+            $bg   = $over ? 'rgba(255,69,58,0.08)' : 'rgba(255,214,10,0.08)';
+            $bd   = $over ? 'rgba(255,69,58,0.35)' : 'rgba(255,214,10,0.35)';
+            $cat  = $alert['category'];
+        @endphp
+        <div style="background: {{ $bg }}; border: 1px solid {{ $bd }}; border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <svg width="18" height="18" fill="none" stroke="{{ $col }}" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink: 0;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div style="flex: 1; min-width: 180px;">
+                <span style="font-size: 14px; font-weight: 700; color: {{ $col }};">
+                    {{ $over ? 'Presupuesto excedido:' : 'Cerca del límite:' }}
+                </span>
+                <span style="font-size: 14px; color: var(--text); margin-left: 4px;">{{ $cat->name }}</span>
+                @if($alert['is_annual'])
+                    <span style="font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; background: rgba(100,210,255,0.14); color: var(--accent2); margin-left: 4px;">ANUAL</span>
+                @endif
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+                    Gastado $ {{ number_format($alert['spent'], 0, ',', '.') }} de $ {{ number_format($alert['limit'], 0, ',', '.') }}
+                    ({{ $alert['pct'] }}%){{ $alert['is_annual'] ? ' este año' : ' este mes' }}
+                </div>
+            </div>
+            <a href="{{ route('budgets.index') }}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 12px; flex-shrink: 0;">Ver presupuestos</a>
+        </div>
+    @endforeach
+</div>
+@endif
+
 {{-- ── Stats Cards ──────────────────────────────────────────────────────────── --}}
 <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 10px;">
     Movimientos del mes
@@ -120,7 +193,21 @@
         <div class="font-display" style="font-size: 28px; font-weight: 800; color: var(--income); letter-spacing: -0.03em; line-height: 1;">
             $ {{ number_format($totalIncome, 2, ',', '.') }}
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">ARS · {{ now()->locale('es')->isoFormat('MMMM') }}</div>
+        <div class="dash-deltas">
+            @if($incomeVsPrev !== null)
+                <span class="dash-delta {{ $deltaClass($incomeVsPrev, true) }}" title="vs mes anterior">
+                    {{ $incomeVsPrev >= 0 ? '▲' : '▼' }} {{ abs($incomeVsPrev) }}% vs mes ant.
+                </span>
+            @endif
+            @if($incomeVsAvg !== null)
+                <span class="dash-delta {{ $deltaClass($incomeVsAvg, true) }}" title="vs promedio 3 meses">
+                    {{ $incomeVsAvg >= 0 ? '▲' : '▼' }} {{ abs($incomeVsAvg) }}% vs prom.
+                </span>
+            @endif
+        </div>
+        @if($avgIncome > 0)
+            <div class="dash-delta-sub" style="margin-top: 6px;">Prom. 3m: $ {{ number_format($avgIncome, 0, ',', '.') }}</div>
+        @endif
     </div>
 
     <div class="stat-card expense">
@@ -128,7 +215,21 @@
         <div class="font-display" style="font-size: 28px; font-weight: 800; color: var(--expense); letter-spacing: -0.03em; line-height: 1;">
             $ {{ number_format($totalExpense, 2, ',', '.') }}
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">ARS · {{ now()->locale('es')->isoFormat('MMMM') }}</div>
+        <div class="dash-deltas">
+            @if($expenseVsPrev !== null)
+                <span class="dash-delta {{ $deltaClass($expenseVsPrev, false) }}" title="vs mes anterior">
+                    {{ $expenseVsPrev >= 0 ? '▲' : '▼' }} {{ abs($expenseVsPrev) }}% vs mes ant.
+                </span>
+            @endif
+            @if($expenseVsAvg !== null)
+                <span class="dash-delta {{ $deltaClass($expenseVsAvg, false) }}" title="vs promedio 3 meses">
+                    {{ $expenseVsAvg >= 0 ? '▲' : '▼' }} {{ abs($expenseVsAvg) }}% vs prom.
+                </span>
+            @endif
+        </div>
+        @if($avgExpense > 0)
+            <div class="dash-delta-sub" style="margin-top: 6px;">Prom. 3m: $ {{ number_format($avgExpense, 0, ',', '.') }}</div>
+        @endif
     </div>
 
     <div class="stat-card balance">
@@ -136,7 +237,17 @@
         <div class="font-display" style="font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: {{ $balance >= 0 ? 'var(--income)' : 'var(--expense)' }};">
             {{ $balance >= 0 ? '+' : '' }}$ {{ number_format($balance, 2, ',', '.') }}
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 500;">Ingresos − Gastos</div>
+        <div class="dash-deltas">
+            @php $balanceDelta = $balance - $prevBalance; @endphp
+            @if($prevBalance != 0 || $balance != 0)
+                <span class="dash-delta {{ $balanceDelta >= 0 ? 'dash-delta-good' : 'dash-delta-bad' }}" title="variación vs mes anterior">
+                    {{ $balanceDelta >= 0 ? '▲' : '▼' }} {{ $balanceDelta >= 0 ? '+' : '−' }}$ {{ number_format(abs($balanceDelta), 0, ',', '.') }} vs mes ant.
+                </span>
+            @endif
+        </div>
+        <div class="dash-delta-sub" style="margin-top: 6px;">
+            Mes anterior: {{ $prevBalance >= 0 ? '+' : '' }}$ {{ number_format($prevBalance, 0, ',', '.') }}
+        </div>
     </div>
 </div>
 
@@ -241,6 +352,54 @@
         @endif
     </div>
 </div>
+
+{{-- ── Presupuestos del mes ─────────────────────────────────────────────── --}}
+@if($budgetProgress->isNotEmpty())
+<div class="card" style="margin-bottom: 24px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 8px;">
+        <div>
+            <h2 class="font-display" style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">Presupuestos del mes</h2>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500;">
+                @if($budgetOverCount > 0)
+                    <span style="color: var(--expense); font-weight: 700;">{{ $budgetOverCount }} excedido{{ $budgetOverCount === 1 ? '' : 's' }}</span>
+                @elseif($budgetWarnCount > 0)
+                    <span style="color: var(--warn); font-weight: 700;">{{ $budgetWarnCount }} cerca del límite</span>
+                @else
+                    <span style="color: var(--income); font-weight: 700;">Todo en orden</span>
+                @endif
+            </div>
+        </div>
+        <a href="{{ route('budgets.index') }}" style="font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600;">Gestionar →</a>
+    </div>
+
+    @foreach($budgetProgress as $bp)
+    @php
+        $fill = $bp['status'] === 'over' ? 'var(--expense)' : ($bp['status'] === 'warn' ? 'var(--warn)' : 'var(--income)');
+        $width = $bp['pct'] === null ? 0 : min($bp['pct'], 100);
+    @endphp
+    <div style="margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                @include('categories._icon', ['icon' => $bp['category']->icon, 'color' => $bp['category']->color, 'type' => $bp['category']->type ?? 'expense', 'size' => 'xs'])
+                <span style="font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $bp['category']->name }}</span>
+                @if($bp['is_annual'])
+                    <span style="font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 10px; background: rgba(100,210,255,0.14); color: var(--accent2); white-space: nowrap;">ANUAL</span>
+                @endif
+            </div>
+            <span style="font-size: 12px; color: var(--muted); white-space: nowrap;">
+                $ {{ number_format($bp['spent'], 0, ',', '.') }} / $ {{ number_format($bp['limit'], 0, ',', '.') }}
+                @if($bp['pct'] !== null)
+                    <strong style="color: {{ $fill }};">· {{ $bp['pct'] }}%</strong>
+                @endif
+            </span>
+        </div>
+        <div style="height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden;">
+            <div style="height: 100%; width: {{ $width }}%; background: {{ $fill }}; border-radius: 4px; transition: width 0.3s ease;"></div>
+        </div>
+    </div>
+    @endforeach
+</div>
+@endif
 
 {{-- ── Tipo de cambio --}}
 @if($exchangeRate)

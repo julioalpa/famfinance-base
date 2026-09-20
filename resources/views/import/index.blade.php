@@ -29,7 +29,7 @@
                 <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">filas salteadas</div>
             </div>
             @if(($r['unpairedTransfers'] ?? 0) > 0)
-            <div style="background: rgba(240,160,48,0.08); border: 1px solid rgba(240,160,48,0.2); border-radius: 8px; padding: 14px; text-align: center;">
+            <div style="background: rgba(10, 132, 255,0.08); border: 1px solid rgba(10, 132, 255,0.2); border-radius: 8px; padding: 14px; text-align: center;">
                 <div class="font-display" style="font-size: 28px; font-weight: 700; color: var(--warn);">{{ $r['unpairedTransfers'] }}</div>
                 <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">transferencias sin emparejar</div>
             </div>
@@ -37,7 +37,7 @@
         </div>
 
         @if(($r['unpairedTransfers'] ?? 0) > 0)
-        <div style="background: rgba(240,160,48,0.06); border: 1px solid rgba(240,160,48,0.18); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: var(--warn);">
+        <div style="background: rgba(10, 132, 255,0.06); border: 1px solid rgba(10, 132, 255,0.18); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: var(--warn);">
             <strong>¿Por qué no se emparejaron?</strong> Las transferencias se detectan en pares: dos filas con el mismo día y monto, una con monto negativo (origen) y otra positiva (destino). Si las filas no coinciden exactamente, no se pueden vincular.
         </div>
         @endif

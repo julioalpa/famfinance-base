@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use App\Models\ExchangeRate;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class Account extends Model
@@ -31,11 +32,11 @@ class Account extends Model
     protected function casts(): array
     {
         return [
-            'is_active'       => 'boolean',
-            'credit_limit'    => 'decimal:2',
+            'is_active' => 'boolean',
+            'credit_limit' => 'decimal:2',
             'initial_balance' => 'decimal:2',
-            'closing_day'     => 'integer',
-            'due_day'         => 'integer',
+            'closing_day' => 'integer',
+            'due_day' => 'integer',
         ];
     }
 
@@ -59,10 +60,25 @@ class Account extends Model
         return $this->hasMany(Installment::class);
     }
 
-    public function isCredit(): bool  { return $this->type === 'credit'; }
-    public function isCash(): bool    { return $this->type === 'cash'; }
-    public function isDigital(): bool { return $this->type === 'digital'; }
-    public function isLoan(): bool    { return $this->type === 'loan'; }
+    public function isCredit(): bool
+    {
+        return $this->type === 'credit';
+    }
+
+    public function isCash(): bool
+    {
+        return $this->type === 'cash';
+    }
+
+    public function isDigital(): bool
+    {
+        return $this->type === 'digital';
+    }
+
+    public function isLoan(): bool
+    {
+        return $this->type === 'loan';
+    }
 
     public function isLiability(): bool
     {
@@ -75,6 +91,7 @@ class Account extends Model
         if ($this->currency === 'ARS' || $rate === null) {
             return $bal;
         }
+
         return $rate->convert($bal, $this->currency);
     }
 
@@ -105,52 +122,88 @@ class Account extends Model
     }
 
     /**
+     * Saldo de la cuenta al final de la fecha indicada (inclusive).
+     *
+     * Reconstruye el saldo histórico respetando los snapshots de ajuste: usa
+     * como base el último ajuste con snapshot cuya fecha sea <= $asOf, y suma
+     * el impacto neto de los movimientos posteriores a ese corte hasta $asOf.
+     * Los movimientos con fecha > $asOf no se consideran.
+     */
+    public function balanceAsOf(Carbon|string $asOf): float
+    {
+        $asOfStr = $asOf instanceof Carbon
+            ? $asOf->toDateString()
+            : (string) $asOf;
+
+        $lastAdj = $this->transactions()
+            ->where('type', 'adjustment')
+            ->whereNotNull('balance_snapshot')
+            ->where('date', '<=', $asOfStr)
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastAdj === null) {
+            return $this->computeBalanceFrom(null, null, $asOfStr);
+        }
+
+        return (float) $lastAdj->balance_snapshot
+            + $this->computeBalanceFrom($lastAdj->date, $lastAdj->id, $asOfStr);
+    }
+
+    /**
      * Suma el impacto neto de las transacciones después del punto de corte.
      * Si $afterDate es null, suma todas las transacciones (comportamiento legacy).
+     * Si $untilDate no es null, sólo considera movimientos con fecha <= $untilDate.
      */
-    private function computeBalanceFrom(?string $afterDate, ?int $afterId): float
+    private function computeBalanceFrom(?string $afterDate, ?int $afterId, ?string $untilDate = null): float
     {
-        $filter = function ($q) use ($afterDate, $afterId) {
-            if ($afterDate === null) return;
-            $q->where(function ($w) use ($afterDate, $afterId) {
-                $w->where('date', '>', $afterDate)
-                  ->orWhere(function ($same) use ($afterDate, $afterId) {
-                      $same->where('date', $afterDate)->where('id', '>', $afterId);
-                  });
-            });
+        $filter = function ($q) use ($afterDate, $afterId, $untilDate) {
+            if ($afterDate !== null) {
+                $q->where(function ($w) use ($afterDate, $afterId) {
+                    $w->where('date', '>', $afterDate)
+                        ->orWhere(function ($same) use ($afterDate, $afterId) {
+                            $same->where('date', $afterDate)->where('id', '>', $afterId);
+                        });
+                });
+            }
+            if ($untilDate !== null) {
+                $q->where('date', '<=', $untilDate);
+            }
         };
 
-        $income      = (float) $this->transactions()->where('type', 'income')->where($filter)->sum('amount');
-        $expense     = (float) $this->transactions()->where('type', 'expense')->where($filter)->sum('amount');
+        $income = (float) $this->transactions()->where('type', 'income')->where($filter)->sum('amount');
+        $expense = (float) $this->transactions()->where('type', 'expense')->where($filter)->sum('amount');
         $transferOut = (float) $this->transactions()->where('type', 'transfer')->where($filter)->sum('amount');
-        $transferIn  = (float) DB::table('transactions')
+        $transferIn = (float) DB::table('transactions')
             ->where('target_account_id', $this->id)
             ->where('type', 'transfer')
             ->whereNull('deleted_at')
             ->when($afterDate !== null, function ($q) use ($afterDate, $afterId) {
                 $q->where(function ($w) use ($afterDate, $afterId) {
                     $w->where('date', '>', $afterDate)
-                      ->orWhere(function ($same) use ($afterDate, $afterId) {
-                          $same->where('date', $afterDate)->where('id', '>', $afterId);
-                      });
+                        ->orWhere(function ($same) use ($afterDate, $afterId) {
+                            $same->where('date', $afterDate)->where('id', '>', $afterId);
+                        });
                 });
             })
+            ->when($untilDate !== null, fn ($q) => $q->where('date', '<=', $untilDate))
             ->sum('amount');
-        $adjIn  = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'in')->where($filter)->sum('amount');
+        $adjIn = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'in')->where($filter)->sum('amount');
         $adjOut = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'out')->where($filter)->sum('amount');
 
         return match ($this->type) {
             'credit' => $expense - $income + $transferOut - $transferIn + $adjOut - $adjIn,
-            'loan'   => ($afterDate === null ? (float) ($this->initial_balance ?? 0) : 0.0)
+            'loan' => ($afterDate === null ? (float) ($this->initial_balance ?? 0) : 0.0)
                         + $expense - $income + $transferOut - $transferIn + $adjOut - $adjIn,
-            default  => $income - $expense + $transferIn - $transferOut + $adjIn - $adjOut,
+            default => $income - $expense + $transferIn - $transferOut + $adjIn - $adjOut,
         };
     }
 
     /**
      * Cuotas pendientes del próximo mes calendario para esta cuenta de crédito.
      */
-    public function getUpcomingInstallments(int $month, int $year): \Illuminate\Database\Eloquent\Collection
+    public function getUpcomingInstallments(int $month, int $year): Collection
     {
         return $this->installments()
             ->whereYear('due_date', $year)

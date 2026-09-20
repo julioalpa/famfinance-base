@@ -86,7 +86,7 @@
 
 {{-- Próximo resumen estimado --}}
 @if($nextPaymentSummary)
-<div class="card" style="margin-bottom: 24px; border-color: rgba(240,160,48,0.3);">
+<div class="card" style="margin-bottom: 24px; border-color: rgba(10, 132, 255,0.3);">
     <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
         <div>
             <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 4px;">

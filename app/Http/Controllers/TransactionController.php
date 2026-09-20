@@ -9,6 +9,7 @@ use App\Models\PaymentItem;
 use App\Models\Tag;
 use App\Models\Transaction;
 use App\Services\TransactionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -22,47 +23,87 @@ class TransactionController extends Controller
         $selectedMonth = $request->input('month', now()->format('Y-m'));
         [$statsYear, $statsMonth] = explode('-', $selectedMonth);
 
-        $sortBy  = in_array($request->input('sort'), ['date', 'type', 'description', 'amount']) ? $request->input('sort') : 'date';
+        $sortBy = in_array($request->input('sort'), ['date', 'type', 'description', 'amount']) ? $request->input('sort') : 'date';
         $sortDir = $request->input('dir') === 'asc' ? 'asc' : 'desc';
+
+        // Detecta si hay filtros de rango/búsqueda activos. Cuando los hay, el
+        // filtro de "mes" se ignora (el rango manda) para poder buscar en todo
+        // el historial.
+        $hasRange = $request->filled('from') || $request->filled('to')
+            || $request->filled('q')
+            || $request->filled('min') || $request->filled('max');
+
+        // Closure que aplica TODOS los filtros a un builder (reutilizable para
+        // la grilla y para las sumatorias, evitando lógica duplicada).
+        $applyFilters = function ($q) use ($request, $statsYear, $statsMonth, $hasRange) {
+            $typeFilter = $request->input('type');
+            if ($typeFilter === 'card_payment') {
+                $q->where('type', 'transfer')->where('is_card_payment', true);
+            } elseif ($typeFilter === 'transfer') {
+                $q->where('type', 'transfer')->where('is_card_payment', false);
+            } elseif ($request->filled('type')) {
+                $q->where('type', $typeFilter);
+            }
+
+            if ($request->filled('account_id')) {
+                $q->where('account_id', $request->account_id);
+            }
+            if ($request->filled('user_id')) {
+                $q->where('user_id', $request->user_id);
+            }
+            if ($request->filled('category_id')) {
+                $q->where('category_id', $request->category_id);
+            }
+            if ($request->filled('tag_id')) {
+                $q->whereHas('tags', fn ($t) => $t->where('tags.id', $request->tag_id));
+            }
+
+            // Búsqueda por texto en descripción y notas.
+            if ($request->filled('q')) {
+                $term = trim($request->input('q'));
+                $q->where(function ($w) use ($term) {
+                    $w->where('description', 'like', "%{$term}%")
+                        ->orWhere('notes', 'like', "%{$term}%");
+                });
+            }
+
+            // Rango de montos.
+            if ($request->filled('min')) {
+                $q->where('amount', '>=', (float) $request->input('min'));
+            }
+            if ($request->filled('max')) {
+                $q->where('amount', '<=', (float) $request->input('max'));
+            }
+
+            // Fechas: rango explícito (desde/hasta) tiene prioridad sobre el mes.
+            if ($request->filled('from')) {
+                $q->whereDate('date', '>=', $request->input('from'));
+            }
+            if ($request->filled('to')) {
+                $q->whereDate('date', '<=', $request->input('to'));
+            }
+            if (! $hasRange && $request->filled('month')) {
+                $q->whereYear('date', $statsYear)->whereMonth('date', $statsMonth);
+            }
+        };
 
         $query = Transaction::with(['account', 'category', 'user', 'tags'])
             ->where('family_group_id', $groupId)
+            ->tap($applyFilters)
             ->orderBy($sortBy, $sortDir);
         if ($sortBy === 'date') {
             $query->orderBy('id', $sortDir);
         }
 
-        // Filtros opcionales
-        $typeFilter = $request->input('type');
-        if ($typeFilter === 'card_payment') {
-            $query->where('type', 'transfer')->where('is_card_payment', true);
-        } elseif ($typeFilter === 'transfer') {
-            $query->where('type', 'transfer')->where('is_card_payment', false);
-        } elseif ($request->filled('type')) {
-            $query->where('type', $typeFilter);
-        }
-        if ($request->filled('account_id')) {
-            $query->where('account_id', $request->account_id);
-        }
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-        if ($request->filled('tag_id')) {
-            $query->whereHas('tags', fn ($q) => $q->where('tags.id', $request->tag_id));
-        }
-        if ($request->filled('month')) {
-            $query->whereYear('date', $statsYear)->whereMonth('date', $statsMonth);
-        }
-
-        // Stats del mes seleccionado (sin filtros de tipo/cuenta/categoría)
+        // Stats del mes seleccionado (independientes de los filtros de la grilla)
         $baseMonth = fn () => Transaction::where('family_group_id', $groupId)
             ->whereYear('date', $statsYear)
             ->whereMonth('date', $statsMonth);
 
         $monthStats = [
             'expenses' => $baseMonth()->where('type', 'expense')->sum('amount'),
-            'income'   => $baseMonth()->where('type', 'income')->sum('amount'),
-            'count'    => $baseMonth()->count(),
+            'income' => $baseMonth()->where('type', 'income')->sum('amount'),
+            'count' => $baseMonth()->count(),
         ];
         $monthStats['balance'] = $monthStats['income'] - $monthStats['expenses'];
 
@@ -70,56 +111,38 @@ class TransactionController extends Controller
             ->locale('es')
             ->isoFormat('MMMM YYYY');
 
-        // Sumatoria del filtro actual (todas las páginas)
-        $filteredSumQuery = Transaction::where('family_group_id', $groupId);
-        if ($typeFilter === 'card_payment') {
-            $filteredSumQuery->where('type', 'transfer')->where('is_card_payment', true);
-        } elseif ($typeFilter === 'transfer') {
-            $filteredSumQuery->where('type', 'transfer')->where('is_card_payment', false);
-        } elseif ($request->filled('type')) {
-            $filteredSumQuery->where('type', $typeFilter);
-        }
-        if ($request->filled('account_id')) {
-            $filteredSumQuery->where('account_id', $request->account_id);
-        }
-        if ($request->filled('category_id')) {
-            $filteredSumQuery->where('category_id', $request->category_id);
-        }
-        if ($request->filled('tag_id')) {
-            $filteredSumQuery->whereHas('tags', fn ($q) => $q->where('tags.id', $request->tag_id));
-        }
-        if ($request->filled('month')) {
-            $filteredSumQuery->whereYear('date', $statsYear)->whereMonth('date', $statsMonth);
-        }
-        $filteredTotal = $filteredSumQuery->sum('amount');
+        // Sumatoria y conteo del filtro actual (todas las páginas)
+        $filteredSumQuery = Transaction::where('family_group_id', $groupId)->tap($applyFilters);
+        $filteredTotal = (clone $filteredSumQuery)->sum('amount');
+        $filteredCount = (clone $filteredSumQuery)->count();
 
         $transactions = $query->paginate(50)->withQueryString();
-        $categories   = Category::availableFor($groupId);
-        $accounts     = auth()->user()->familyGroups()
-            ->find($groupId)
-            ->accounts()
+        $categories = Category::availableFor($groupId);
+        $group = auth()->user()->familyGroups()->with('members')->find($groupId);
+        $accounts = $group->accounts()
             ->where('is_active', true)
             ->get();
+        $members = $group->members;
         $allTags = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
 
         return view('transactions.index', compact(
-            'transactions', 'categories', 'accounts',
-            'monthStats', 'monthLabel', 'filteredTotal', 'allTags',
-            'sortBy', 'sortDir'
+            'transactions', 'categories', 'accounts', 'members',
+            'monthStats', 'monthLabel', 'filteredTotal', 'filteredCount', 'allTags',
+            'sortBy', 'sortDir', 'hasRange'
         ));
     }
 
     public function create(Request $request)
     {
-        $groupId    = session('active_family_group_id');
-        $group      = auth()->user()->familyGroups()->find($groupId);
+        $groupId = session('active_family_group_id');
+        $group = auth()->user()->familyGroups()->find($groupId);
         $categories = Category::availableFor($groupId);
-        $accounts   = $group->accounts()->where('is_active', true)->get();
+        $accounts = $group->accounts()->where('is_active', true)->get();
 
-        $allTags          = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
-        $bulk             = $request->boolean('bulk');
-        $bulkCount        = $bulk ? session('bulk_count', 0) : 0;
-        $defaultDate      = $request->input('date');
+        $allTags = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
+        $bulk = $request->boolean('bulk');
+        $bulkCount = $bulk ? session('bulk_count', 0) : 0;
+        $defaultDate = $request->input('date');
         $defaultAccountId = $request->input('account_id');
 
         if (! $bulk) {
@@ -138,10 +161,10 @@ class TransactionController extends Controller
             ->whereNotIn('id', $paidThisMonth)
             ->orderBy('description')
             ->get()
-            ->map(fn($item) => [
-                'id'          => $item->id,
+            ->map(fn ($item) => [
+                'id' => $item->id,
                 'description' => $item->description,
-                'account_id'  => $item->account_id,
+                'account_id' => $item->account_id,
                 'category_id' => $item->category_id,
                 'last_amount' => $item->lastPaidAmount(now()->month, now()->year),
             ]);
@@ -155,9 +178,9 @@ class TransactionController extends Controller
     {
         $groupId = session('active_family_group_id');
 
-        $validated     = $request->validated();
+        $validated = $request->validated();
         $paymentItemId = $validated['payment_item_id'] ?? null;
-        $tagIds        = $validated['tags'] ?? [];
+        $tagIds = $validated['tags'] ?? [];
         unset($validated['payment_item_id'], $validated['tags']);
 
         $transaction = $this->service->create($validated, $groupId, auth()->id());
@@ -177,10 +200,10 @@ class TransactionController extends Controller
 
                 if (! $mp->is_paid) {
                     $mp->update([
-                        'is_paid'                      => true,
-                        'paid_at'                      => now(),
-                        'amount'                       => $transaction->amount,
-                        'transaction_id'               => $transaction->id,
+                        'is_paid' => true,
+                        'paid_at' => now(),
+                        'amount' => $transaction->amount,
+                        'transaction_id' => $transaction->id,
                         'transaction_was_created_here' => true,
                     ]);
                 }
@@ -192,8 +215,8 @@ class TransactionController extends Controller
 
             return redirect()
                 ->route('transactions.create', [
-                    'bulk'       => 1,
-                    'date'       => $request->input('date'),
+                    'bulk' => 1,
+                    'date' => $request->input('date'),
                     'account_id' => $request->input('account_id'),
                 ])
                 ->with('bulk_success', true);
@@ -219,11 +242,11 @@ class TransactionController extends Controller
     {
         $this->authorizeTransaction($transaction);
 
-        $groupId    = session('active_family_group_id');
-        $group      = auth()->user()->familyGroups()->find($groupId);
+        $groupId = session('active_family_group_id');
+        $group = auth()->user()->familyGroups()->find($groupId);
         $categories = Category::availableFor($groupId);
-        $accounts   = $group->accounts()->where('is_active', true)->get();
-        $allTags    = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
+        $accounts = $group->accounts()->where('is_active', true)->get();
+        $allTags = Tag::where('family_group_id', $groupId)->orderBy('name')->get();
         $transaction->load('tags');
 
         return view('transactions.edit', compact('transaction', 'categories', 'accounts', 'allTags'));
@@ -234,7 +257,7 @@ class TransactionController extends Controller
         $this->authorizeTransaction($transaction);
 
         $validated = $request->validated();
-        $tagIds    = $validated['tags'] ?? [];
+        $tagIds = $validated['tags'] ?? [];
         unset($validated['tags']);
 
         $this->service->update($transaction, $validated);
@@ -256,17 +279,17 @@ class TransactionController extends Controller
             ->with('success', 'Movimiento eliminado.');
     }
 
-    public function syncTags(Request $request, Transaction $transaction): \Illuminate\Http\JsonResponse
+    public function syncTags(Request $request, Transaction $transaction): JsonResponse
     {
         $this->authorizeTransaction($transaction);
 
         $request->validate([
-            'tags'   => ['array'],
+            'tags' => ['array'],
             'tags.*' => ['integer'],
         ]);
 
         $groupId = session('active_family_group_id');
-        $tagIds  = collect($request->input('tags', []))
+        $tagIds = collect($request->input('tags', []))
             ->map(fn ($id) => (int) $id)
             ->filter(fn ($id) => $id > 0);
 
@@ -278,8 +301,8 @@ class TransactionController extends Controller
 
         return response()->json([
             'tags' => $transaction->fresh()->tags->map(fn ($t) => [
-                'id'    => $t->id,
-                'name'  => $t->name,
+                'id' => $t->id,
+                'name' => $t->name,
                 'color' => $t->color,
             ]),
         ]);

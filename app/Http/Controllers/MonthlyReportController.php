@@ -7,6 +7,7 @@ use App\Models\PaymentItem;
 use App\Models\Tag;
 use App\Models\TagGroup;
 use App\Models\Transaction;
+use App\Services\ExchangeRateResolver;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,6 +21,7 @@ class MonthlyReportController extends Controller
     public function index(Request $request)
     {
         $data = $this->buildReportData($request);
+
         return view('reports.monthly', $data);
     }
 
@@ -31,21 +33,23 @@ class MonthlyReportController extends Controller
         $pdf = Pdf::loadView('reports.monthly-pdf', $data)
             ->setPaper('a4', 'portrait')
             ->setOptions([
-                'defaultFont'  => 'DejaVu Sans',
+                'defaultFont' => 'DejaVu Sans',
                 'isRemoteEnabled' => false,
                 'isHtml5ParserEnabled' => true,
                 'dpi' => 150,
             ]);
 
-        $filename = 'balance-' . $data['date']->format('Y-m') . '.pdf';
+        $filename = 'balance-'.$data['date']->format('Y-m').'.pdf';
+
         return $pdf->download($filename);
     }
 
     private function buildReportData(Request $request): array
     {
-        $groupId      = session('active_family_group_id');
-        $group        = auth()->user()->familyGroups()->find($groupId);
+        $groupId = session('active_family_group_id');
+        $group = auth()->user()->familyGroups()->find($groupId);
         $exchangeRate = $group->latestExchangeRate();
+        $rateResolver = ExchangeRateResolver::forGroup($groupId);
 
         // ── Mes seleccionado ─────────────────────────────────────────────────
         $monthParam = $request->get('mes', now()->format('Y-m'));
@@ -54,9 +58,9 @@ class MonthlyReportController extends Controller
         } catch (\Exception) {
             $date = now()->startOfMonth();
         }
-        $endDate        = $date->copy()->endOfMonth();
+        $endDate = $date->copy()->endOfMonth();
         $isCurrentMonth = $date->isSameMonth(now());
-        $monthLabel     = ucfirst($date->locale('es')->isoFormat('MMMM [de] YYYY'));
+        $monthLabel = ucfirst($date->locale('es')->isoFormat('MMMM [de] YYYY'));
 
         // ── Transacciones del mes ─────────────────────────────────────────────
         $transactions = Transaction::where('family_group_id', $groupId)
@@ -66,21 +70,21 @@ class MonthlyReportController extends Controller
             ->get();
 
         $expenseTransactions = $transactions->where('type', 'expense');
-        $incomeTransactions  = $transactions->where('type', 'income');
+        $incomeTransactions = $transactions->where('type', 'income');
 
-        $totalIncome  = round($incomeTransactions->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-        $totalExpense = round($expenseTransactions->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-        $balance      = $totalIncome - $totalExpense;
-        $savingsRate  = $totalIncome > 0 ? round((($totalIncome - $totalExpense) / $totalIncome) * 100, 1) : 0;
+        $totalIncome = round($incomeTransactions->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+        $totalExpense = round($expenseTransactions->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+        $balance = $totalIncome - $totalExpense;
+        $savingsRate = $totalIncome > 0 ? round((($totalIncome - $totalExpense) / $totalIncome) * 100, 1) : 0;
 
         // ── Comparación mes anterior ──────────────────────────────────────────
-        $prevDate  = $date->copy()->subMonth();
-        $prevTx    = Transaction::where('family_group_id', $groupId)
+        $prevDate = $date->copy()->subMonth();
+        $prevTx = Transaction::where('family_group_id', $groupId)
             ->whereBetween('date', [$prevDate->startOfMonth()->toDateString(), $prevDate->endOfMonth()->toDateString()])
             ->whereIn('type', ['income', 'expense'])
             ->get();
-        $prevIncome  = round($prevTx->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-        $prevExpense = round($prevTx->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+        $prevIncome = round($prevTx->where('type', 'income')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+        $prevExpense = round($prevTx->where('type', 'expense')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
         $prevBalance = $prevIncome - $prevExpense;
 
         $expenseVsPrev = $prevExpense > 0
@@ -92,38 +96,39 @@ class MonthlyReportController extends Controller
 
         // ── Promedio últimos 3 meses (sin el mes actual) ─────────────────────
         $avgMonths = 3;
-        $avgStart  = $date->copy()->subMonths($avgMonths)->startOfMonth();
-        $avgEnd    = $date->copy()->subMonth()->endOfMonth();
-        $avgTx     = Transaction::where('family_group_id', $groupId)
+        $avgStart = $date->copy()->subMonths($avgMonths)->startOfMonth();
+        $avgEnd = $date->copy()->subMonth()->endOfMonth();
+        $avgTx = Transaction::where('family_group_id', $groupId)
             ->whereBetween('date', [$avgStart->toDateString(), $avgEnd->toDateString()])
             ->whereIn('type', ['income', 'expense'])
             ->get();
-        $avgIncome  = $avgMonths > 0 ? round($avgTx->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)) / $avgMonths, 2) : 0;
-        $avgExpense = $avgMonths > 0 ? round($avgTx->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)) / $avgMonths, 2) : 0;
+        $avgIncome = $avgMonths > 0 ? round($avgTx->where('type', 'income')->sum(fn ($t) => $t->amountInArsOn($rateResolver)) / $avgMonths, 2) : 0;
+        $avgExpense = $avgMonths > 0 ? round($avgTx->where('type', 'expense')->sum(fn ($t) => $t->amountInArsOn($rateResolver)) / $avgMonths, 2) : 0;
         $expenseVsAvg = $avgExpense > 0 ? round((($totalExpense - $avgExpense) / $avgExpense) * 100, 1) : null;
-        $incomeVsAvg  = $avgIncome  > 0 ? round((($totalIncome  - $avgIncome)  / $avgIncome)  * 100, 1) : null;
+        $incomeVsAvg = $avgIncome > 0 ? round((($totalIncome - $avgIncome) / $avgIncome) * 100, 1) : null;
 
         // ── Por categoría: ingresos, egresos y neto ──────────────────────────
         // Agrupamos TODAS las transacciones (income + expense) por categoría
         // para poder mostrar la fila combinada.
         $categoryStats = $transactions
             ->groupBy(fn ($t) => $t->category?->name ?? 'Sin categoría')
-            ->map(function ($items, $name) use ($exchangeRate, $totalExpense, $totalIncome) {
-                $expense = round($items->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-                $income  = round($items->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-                $first   = $items->first();
+            ->map(function ($items, $name) use ($rateResolver, $totalExpense, $totalIncome) {
+                $expense = round($items->where('type', 'expense')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+                $income = round($items->where('type', 'income')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+                $first = $items->first();
+
                 return [
-                    'name'          => $name,
-                    'income'        => $income,
-                    'expense'       => $expense,
-                    'net'           => round($income - $expense, 2),
-                    'total'         => $expense,                             // legacy — donut / textos existentes
-                    'count'         => $items->count(),
-                    'percent'       => $totalExpense > 0 ? round(($expense / $totalExpense) * 100, 1) : 0,
-                    'income_pct'    => $totalIncome  > 0 ? round(($income  / $totalIncome)  * 100, 1) : 0,
-                    'color'         => $first->category?->color ?? '#6a6676',
-                    'icon'          => $first->category?->icon  ?? 'other',
-                    'type'          => $first->category?->type  ?? 'expense',
+                    'name' => $name,
+                    'income' => $income,
+                    'expense' => $expense,
+                    'net' => round($income - $expense, 2),
+                    'total' => $expense,                             // legacy — donut / textos existentes
+                    'count' => $items->count(),
+                    'percent' => $totalExpense > 0 ? round(($expense / $totalExpense) * 100, 1) : 0,
+                    'income_pct' => $totalIncome > 0 ? round(($income / $totalIncome) * 100, 1) : 0,
+                    'color' => $first->category?->color ?? '#6a6676',
+                    'icon' => $first->category?->icon ?? 'other',
+                    'type' => $first->category?->type ?? 'expense',
                 ];
             })
             ->sortByDesc(fn ($c) => $c['expense'] + $c['income'])
@@ -131,24 +136,24 @@ class MonthlyReportController extends Controller
 
         // Donut / bloque de expense mantiene el top-10 por gasto (compat)
         $expenseCatSorted = $categoryStats->sortByDesc('expense')->values();
-        $top10       = $expenseCatSorted->take(10);
-        $others      = $expenseCatSorted->slice(10);
+        $top10 = $expenseCatSorted->take(10);
+        $others = $expenseCatSorted->slice(10);
         $othersTotal = round($others->sum('expense'), 2);
-        $othersPct   = $totalExpense > 0 ? round(($othersTotal / $totalExpense) * 100, 1) : 0;
+        $othersPct = $totalExpense > 0 ? round(($othersTotal / $totalExpense) * 100, 1) : 0;
 
         if ($others->isNotEmpty()) {
             $top10->push([
-                'name'       => 'Otros',
-                'income'     => round($others->sum('income'), 2),
-                'expense'    => $othersTotal,
-                'net'        => round($others->sum('income') - $othersTotal, 2),
-                'total'      => $othersTotal,
-                'count'      => $others->sum('count'),
-                'percent'    => $othersPct,
+                'name' => 'Otros',
+                'income' => round($others->sum('income'), 2),
+                'expense' => $othersTotal,
+                'net' => round($others->sum('income') - $othersTotal, 2),
+                'total' => $othersTotal,
+                'count' => $others->sum('count'),
+                'percent' => $othersPct,
                 'income_pct' => 0,
-                'color'      => '#6a6676',
-                'icon'       => 'other',
-                'type'       => 'expense',
+                'color' => '#6a6676',
+                'icon' => 'other',
+                'type' => 'expense',
             ]);
         }
         $byCategory = $top10->values();
@@ -163,24 +168,24 @@ class MonthlyReportController extends Controller
             ->filter(fn ($c) => $c['income'] > 0)
             ->sortByDesc('income')
             ->values();
-        $incTop10       = $incomeCatSorted->take(10);
-        $incOthers      = $incomeCatSorted->slice(10);
+        $incTop10 = $incomeCatSorted->take(10);
+        $incOthers = $incomeCatSorted->slice(10);
         $incOthersTotal = round($incOthers->sum('income'), 2);
-        $incOthersPct   = $totalIncome > 0 ? round(($incOthersTotal / $totalIncome) * 100, 1) : 0;
+        $incOthersPct = $totalIncome > 0 ? round(($incOthersTotal / $totalIncome) * 100, 1) : 0;
 
         if ($incOthers->isNotEmpty()) {
             $incTop10->push([
-                'name'       => 'Otros',
-                'income'     => $incOthersTotal,
-                'expense'    => 0.0,
-                'net'        => $incOthersTotal,
-                'total'      => 0.0,
-                'count'      => $incOthers->sum('count'),
-                'percent'    => 0,
+                'name' => 'Otros',
+                'income' => $incOthersTotal,
+                'expense' => 0.0,
+                'net' => $incOthersTotal,
+                'total' => 0.0,
+                'count' => $incOthers->sum('count'),
+                'percent' => 0,
                 'income_pct' => $incOthersPct,
-                'color'      => '#6a6676',
-                'icon'       => 'other',
-                'type'       => 'income',
+                'color' => '#6a6676',
+                'icon' => 'other',
+                'type' => 'income',
             ]);
         }
         $byCategoryIncome = $incTop10->values();
@@ -188,61 +193,61 @@ class MonthlyReportController extends Controller
         // ── Gasto diario ──────────────────────────────────────────────────────
         $dailyExpenseMap = $expenseTransactions
             ->groupBy(fn ($t) => (int) $t->date->format('j'))
-            ->map(fn ($items) => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2));
+            ->map(fn ($items) => round($items->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2));
 
         $dailyIncomeMap = $incomeTransactions
             ->groupBy(fn ($t) => (int) $t->date->format('j'))
-            ->map(fn ($items) => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2));
+            ->map(fn ($items) => round($items->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2));
 
-        $daysInMonth        = $date->daysInMonth;
-        $dailySpending      = [];
-        $cumulative         = 0;
-        $incomeCumulative   = 0;
+        $daysInMonth = $date->daysInMonth;
+        $dailySpending = [];
+        $cumulative = 0;
+        $incomeCumulative = 0;
         for ($day = 1; $day <= $daysInMonth; $day++) {
-            $amount          = $dailyExpenseMap[$day] ?? 0;
-            $incomeAmount    = $dailyIncomeMap[$day] ?? 0;
-            $cumulative     += $amount;
+            $amount = $dailyExpenseMap[$day] ?? 0;
+            $incomeAmount = $dailyIncomeMap[$day] ?? 0;
+            $cumulative += $amount;
             $incomeCumulative += $incomeAmount;
             $dailySpending[] = [
-                'day'               => $day,
-                'amount'            => $amount,
-                'cumulative'        => round($cumulative, 2),
-                'income_amount'     => $incomeAmount,
+                'day' => $day,
+                'amount' => $amount,
+                'cumulative' => round($cumulative, 2),
+                'income_amount' => $incomeAmount,
                 'income_cumulative' => round($incomeCumulative, 2),
             ];
         }
 
         // ── Gastos hormiga ────────────────────────────────────────────────────
-        $antThreshold = self::ANT_THRESHOLD_ARS;
-        $antTx        = $expenseTransactions->filter(fn ($t) => $t->amountInArs($exchangeRate) < $antThreshold);
-        $antTotal     = round($antTx->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-        $antCount     = $antTx->count();
-        $antScore     = $totalExpense > 0 ? round(($antTotal / $totalExpense) * 100, 1) : 0;
+        $antThreshold = (float) ($group->ant_threshold ?? self::ANT_THRESHOLD_ARS);
+        $antTx = $expenseTransactions->filter(fn ($t) => $t->amountInArsOn($rateResolver) < $antThreshold);
+        $antTotal = round($antTx->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+        $antCount = $antTx->count();
+        $antScore = $totalExpense > 0 ? round(($antTotal / $totalExpense) * 100, 1) : 0;
         $antByCategory = $antTx
             ->groupBy(fn ($t) => $t->category?->name ?? 'Sin categoría')
             ->map(fn ($items, $name) => [
-                'name'  => $name,
-                'total' => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2),
+                'name' => $name,
+                'total' => round($items->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2),
                 'count' => $items->count(),
-                'icon'  => $items->first()->category?->icon ?? 'other',
+                'icon' => $items->first()->category?->icon ?? 'other',
                 'color' => $items->first()->category?->color ?? '#6a6676',
-                'type'  => $items->first()->category?->type ?? 'expense',
+                'type' => $items->first()->category?->type ?? 'expense',
             ])
             ->sortByDesc('total')
             ->values();
 
         // ── Gastos evitables ──────────────────────────────────────────────────
         $avoidableTx = $expenseTransactions->filter(fn ($t) => $t->is_avoidable);
-        $avoidableTotal = round($avoidableTx->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+        $avoidableTotal = round($avoidableTx->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
         $avoidableCount = $avoidableTx->count();
         $avoidableScore = $totalExpense > 0 ? round(($avoidableTotal / $totalExpense) * 100, 1) : 0;
         $avoidableByCategory = $avoidableTx
             ->groupBy(fn ($t) => $t->category?->name ?? 'Sin categoría')
             ->map(fn ($items, $name) => [
-                'name'  => $name,
-                'total' => round($items->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2),
+                'name' => $name,
+                'total' => round($items->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2),
                 'count' => $items->count(),
-                'icon'  => $items->first()->category?->icon ?? 'other',
+                'icon' => $items->first()->category?->icon ?? 'other',
                 'color' => $items->first()->category?->color ?? '#6a6676',
             ])
             ->sortByDesc('total')
@@ -256,19 +261,21 @@ class MonthlyReportController extends Controller
             ->orderBy('due_date')
             ->get();
 
-        $installmentTotal = round($installments->sum(function ($inst) use ($exchangeRate) {
+        $installmentTotal = round($installments->sum(function ($inst) use ($rateResolver) {
             $amt = (float) $inst->amount;
-            if ($inst->transaction?->currency === 'USD' && $exchangeRate) {
-                return $exchangeRate->convert($amt, 'USD');
+            if ($inst->transaction?->currency === 'USD') {
+                return $rateResolver->convert($amt, 'USD', $inst->due_date);
             }
+
             return $amt;
         }), 2);
 
-        $paidInstallmentTotal = round($installments->where('is_paid', true)->sum(function ($inst) use ($exchangeRate) {
+        $paidInstallmentTotal = round($installments->where('is_paid', true)->sum(function ($inst) use ($rateResolver) {
             $amt = (float) $inst->amount;
-            if ($inst->transaction?->currency === 'USD' && $exchangeRate) {
-                return $exchangeRate->convert($amt, 'USD');
+            if ($inst->transaction?->currency === 'USD') {
+                return $rateResolver->convert($amt, 'USD', $inst->due_date);
             }
+
             return $amt;
         }), 2);
 
@@ -286,36 +293,38 @@ class MonthlyReportController extends Controller
             ->orderBy('description')
             ->get();
 
-        $paymentItemsWithStatus = $paymentItems->map(function ($item) use ($exchangeRate) {
+        $paymentItemsWithStatus = $paymentItems->map(function ($item) use ($rateResolver, $endDate) {
             $mp = $item->monthlyPayments->first();
             $amount = $mp?->amount ?? null;
             $amountArs = $amount !== null
-                ? ($item->currency === 'USD' && $exchangeRate
-                    ? $exchangeRate->convert((float) $amount, 'USD')
+                ? ($item->currency === 'USD'
+                    ? $rateResolver->convert((float) $amount, 'USD', $endDate)
                     : (float) $amount)
                 : null;
+
             return [
-                'item'       => $item,
-                'is_paid'    => $mp?->is_paid ?? false,
-                'amount'     => $amount,
+                'item' => $item,
+                'is_paid' => $mp?->is_paid ?? false,
+                'amount' => $amount,
                 'amount_ars' => $amountArs,
-                'paid_at'    => $mp?->paid_at,
+                'paid_at' => $mp?->paid_at,
             ];
         });
 
-        $paidPaymentsItems    = $paymentItemsWithStatus->where('is_paid', true)->values();
+        $paidPaymentsItems = $paymentItemsWithStatus->where('is_paid', true)->values();
         $pendingPaymentsItems = $paymentItemsWithStatus->where('is_paid', false)->values();
-        $paidPaymentsTotal    = round($paidPaymentsItems->sum('amount_ars'), 2);
+        $paidPaymentsTotal = round($paidPaymentsItems->sum('amount_ars'), 2);
 
         // Pendientes proyectados: usa monto del MonthlyPayment si existe, si no el del PaymentItem
-        $pendingPaymentsTotal = round($pendingPaymentsItems->sum(function ($e) use ($exchangeRate) {
+        $pendingPaymentsTotal = round($pendingPaymentsItems->sum(function ($e) use ($rateResolver, $endDate) {
             if ($e['amount_ars'] !== null) {
                 return $e['amount_ars'];
             }
             $baseAmt = (float) ($e['item']->amount ?? 0);
-            if ($baseAmt > 0 && $e['item']->currency === 'USD' && $exchangeRate) {
-                return $exchangeRate->convert($baseAmt, 'USD');
+            if ($baseAmt > 0 && $e['item']->currency === 'USD') {
+                return $rateResolver->convert($baseAmt, 'USD', $endDate);
             }
+
             return $baseAmt;
         }), 2);
 
@@ -324,14 +333,15 @@ class MonthlyReportController extends Controller
             ->filter(fn ($e) => $e['item']->is_dispensable)
             ->values();
 
-        $dispensableTotal = round($dispensableItemsStatus->sum(function ($e) use ($exchangeRate) {
+        $dispensableTotal = round($dispensableItemsStatus->sum(function ($e) use ($rateResolver, $endDate) {
             if ($e['amount_ars'] !== null) {
                 return $e['amount_ars'];
             }
             $baseAmt = (float) ($e['item']->amount ?? 0);
-            if ($baseAmt > 0 && $e['item']->currency === 'USD' && $exchangeRate) {
-                return $exchangeRate->convert($baseAmt, 'USD');
+            if ($baseAmt > 0 && $e['item']->currency === 'USD') {
+                return $rateResolver->convert($baseAmt, 'USD', $endDate);
             }
+
             return $baseAmt;
         }), 2);
 
@@ -339,20 +349,21 @@ class MonthlyReportController extends Controller
         $tagStats = Tag::where('family_group_id', $groupId)
             ->with(['transactions' => function ($q) use ($date, $endDate, $groupId) {
                 $q->whereBetween('date', [$date->toDateString(), $endDate->toDateString()])
-                  ->where('family_group_id', $groupId)
-                  ->whereIn('type', ['expense', 'income']);
+                    ->where('family_group_id', $groupId)
+                    ->whereIn('type', ['expense', 'income']);
             }])
             ->get()
-            ->map(function ($tag) use ($exchangeRate) {
-                $txs     = $tag->transactions;
-                $expense = round($txs->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-                $income  = round($txs->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
+            ->map(function ($tag) use ($rateResolver) {
+                $txs = $tag->transactions;
+                $expense = round($txs->where('type', 'expense')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+                $income = round($txs->where('type', 'income')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+
                 return [
-                    'name'    => $tag->name,
-                    'color'   => $tag->color,
+                    'name' => $tag->name,
+                    'color' => $tag->color,
                     'expense' => $expense,
-                    'income'  => $income,
-                    'count'   => $txs->count(),
+                    'income' => $income,
+                    'count' => $txs->count(),
                 ];
             })
             ->filter(fn ($t) => $t['expense'] > 0 || $t['income'] > 0)
@@ -364,56 +375,57 @@ class MonthlyReportController extends Controller
 
         $totalTaggedExpenseBase = $taggedExpenses
             ->where('type', 'expense')
-            ->sum(fn ($t) => $t->amountInArs($exchangeRate));
+            ->sum(fn ($t) => $t->amountInArsOn($rateResolver));
 
         $groupsRaw = TagGroup::where('family_group_id', $groupId)
             ->with('tags')
             ->orderBy('name')
             ->get();
 
-        $tagGroupStats = $groupsRaw->map(function ($tg) use ($taggedExpenses, $totalTaggedExpenseBase, $exchangeRate) {
-            $tagIds  = $tg->tags->pluck('id')->all();
+        $tagGroupStats = $groupsRaw->map(function ($tg) use ($taggedExpenses, $totalTaggedExpenseBase, $rateResolver) {
+            $tagIds = $tg->tags->pluck('id')->all();
             $matched = $taggedExpenses->filter(
                 fn ($tx) => $tx->tags->pluck('id')->intersect($tagIds)->isNotEmpty()
             );
-            $expense = round($matched->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-            $income  = round($matched->where('type', 'income')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-            $pct     = $totalTaggedExpenseBase > 0
+            $expense = round($matched->where('type', 'expense')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+            $income = round($matched->where('type', 'income')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+            $pct = $totalTaggedExpenseBase > 0
                 ? round($expense / $totalTaggedExpenseBase * 100, 1)
                 : 0;
+
             return [
-                'id'      => $tg->id,
-                'name'    => $tg->name,
-                'color'   => $tg->color,
-                'tags'    => $tg->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color]),
+                'id' => $tg->id,
+                'name' => $tg->name,
+                'color' => $tg->color,
+                'tags' => $tg->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color]),
                 'expense' => $expense,
-                'income'  => $income,
-                'count'   => $matched->count(),
-                'pct'     => $pct,
+                'income' => $income,
+                'count' => $matched->count(),
+                'pct' => $pct,
             ];
         })->sortByDesc('expense')->values();
 
         $allGroupedTagIds = $groupsRaw->flatMap(fn ($tg) => $tg->tags->pluck('id'))->unique()->all();
-        $noGroupExpenses  = $taggedExpenses->filter(function ($tx) use ($allGroupedTagIds) {
+        $noGroupExpenses = $taggedExpenses->filter(function ($tx) use ($allGroupedTagIds) {
             return $tx->tags->pluck('id')->intersect($allGroupedTagIds)->isEmpty();
         });
-        $noGroupTotal = round($noGroupExpenses->where('type', 'expense')->sum(fn ($t) => $t->amountInArs($exchangeRate)), 2);
-        $noGroupPct   = $totalTaggedExpenseBase > 0 ? round($noGroupTotal / $totalTaggedExpenseBase * 100, 1) : 0;
+        $noGroupTotal = round($noGroupExpenses->where('type', 'expense')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2);
+        $noGroupPct = $totalTaggedExpenseBase > 0 ? round($noGroupTotal / $totalTaggedExpenseBase * 100, 1) : 0;
 
         // ── Cuentas ───────────────────────────────────────────────────────────
-        $allAccounts      = $group->accounts()->where('is_active', true)->get();
-        $totalAssets      = $allAccounts->filter(fn ($a) => ! $a->isLiability())->sum(fn ($a) => $a->balanceInArs($exchangeRate));
+        $allAccounts = $group->accounts()->where('is_active', true)->get();
+        $totalAssets = $allAccounts->filter(fn ($a) => ! $a->isLiability())->sum(fn ($a) => $a->balanceInArs($exchangeRate));
         $totalLiabilities = $allAccounts->filter(fn ($a) => $a->isLiability())->sum(fn ($a) => $a->balanceInArs($exchangeRate));
-        $netWorth         = $totalAssets - $totalLiabilities;
+        $netWorth = $totalAssets - $totalLiabilities;
 
         // ── Gráfico: últimos 6 meses (income vs expense para comparativa) ─────
         $chartMonths = 6;
-        $chartStart  = $date->copy()->subMonths($chartMonths - 1)->startOfMonth();
-        $driver    = DB::connection()->getDriverName();
-        $yearExpr  = $driver === 'sqlite' ? "CAST(strftime('%Y', date) AS INTEGER)" : 'EXTRACT(YEAR FROM date)';
+        $chartStart = $date->copy()->subMonths($chartMonths - 1)->startOfMonth();
+        $driver = DB::connection()->getDriverName();
+        $yearExpr = $driver === 'sqlite' ? "CAST(strftime('%Y', date) AS INTEGER)" : 'EXTRACT(YEAR FROM date)';
         $monthExpr = $driver === 'sqlite' ? "CAST(strftime('%m', date) AS INTEGER)" : 'EXTRACT(MONTH FROM date)';
 
-        $chartRaw    = Transaction::where('family_group_id', $groupId)
+        $chartRaw = Transaction::where('family_group_id', $groupId)
             ->where('date', '>=', $chartStart->toDateString())
             ->where('date', '<=', $endDate->toDateString())
             ->whereIn('type', ['income', 'expense'])
@@ -423,21 +435,24 @@ class MonthlyReportController extends Controller
 
         $chartData = [];
         for ($i = $chartMonths - 1; $i >= 0; $i--) {
-            $d   = $date->copy()->subMonths($i)->startOfMonth();
+            $d = $date->copy()->subMonths($i)->startOfMonth();
             $key = $d->format('Y-n');
             $chartData[$key] = [
-                'label'   => ucfirst($d->locale('es')->isoFormat('MMM YY')),
-                'income'  => 0.0,
+                'label' => ucfirst($d->locale('es')->isoFormat('MMM YY')),
+                'income' => 0.0,
                 'expense' => 0.0,
                 'isCurrent' => $i === 0,
             ];
         }
         foreach ($chartRaw as $row) {
             $key = "{$row->year}-{$row->month}";
-            if (! isset($chartData[$key])) continue;
+            if (! isset($chartData[$key])) {
+                continue;
+            }
             $amount = (float) $row->total;
-            if ($row->currency === 'USD' && $exchangeRate) {
-                $amount = $exchangeRate->convert($amount, 'USD');
+            if ($row->currency === 'USD') {
+                $monthDate = Carbon::create((int) $row->year, (int) $row->month, 1)->endOfMonth();
+                $amount = $rateResolver->convert($amount, 'USD', $monthDate);
             }
             $chartData[$key][$row->type] += $amount;
         }
@@ -476,18 +491,21 @@ class MonthlyReportController extends Controller
         for ($i = $savingsHistoryMonths - 1; $i >= 0; $i--) {
             $d = $date->copy()->subMonths($i)->startOfMonth();
             $savingsHistory[$d->format('Y-n')] = [
-                'label'   => ucfirst($d->locale('es')->isoFormat('MMM')),
-                'income'  => 0.0,
+                'label' => ucfirst($d->locale('es')->isoFormat('MMM')),
+                'income' => 0.0,
                 'expense' => 0.0,
-                'rate'    => null,
+                'rate' => null,
             ];
         }
         foreach ($savingsHistRaw as $row) {
             $key = "{$row->year}-{$row->month}";
-            if (! isset($savingsHistory[$key])) continue;
+            if (! isset($savingsHistory[$key])) {
+                continue;
+            }
             $amount = (float) $row->total;
-            if ($row->currency === 'USD' && $exchangeRate) {
-                $amount = $exchangeRate->convert($amount, 'USD');
+            if ($row->currency === 'USD') {
+                $monthDate = Carbon::create((int) $row->year, (int) $row->month, 1)->endOfMonth();
+                $amount = $rateResolver->convert($amount, 'USD', $monthDate);
             }
             $savingsHistory[$key][$row->type] += $amount;
         }
@@ -502,36 +520,37 @@ class MonthlyReportController extends Controller
         // ── Previsión (solo mes en curso) ─────────────────────────────────────
         $forecast = null;
         if ($isCurrentMonth) {
-            $daysPassed      = now()->day;
-            $daysRemaining   = $daysInMonth - $daysPassed;
-            $dailyAvgSpend   = $daysPassed > 0 ? $totalExpense / $daysPassed : 0;
+            $daysPassed = now()->day;
+            $daysRemaining = $daysInMonth - $daysPassed;
+            $dailyAvgSpend = $daysPassed > 0 ? $totalExpense / $daysPassed : 0;
             $projectedExpense = round($totalExpense + ($dailyAvgSpend * $daysRemaining), 2);
 
             // Cuotas pendientes de pago este mes
-            $pendingInstTotal = round($installments->where('is_paid', false)->sum(function ($inst) use ($exchangeRate) {
+            $pendingInstTotal = round($installments->where('is_paid', false)->sum(function ($inst) use ($rateResolver) {
                 $amt = (float) $inst->amount;
-                if ($inst->transaction?->currency === 'USD' && $exchangeRate) {
-                    return $exchangeRate->convert($amt, 'USD');
+                if ($inst->transaction?->currency === 'USD') {
+                    return $rateResolver->convert($amt, 'USD', $inst->due_date);
                 }
+
                 return $amt;
             }), 2);
 
-            $projectedTotal   = $projectedExpense + $pendingPaymentsTotal + $pendingInstTotal;
+            $projectedTotal = $projectedExpense + $pendingPaymentsTotal + $pendingInstTotal;
             $projectedBalance = $avgIncome - $projectedTotal;
 
             $forecast = [
-                'days_passed'          => $daysPassed,
-                'days_remaining'       => $daysRemaining,
-                'days_in_month'        => $daysInMonth,
-                'daily_avg'            => round($dailyAvgSpend, 2),
-                'projected_expense'    => $projectedExpense,
-                'pending_payments'     => $pendingPaymentsTotal,
+                'days_passed' => $daysPassed,
+                'days_remaining' => $daysRemaining,
+                'days_in_month' => $daysInMonth,
+                'daily_avg' => round($dailyAvgSpend, 2),
+                'projected_expense' => $projectedExpense,
+                'pending_payments' => $pendingPaymentsTotal,
                 'pending_installments' => $pendingInstTotal,
-                'projected_total'      => $projectedTotal,
-                'avg_income'           => $avgIncome,
-                'projected_balance'    => $projectedBalance,
-                'progress_pct'         => round(($daysPassed / $daysInMonth) * 100),
-                'expense_pct_of_avg'   => $avgExpense > 0 ? round(($totalExpense / $avgExpense) * 100) : 0,
+                'projected_total' => $projectedTotal,
+                'avg_income' => $avgIncome,
+                'projected_balance' => $projectedBalance,
+                'progress_pct' => round(($daysPassed / $daysInMonth) * 100),
+                'expense_pct_of_avg' => $avgExpense > 0 ? round(($totalExpense / $avgExpense) * 100) : 0,
             ];
         }
 
@@ -610,5 +629,4 @@ class MonthlyReportController extends Controller
             'forecast',
         );
     }
-
 }

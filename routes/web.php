@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\FamilyGroupController as AdminFamilyGroupControll
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportController;
@@ -104,6 +105,8 @@ Route::middleware('auth')->group(function () {
         // Grupo familiar
         Route::get('/grupo', [FamilyGroupController::class, 'show'])
             ->name('family-groups.show');
+        Route::post('/grupo/preferencias', [FamilyGroupController::class, 'updateSettings'])
+            ->name('family-groups.settings');
         Route::post('/grupo/invitar', [FamilyGroupController::class, 'invite'])
             ->name('family-groups.invite');
         Route::delete('/grupo/miembros/{userId}', [FamilyGroupController::class, 'removeMember'])
@@ -128,6 +131,11 @@ Route::middleware('auth')->group(function () {
                 'update'  => 'categories.update',
                 'destroy' => 'categories.destroy',
             ])->parameters(['categorias' => 'category']);
+
+        // Presupuestos mensuales por categoría
+        Route::get('/presupuestos',                  [BudgetController::class, 'index'])->name('budgets.index');
+        Route::post('/presupuestos',                 [BudgetController::class, 'upsert'])->name('budgets.upsert');
+        Route::delete('/presupuestos/{budget}',      [BudgetController::class, 'destroy'])->name('budgets.destroy');
 
         // Tipo de cambio
         Route::get('/tipo-de-cambio',           [ExchangeRateController::class, 'index'])->name('exchange-rates.index');

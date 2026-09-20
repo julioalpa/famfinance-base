@@ -14,8 +14,8 @@
 body {
     font-family: 'DejaVu Sans', Arial, sans-serif;
     font-size: 10px;
-    color: #eeebe4;
-    background: #09090b;
+    color: #f5f5f7;
+    background: #1c1c1e;
     padding: 26px 30px 20px;
     line-height: 1.45;
 }
@@ -31,122 +31,122 @@ body {
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #6a6676;
+    color: #98989f;
     margin-bottom: 8px;
     margin-top: 16px;
     padding-bottom: 5px;
-    border-bottom: 1px solid #282834;
+    border-bottom: 1px solid #48484a;
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────────── */
 .card {
-    background: #111115;
-    border: 1px solid #282834;
+    background: #2c2c2e;
+    border: 1px solid #48484a;
     border-radius: 6px;
     padding: 12px 14px;
 }
 
 /* ── Stat cards ──────────────────────────────────────────────────────────── */
 .stat-card {
-    background: #111115;
-    border: 1px solid #282834;
+    background: #2c2c2e;
+    border: 1px solid #48484a;
     border-radius: 6px;
     border-left-width: 3px;
     padding: 12px 14px;
 }
-.stat-card.income  { border-left-color: #2dd870; }
-.stat-card.expense { border-left-color: #f04060; }
-.stat-card.balance { border-left-color: #4e9bff; }
-.stat-card.savings { border-left-color: #f0a030; }
+.stat-card.income  { border-left-color: #30d158; }
+.stat-card.expense { border-left-color: #ff453a; }
+.stat-card.balance { border-left-color: #64d2ff; }
+.stat-card.savings { border-left-color: #0a84ff; }
 
-.stat-label { font-size: 7.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6a6676; font-weight: 700; margin-bottom: 5px; }
+.stat-label { font-size: 7.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #98989f; font-weight: 700; margin-bottom: 5px; }
 .stat-value { font-size: 19px; font-weight: 800; line-height: 1.1; }
 .stat-delta {
     font-size: 7.5px; font-weight: 700; margin-top: 5px;
     display: inline-block; padding: 2px 6px; border-radius: 10px;
 }
-.stat-sub { font-size: 8px; color: #6a6676; margin-top: 3px; }
+.stat-sub { font-size: 8px; color: #98989f; margin-top: 3px; }
 
 /* ── Color helpers ───────────────────────────────────────────────────────── */
-.c-income  { color: #2dd870; }
-.c-expense { color: #f04060; }
-.c-accent  { color: #f0a030; }
-.c-accent2 { color: #4e9bff; }
-.c-warn    { color: #e8b840; }
-.c-muted   { color: #6a6676; }
-.c-text    { color: #eeebe4; }
-.bg-income  { background: rgba(45,216,112,0.12); }
-.bg-expense { background: rgba(240,64,96,0.12); }
-.bg-accent2 { background: rgba(78,155,255,0.12); }
-.bg-warn    { background: rgba(232,184,64,0.12); }
+.c-income  { color: #30d158; }
+.c-expense { color: #ff453a; }
+.c-accent  { color: #0a84ff; }
+.c-accent2 { color: #64d2ff; }
+.c-warn    { color: #ffd60a; }
+.c-muted   { color: #98989f; }
+.c-text    { color: #f5f5f7; }
+.bg-income  { background: rgba(48, 209, 88,0.12); }
+.bg-expense { background: rgba(255, 69, 58,0.12); }
+.bg-accent2 { background: rgba(100, 210, 255,0.12); }
+.bg-warn    { background: rgba(255, 214, 10,0.12); }
 
 /* ── Category rows ───────────────────────────────────────────────────────── */
 .cat-table { width: 100%; border-collapse: collapse; }
-.cat-table td { padding: 5px 4px; border-bottom: 1px solid #1e1e26; vertical-align: middle; }
+.cat-table td { padding: 5px 4px; border-bottom: 1px solid #3a3a3c; vertical-align: middle; }
 .cat-table tr:last-child td { border-bottom: none; }
-.cat-rank   { font-size: 8.5px; color: #6a6676; font-weight: 700; width: 16px; }
-.cat-name   { font-size: 9.5px; font-weight: 600; color: #eeebe4; }
-.cat-pct    { font-size: 8.5px; color: #6a6676; text-align: right; width: 30px; }
+.cat-rank   { font-size: 8.5px; color: #98989f; font-weight: 700; width: 16px; }
+.cat-name   { font-size: 9.5px; font-weight: 600; color: #f5f5f7; }
+.cat-pct    { font-size: 8.5px; color: #98989f; text-align: right; width: 30px; }
 .cat-bar-td { width: 80px; padding: 0 6px; }
-.cat-bar-bg { width: 80px; height: 5px; background: #1e1e26; border-radius: 3px; }
+.cat-bar-bg { width: 80px; height: 5px; background: #3a3a3c; border-radius: 3px; }
 .cat-bar-fill { height: 5px; border-radius: 3px; }
-.cat-amount { font-size: 10px; font-weight: 800; color: #f04060; text-align: right; white-space: nowrap; width: 70px; }
+.cat-amount { font-size: 10px; font-weight: 800; color: #ff453a; text-align: right; white-space: nowrap; width: 70px; }
 
 /* ── Chart images ────────────────────────────────────────────────────────── */
 .chart-img { width: 100%; border-radius: 4px; display: block; }
 
 /* ── Progress bar ────────────────────────────────────────────────────────── */
-.pbar-bg   { background: #1e1e26; border-radius: 3px; height: 5px; width: 100%; margin: 5px 0; }
+.pbar-bg   { background: #3a3a3c; border-radius: 3px; height: 5px; width: 100%; margin: 5px 0; }
 .pbar-fill { height: 5px; border-radius: 3px; }
 
 /* ── Rec rows ────────────────────────────────────────────────────────────── */
 .rec-table { width: 100%; border-collapse: collapse; }
-.rec-table td { padding: 5px 4px; border-bottom: 1px solid #1e1e26; vertical-align: middle; }
+.rec-table td { padding: 5px 4px; border-bottom: 1px solid #3a3a3c; vertical-align: middle; }
 .rec-table tr:last-child td { border-bottom: none; }
 .rec-dot  { width: 7px; height: 7px; border-radius: 50%; display: inline-block; vertical-align: middle; }
-.rec-name { font-size: 9.5px; font-weight: 600; color: #eeebe4; }
+.rec-name { font-size: 9.5px; font-weight: 600; color: #f5f5f7; }
 .rec-badge { font-size: 7px; font-weight: 700; padding: 2px 6px; border-radius: 10px; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
 .rec-amount { font-size: 10px; font-weight: 800; text-align: right; white-space: nowrap; }
 
 /* ── Installment rows ────────────────────────────────────────────────────── */
 .inst-table { width: 100%; border-collapse: collapse; }
-.inst-table td { padding: 5px 4px; border-bottom: 1px solid #1e1e26; vertical-align: middle; }
+.inst-table td { padding: 5px 4px; border-bottom: 1px solid #3a3a3c; vertical-align: middle; }
 .inst-table tr:last-child td { border-bottom: none; }
 .inst-dot  { width: 7px; height: 7px; border-radius: 50%; display: inline-block; vertical-align: middle; }
-.inst-desc { font-size: 9.5px; font-weight: 600; color: #eeebe4; }
-.inst-sub  { font-size: 8px; color: #6a6676; }
+.inst-desc { font-size: 9.5px; font-weight: 600; color: #f5f5f7; }
+.inst-sub  { font-size: 8px; color: #98989f; }
 .inst-amt  { font-size: 10px; font-weight: 800; text-align: right; white-space: nowrap; }
 
 /* ── Forecast ────────────────────────────────────────────────────────────── */
 .forecast-card {
-    background: #111115;
+    background: #2c2c2e;
     border: 1px solid #3d2f0a;
     border-radius: 6px;
     padding: 12px 14px;
 }
 .fcast-table { width: 100%; border-collapse: collapse; }
-.fcast-table td { padding: 5px 0; border-bottom: 1px solid #1e1e26; font-size: 9.5px; vertical-align: middle; }
+.fcast-table td { padding: 5px 0; border-bottom: 1px solid #3a3a3c; font-size: 9.5px; vertical-align: middle; }
 .fcast-table tr:last-child td { border-bottom: none; }
-.fcast-label { color: #6a6676; font-weight: 600; }
+.fcast-label { color: #98989f; font-weight: 600; }
 .fcast-val   { text-align: right; font-weight: 800; }
 
 /* ── Accounts ────────────────────────────────────────────────────────────── */
-.acc-type { font-size: 7.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6a6676; font-weight: 700; padding: 7px 0 4px; }
+.acc-type { font-size: 7.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #98989f; font-weight: 700; padding: 7px 0 4px; }
 .acc-table { width: 100%; border-collapse: collapse; }
-.acc-table td { padding: 5px 8px; background: #17171d; border-radius: 4px; font-size: 9.5px; }
+.acc-table td { padding: 5px 8px; background: #3a3a3c; border-radius: 4px; font-size: 9.5px; }
 .acc-table tr { margin-bottom: 3px; }
 
 /* ── Net worth ───────────────────────────────────────────────────────────── */
 .nw-table { width: 100%; border-collapse: collapse; }
-.nw-table td { padding: 8px 0; border-bottom: 1px solid #282834; vertical-align: middle; }
+.nw-table td { padding: 8px 0; border-bottom: 1px solid #48484a; vertical-align: middle; }
 .nw-table tr:last-child td { border-bottom: none; padding-top: 12px; }
-.nw-label { font-size: 8.5px; color: #6a6676; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+.nw-label { font-size: 8.5px; color: #98989f; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
 .nw-val   { font-size: 16px; font-weight: 800; text-align: right; }
 
 /* ── Gastos hormiga summary ──────────────────────────────────────────────── */
 .ant-card {
-    background: #17171d;
-    border: 1px solid #282834;
+    background: #3a3a3c;
+    border: 1px solid #48484a;
     border-radius: 6px;
     padding: 12px 14px;
 }
@@ -155,9 +155,9 @@ body {
 .pdf-footer {
     margin-top: 20px;
     padding-top: 8px;
-    border-top: 1px solid #282834;
+    border-top: 1px solid #48484a;
     font-size: 8px;
-    color: #6a6676;
+    color: #98989f;
 }
 .footer-left  { float: left; }
 .footer-right { float: right; }
@@ -168,22 +168,22 @@ body {
 {{-- ══════════════════════════════════════════════════════════
      HEADER
      ══════════════════════════════════════════════════════════ --}}
-<table width="100%" style="border-collapse:collapse;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #282834;">
+<table width="100%" style="border-collapse:collapse;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #48484a;">
     <tr>
         <td>
-            <div style="font-size:20px;font-weight:800;color:#eeebe4;letter-spacing:-0.03em;">
-                <span style="color:#f0a030;">fam</span>finance
+            <div style="font-size:20px;font-weight:800;color:#f5f5f7;letter-spacing:-0.03em;">
+                <span style="color:#0a84ff;">fam</span>finance
             </div>
-            <div style="font-size:9px;color:#6a6676;margin-top:3px;">{{ $group->name }}</div>
+            <div style="font-size:9px;color:#98989f;margin-top:3px;">{{ $group->name }}</div>
         </td>
         <td style="text-align:right;">
-            <div style="font-size:15px;font-weight:800;color:#f0a030;">Balance {{ $monthLabel }}</div>
+            <div style="font-size:15px;font-weight:800;color:#0a84ff;">Balance {{ $monthLabel }}</div>
             @if($isCurrentMonth)
-                <div style="font-size:8.5px;color:#f0a030;margin-top:2px;">Mes en curso — parcial al día {{ now()->day }}</div>
+                <div style="font-size:8.5px;color:#0a84ff;margin-top:2px;">Mes en curso — parcial al día {{ now()->day }}</div>
             @endif
-            <div style="font-size:8.5px;color:#6a6676;margin-top:2px;">Generado el {{ now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY') }}</div>
+            <div style="font-size:8.5px;color:#98989f;margin-top:2px;">Generado el {{ now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY') }}</div>
             @if($exchangeRate)
-                <div style="font-size:8.5px;color:#6a6676;margin-top:1px;">TC: 1 USD = $ {{ number_format($exchangeRate->rate, 2, ',', '.') }} ARS</div>
+                <div style="font-size:8.5px;color:#98989f;margin-top:1px;">TC: 1 USD = $ {{ number_format($exchangeRate->rate, 2, ',', '.') }} ARS</div>
             @endif
         </td>
     </tr>
@@ -245,7 +245,7 @@ body {
                 <div class="stat-label">Tasa de ahorro</div>
                 <div class="stat-value {{ $savingsRate >= 0 ? 'c-accent' : 'c-expense' }}">{{ $savingsRate }}%</div>
                 <div class="pbar-bg">
-                    <div class="pbar-fill" style="width:{{ max(0,min(100,$savingsRate)) }}%;background:{{ $savingsRate>=20 ? '#2dd870' : ($savingsRate>=0 ? '#f0a030' : '#f04060') }};"></div>
+                    <div class="pbar-fill" style="width:{{ max(0,min(100,$savingsRate)) }}%;background:{{ $savingsRate>=20 ? '#30d158' : ($savingsRate>=0 ? '#0a84ff' : '#ff453a') }};"></div>
                 </div>
                 @php $avgSavings = $avgIncome > 0 ? round((($avgIncome-$avgExpense)/$avgIncome)*100,1) : 0; @endphp
                 <div class="stat-sub">Prom. 3m: {{ $avgSavings }}%</div>
@@ -264,7 +264,7 @@ body {
         @if(!empty($chartImages['monthly']))
         <td width="{{ !empty($chartImages['daily']) ? '50%' : '100%' }}">
             <div class="card" style="padding:10px;">
-                <div style="font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;">Ingresos vs egresos — últimos 6 meses</div>
+                <div style="font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;">Ingresos vs egresos — últimos 6 meses</div>
                 <img src="{{ $chartImages['monthly'] }}" class="chart-img" alt="">
             </div>
         </td>
@@ -272,7 +272,7 @@ body {
         @if(!empty($chartImages['daily']))
         <td width="{{ !empty($chartImages['monthly']) ? '50%' : '100%' }}">
             <div class="card" style="padding:10px;">
-                <div style="font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;">Gasto diario acumulado</div>
+                <div style="font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;">Gasto diario acumulado</div>
                 <img src="{{ $chartImages['daily'] }}" class="chart-img" alt="">
             </div>
         </td>
@@ -304,7 +304,7 @@ body {
                         <td class="cat-amount">$ {{ number_format($cat['total'], 0, ',', '.') }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" style="color:#6a6676;font-size:9px;text-align:center;padding:14px 0;">Sin egresos este mes</td></tr>
+                    <tr><td colspan="5" style="color:#98989f;font-size:9px;text-align:center;padding:14px 0;">Sin egresos este mes</td></tr>
                     @endforelse
                 </table>
             </div>
@@ -313,7 +313,7 @@ body {
         @if(!empty($chartImages['cats']))
         <td width="180" style="vertical-align:top;">
             <div class="card" style="padding:10px;text-align:center;">
-                <div style="font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Distribución</div>
+                <div style="font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Distribución</div>
                 <img src="{{ $chartImages['cats'] }}" style="width:150px;height:150px;object-fit:contain;" alt="">
             </div>
         </td>
@@ -328,23 +328,23 @@ body {
 <div class="ant-card" style="margin-bottom:16px;">
     <table width="100%" style="border-collapse:collapse;">
         <tr>
-            <td width="110" style="text-align:center;vertical-align:middle;border-right:1px solid #282834;padding-right:14px;">
-                <div style="font-size:32px;font-weight:800;color:{{ $antScore > 30 ? '#f04060' : ($antScore > 15 ? '#e8b840' : '#2dd870') }};">{{ $antScore }}%</div>
-                <div style="font-size:8px;color:#6a6676;margin-top:2px;text-transform:uppercase;letter-spacing:0.08em;">del total</div>
-                <div style="font-size:9px;font-weight:800;color:#eeebe4;margin-top:6px;">$ {{ number_format($antTotal, 0, ',', '.') }}</div>
-                <div style="font-size:8px;color:#6a6676;">{{ $antCount }} transacciones</div>
+            <td width="110" style="text-align:center;vertical-align:middle;border-right:1px solid #48484a;padding-right:14px;">
+                <div style="font-size:32px;font-weight:800;color:{{ $antScore > 30 ? '#ff453a' : ($antScore > 15 ? '#ffd60a' : '#30d158') }};">{{ $antScore }}%</div>
+                <div style="font-size:8px;color:#98989f;margin-top:2px;text-transform:uppercase;letter-spacing:0.08em;">del total</div>
+                <div style="font-size:9px;font-weight:800;color:#f5f5f7;margin-top:6px;">$ {{ number_format($antTotal, 0, ',', '.') }}</div>
+                <div style="font-size:8px;color:#98989f;">{{ $antCount }} transacciones</div>
             </td>
             <td style="padding-left:14px;vertical-align:top;">
                 @if($antScore > 30)
-                    <div style="background:rgba(240,64,96,0.1);border:1px solid rgba(240,64,96,0.2);color:#f04060;padding:5px 10px;border-radius:5px;font-size:8.5px;font-weight:700;margin-bottom:10px;">
+                    <div style="background:rgba(255, 69, 58,0.1);border:1px solid rgba(255, 69, 58,0.2);color:#ff453a;padding:5px 10px;border-radius:5px;font-size:8.5px;font-weight:700;margin-bottom:10px;">
                         ⚠ Supera el 30% — revisá estos gastos frecuentes
                     </div>
                 @elseif($antScore > 15)
-                    <div style="background:rgba(232,184,64,0.1);border:1px solid rgba(232,184,64,0.2);color:#e8b840;padding:5px 10px;border-radius:5px;font-size:8.5px;font-weight:700;margin-bottom:10px;">
+                    <div style="background:rgba(255, 214, 10,0.1);border:1px solid rgba(255, 214, 10,0.2);color:#ffd60a;padding:5px 10px;border-radius:5px;font-size:8.5px;font-weight:700;margin-bottom:10px;">
                         Moderado — vale la pena monitorear
                     </div>
                 @else
-                    <div style="background:rgba(45,216,112,0.1);border:1px solid rgba(45,216,112,0.2);color:#2dd870;padding:5px 10px;border-radius:5px;font-size:8.5px;font-weight:700;margin-bottom:10px;">
+                    <div style="background:rgba(48, 209, 88,0.1);border:1px solid rgba(48, 209, 88,0.2);color:#30d158;padding:5px 10px;border-radius:5px;font-size:8.5px;font-weight:700;margin-bottom:10px;">
                         Bien controlado
                     </div>
                 @endif
@@ -354,10 +354,10 @@ body {
                     <tr>
                         @foreach($chunk as $ant)
                         <td width="50%" style="padding:3px 5px 3px 0;vertical-align:top;">
-                            <div style="background:#111115;border:1px solid #282834;border-radius:5px;padding:7px 9px;">
-                                <span style="font-size:9.5px;font-weight:700;color:#eeebe4;">{{ $ant['name'] }}</span>
-                                <span style="font-size:10px;font-weight:800;color:#f04060;float:right;">$ {{ number_format($ant['total'], 0, ',', '.') }}</span>
-                                <div style="clear:both;font-size:8px;color:#6a6676;margin-top:1px;">{{ $ant['count'] }} mov.</div>
+                            <div style="background:#2c2c2e;border:1px solid #48484a;border-radius:5px;padding:7px 9px;">
+                                <span style="font-size:9.5px;font-weight:700;color:#f5f5f7;">{{ $ant['name'] }}</span>
+                                <span style="font-size:10px;font-weight:800;color:#ff453a;float:right;">$ {{ number_format($ant['total'], 0, ',', '.') }}</span>
+                                <div style="clear:both;font-size:8px;color:#98989f;margin-top:1px;">{{ $ant['count'] }} mov.</div>
                             </div>
                         </td>
                         @endforeach
@@ -377,49 +377,49 @@ body {
 <div class="section-title">Por grupo de etiquetas</div>
 <div class="card" style="margin-bottom:16px;">
     <table width="100%" style="border-collapse:collapse;">
-        <tr style="background:#17171d;">
-            <td style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;">Grupo</td>
-            <td style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;">Etiquetas</td>
-            <td width="80" style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;text-align:right;">Egresos</td>
-            <td width="40" style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;text-align:center;">Mov.</td>
-            <td width="60" style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;text-align:right;">% etiq.</td>
+        <tr style="background:#3a3a3c;">
+            <td style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;">Grupo</td>
+            <td style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;">Etiquetas</td>
+            <td width="80" style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;text-align:right;">Egresos</td>
+            <td width="40" style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;text-align:center;">Mov.</td>
+            <td width="60" style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;text-align:right;">% etiq.</td>
         </tr>
         @foreach($tagGroupStats as $tg)
-        <tr style="border-bottom:1px solid #1e1e26;">
+        <tr style="border-bottom:1px solid #3a3a3c;">
             <td style="padding:5px 6px;">
                 <table style="border-collapse:collapse;"><tr>
                     <td width="10"><span style="display:inline-block;width:8px;height:8px;background:{{ $tg['color'] }};border-radius:2px;"></span></td>
-                    <td style="font-size:9.5px;font-weight:800;color:#eeebe4;padding-left:4px;">{{ $tg['name'] }}</td>
+                    <td style="font-size:9.5px;font-weight:800;color:#f5f5f7;padding-left:4px;">{{ $tg['name'] }}</td>
                 </tr></table>
             </td>
-            <td style="padding:5px 6px;font-size:8.5px;color:#6a6676;">
+            <td style="padding:5px 6px;font-size:8.5px;color:#98989f;">
                 @foreach($tg['tags'] as $t)
                     <span style="display:inline-block;padding:1px 5px;border-radius:8px;font-size:7.5px;font-weight:700;background:{{ $t['color'] }}22;color:{{ $t['color'] }};margin-right:2px;">{{ $t['name'] }}</span>
                 @endforeach
             </td>
-            <td style="padding:5px 6px;font-size:10px;font-weight:800;color:#f04060;text-align:right;">
+            <td style="padding:5px 6px;font-size:10px;font-weight:800;color:#ff453a;text-align:right;">
                 @if($tg['expense'] > 0)
                     $ {{ number_format($tg['expense'], 0, ',', '.') }}
                 @else
-                    <span style="color:#6a6676;">—</span>
+                    <span style="color:#98989f;">—</span>
                 @endif
             </td>
-            <td style="padding:5px 6px;font-size:9px;color:#6a6676;text-align:center;font-weight:600;">{{ $tg['count'] }}</td>
-            <td style="padding:5px 6px;font-size:9px;color:#6a6676;text-align:right;font-weight:700;">{{ $tg['pct'] }}%</td>
+            <td style="padding:5px 6px;font-size:9px;color:#98989f;text-align:center;font-weight:600;">{{ $tg['count'] }}</td>
+            <td style="padding:5px 6px;font-size:9px;color:#98989f;text-align:right;font-weight:700;">{{ $tg['pct'] }}%</td>
         </tr>
         @endforeach
         @if($noGroupTotal > 0)
-        <tr style="border-bottom:1px solid #1e1e26;opacity:0.7;">
+        <tr style="border-bottom:1px solid #3a3a3c;opacity:0.7;">
             <td style="padding:5px 6px;">
                 <table style="border-collapse:collapse;"><tr>
-                    <td width="10"><span style="display:inline-block;width:8px;height:8px;background:#6a6676;border-radius:2px;"></span></td>
-                    <td style="font-size:9.5px;font-weight:700;color:#6a6676;padding-left:4px;">Sin grupo</td>
+                    <td width="10"><span style="display:inline-block;width:8px;height:8px;background:#98989f;border-radius:2px;"></span></td>
+                    <td style="font-size:9.5px;font-weight:700;color:#98989f;padding-left:4px;">Sin grupo</td>
                 </tr></table>
             </td>
-            <td style="padding:5px 6px;font-size:8.5px;color:#6a6676;font-style:italic;">Etiquetas sin grupo asignado</td>
-            <td style="padding:5px 6px;font-size:10px;font-weight:700;color:#6a6676;text-align:right;">$ {{ number_format($noGroupTotal,0,',','.') }}</td>
+            <td style="padding:5px 6px;font-size:8.5px;color:#98989f;font-style:italic;">Etiquetas sin grupo asignado</td>
+            <td style="padding:5px 6px;font-size:10px;font-weight:700;color:#98989f;text-align:right;">$ {{ number_format($noGroupTotal,0,',','.') }}</td>
             <td></td>
-            <td style="padding:5px 6px;font-size:9px;color:#6a6676;text-align:right;font-weight:700;">{{ $noGroupPct }}%</td>
+            <td style="padding:5px 6px;font-size:9px;color:#98989f;text-align:right;font-weight:700;">{{ $noGroupPct }}%</td>
         </tr>
         @endif
     </table>
@@ -431,39 +431,39 @@ body {
      ══════════════════════════════════════════════════════════ --}}
 <div class="section-title">Cuotas del mes</div>
 <div class="card" style="margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:800;color:#eeebe4;margin-bottom:2px;">Cuotas</div>
-    <div style="font-size:8.5px;color:#6a6676;margin-bottom:8px;">{{ $installments->count() }} cuota{{ $installments->count() !== 1 ? 's' : '' }} este mes</div>
+    <div style="font-size:10px;font-weight:800;color:#f5f5f7;margin-bottom:2px;">Cuotas</div>
+    <div style="font-size:8.5px;color:#98989f;margin-bottom:8px;">{{ $installments->count() }} cuota{{ $installments->count() !== 1 ? 's' : '' }} este mes</div>
     @if($installments->isNotEmpty())
     <table width="100%" style="border-collapse:collapse;margin-bottom:10px;">
         <tr>
             <td width="33%" style="text-align:center;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Total</div>
-                <div style="font-size:14px;font-weight:800;color:#f04060;">$ {{ number_format($installmentTotal,0,',','.') }}</div>
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Total</div>
+                <div style="font-size:14px;font-weight:800;color:#ff453a;">$ {{ number_format($installmentTotal,0,',','.') }}</div>
             </td>
-            <td width="33%" style="text-align:center;border-left:1px solid #282834;border-right:1px solid #282834;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pagadas</div>
-                <div style="font-size:14px;font-weight:800;color:#2dd870;">$ {{ number_format($paidInstallmentTotal,0,',','.') }}</div>
+            <td width="33%" style="text-align:center;border-left:1px solid #48484a;border-right:1px solid #48484a;">
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pagadas</div>
+                <div style="font-size:14px;font-weight:800;color:#30d158;">$ {{ number_format($paidInstallmentTotal,0,',','.') }}</div>
             </td>
             <td width="33%" style="text-align:center;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pendiente</div>
-                <div style="font-size:14px;font-weight:800;color:#e8b840;">$ {{ number_format($installmentTotal-$paidInstallmentTotal,0,',','.') }}</div>
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pendiente</div>
+                <div style="font-size:14px;font-weight:800;color:#ffd60a;">$ {{ number_format($installmentTotal-$paidInstallmentTotal,0,',','.') }}</div>
             </td>
         </tr>
     </table>
     <table class="inst-table">
         @foreach($installments as $inst)
         <tr>
-            <td width="12"><span class="inst-dot" style="background:{{ $inst->is_paid ? '#2dd870' : '#e8b840' }};"></span></td>
+            <td width="12"><span class="inst-dot" style="background:{{ $inst->is_paid ? '#30d158' : '#ffd60a' }};"></span></td>
             <td>
                 <div class="inst-desc">{{ Str::limit($inst->transaction?->description ?? 'Sin descripción', 40) }}</div>
                 <div class="inst-sub">{{ $inst->account?->name }} · {{ $inst->installment_number }}/{{ $inst->transaction?->installments_count ?? '?' }}</div>
             </td>
-            <td class="inst-amt" style="color:{{ $inst->is_paid ? '#6a6676' : '#f04060' }};">$ {{ number_format($inst->amount,0,',','.') }}</td>
+            <td class="inst-amt" style="color:{{ $inst->is_paid ? '#98989f' : '#ff453a' }};">$ {{ number_format($inst->amount,0,',','.') }}</td>
         </tr>
         @endforeach
     </table>
     @else
-    <div style="color:#6a6676;font-size:9px;text-align:center;padding:14px 0;">Sin cuotas este mes</div>
+    <div style="color:#98989f;font-size:9px;text-align:center;padding:14px 0;">Sin cuotas este mes</div>
     @endif
 </div>
 
@@ -481,47 +481,47 @@ body {
     <table width="100%" style="border-collapse:separate;border-spacing:8px 0;margin-bottom:10px;">
         <tr>
             <td width="33%" style="text-align:center;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pagados</div>
-                <div style="font-size:14px;font-weight:800;color:#2dd870;">{{ $paidCount }} / {{ $totalPayments }}</div>
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pagados</div>
+                <div style="font-size:14px;font-weight:800;color:#30d158;">{{ $paidCount }} / {{ $totalPayments }}</div>
             </td>
             @if($paidPaymentsTotal > 0)
-            <td width="33%" style="text-align:center;border-left:1px solid #282834;border-right:1px solid #282834;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Abonado</div>
-                <div style="font-size:14px;font-weight:800;color:#2dd870;">$ {{ number_format($paidPaymentsTotal,0,',','.') }}</div>
+            <td width="33%" style="text-align:center;border-left:1px solid #48484a;border-right:1px solid #48484a;">
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Abonado</div>
+                <div style="font-size:14px;font-weight:800;color:#30d158;">$ {{ number_format($paidPaymentsTotal,0,',','.') }}</div>
             </td>
             @endif
             @if($pendingAmt > 0)
             <td width="33%" style="text-align:center;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pendiente</div>
-                <div style="font-size:14px;font-weight:800;color:#e8b840;">$ {{ number_format($pendingAmt,0,',','.') }}</div>
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;">Pendiente</div>
+                <div style="font-size:14px;font-weight:800;color:#ffd60a;">$ {{ number_format($pendingAmt,0,',','.') }}</div>
             </td>
             @endif
         </tr>
     </table>
     <div class="pbar-bg" style="margin-bottom:10px;">
-        <div class="pbar-fill" style="background:#2dd870;width:{{ $totalPayments > 0 ? round($paidCount/$totalPayments*100) : 0 }}%;"></div>
+        <div class="pbar-fill" style="background:#30d158;width:{{ $totalPayments > 0 ? round($paidCount/$totalPayments*100) : 0 }}%;"></div>
     </div>
     <table width="100%" style="border-collapse:collapse;">
-        <tr style="background:#17171d;">
-            <td width="25" style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;">Día</td>
-            <td style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;">Concepto</td>
-            <td width="60" style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;text-align:center;">Estado</td>
-            <td width="75" style="padding:4px 6px;font-size:8px;color:#6a6676;font-weight:700;text-transform:uppercase;text-align:right;">Importe</td>
+        <tr style="background:#3a3a3c;">
+            <td width="25" style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;">Día</td>
+            <td style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;">Concepto</td>
+            <td width="60" style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;text-align:center;">Estado</td>
+            <td width="75" style="padding:4px 6px;font-size:8px;color:#98989f;font-weight:700;text-transform:uppercase;text-align:right;">Importe</td>
         </tr>
         @foreach($paymentItemsWithStatus as $entry)
         @php $item = $entry['item']; @endphp
-        <tr style="border-bottom:1px solid #1e1e26;">
-            <td style="padding:5px 6px;font-size:9.5px;font-weight:800;color:#6a6676;text-align:center;">{{ $item->day_of_month }}</td>
+        <tr style="border-bottom:1px solid #3a3a3c;">
+            <td style="padding:5px 6px;font-size:9.5px;font-weight:800;color:#98989f;text-align:center;">{{ $item->day_of_month }}</td>
             <td style="padding:5px 6px;">
-                <div style="font-size:9.5px;font-weight:600;color:#eeebe4;">{{ $item->description }}</div>
-                <div style="font-size:8px;color:#6a6676;">{{ $item->account?->name ?? '—' }}{{ $item->category ? ' · '.$item->category->name : '' }}</div>
+                <div style="font-size:9.5px;font-weight:600;color:#f5f5f7;">{{ $item->description }}</div>
+                <div style="font-size:8px;color:#98989f;">{{ $item->account?->name ?? '—' }}{{ $item->category ? ' · '.$item->category->name : '' }}</div>
             </td>
             <td style="padding:5px 6px;text-align:center;">
-                <span style="font-size:7.5px;font-weight:700;padding:2px 6px;border-radius:10px;{{ $entry['is_paid'] ? 'background:rgba(45,216,112,0.12);color:#2dd870' : 'background:rgba(78,155,255,0.12);color:#4e9bff' }};">
+                <span style="font-size:7.5px;font-weight:700;padding:2px 6px;border-radius:10px;{{ $entry['is_paid'] ? 'background:rgba(48, 209, 88,0.12);color:#30d158' : 'background:rgba(100, 210, 255,0.12);color:#64d2ff' }};">
                     {{ $entry['is_paid'] ? 'Pagado' : 'Pendiente' }}
                 </span>
             </td>
-            <td style="padding:5px 6px;font-size:10px;font-weight:800;text-align:right;color:{{ $entry['is_paid'] ? '#6a6676' : '#f04060' }};">
+            <td style="padding:5px 6px;font-size:10px;font-weight:800;text-align:right;color:{{ $entry['is_paid'] ? '#98989f' : '#ff453a' }};">
                 @if($entry['amount'] !== null)
                     {{ $item->currency }} $ {{ number_format($entry['amount'],0,',','.') }}
                 @else
@@ -540,29 +540,29 @@ body {
 @if($isCurrentMonth && $forecast)
 <div class="section-title">Previsión de cierre del mes</div>
 <div class="forecast-card" style="margin-bottom:16px;">
-    <div style="font-size:8.5px;color:#6a6676;margin-bottom:4px;">
+    <div style="font-size:8.5px;color:#98989f;margin-bottom:4px;">
         Avance: día {{ $forecast['days_passed'] }} de {{ $forecast['days_in_month'] }} — quedan {{ $forecast['days_remaining'] }} días
     </div>
     <div class="pbar-bg" style="margin-bottom:12px;">
-        <div class="pbar-fill" style="width:{{ $forecast['progress_pct'] }}%;background:#f0a030;"></div>
+        <div class="pbar-fill" style="width:{{ $forecast['progress_pct'] }}%;background:#0a84ff;"></div>
     </div>
     <table width="100%" style="border-collapse:separate;border-spacing:8px 0;margin-bottom:12px;">
         <tr>
-            <td width="33%" style="text-align:center;background:#17171d;border-radius:5px;padding:9px;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Gasto diario</div>
-                <div style="font-size:15px;font-weight:800;color:#f04060;">$ {{ number_format($forecast['daily_avg'],0,',','.') }}</div>
+            <td width="33%" style="text-align:center;background:#3a3a3c;border-radius:5px;padding:9px;">
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Gasto diario</div>
+                <div style="font-size:15px;font-weight:800;color:#ff453a;">$ {{ number_format($forecast['daily_avg'],0,',','.') }}</div>
             </td>
-            <td width="33%" style="text-align:center;background:#17171d;border-radius:5px;padding:9px;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Proyectado</div>
-                <div style="font-size:15px;font-weight:800;color:#f04060;">$ {{ number_format($forecast['projected_expense'],0,',','.') }}</div>
+            <td width="33%" style="text-align:center;background:#3a3a3c;border-radius:5px;padding:9px;">
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Proyectado</div>
+                <div style="font-size:15px;font-weight:800;color:#ff453a;">$ {{ number_format($forecast['projected_expense'],0,',','.') }}</div>
             </td>
-            <td width="33%" style="text-align:center;background:#17171d;border-radius:5px;padding:9px;">
-                <div style="font-size:7.5px;color:#6a6676;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Total c/compromisos</div>
-                <div style="font-size:15px;font-weight:800;color:#e8b840;">$ {{ number_format($forecast['projected_total'],0,',','.') }}</div>
+            <td width="33%" style="text-align:center;background:#3a3a3c;border-radius:5px;padding:9px;">
+                <div style="font-size:7.5px;color:#98989f;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;">Total c/compromisos</div>
+                <div style="font-size:15px;font-weight:800;color:#ffd60a;">$ {{ number_format($forecast['projected_total'],0,',','.') }}</div>
             </td>
         </tr>
     </table>
-    <div style="background:#17171d;border-radius:5px;padding:10px 12px;">
+    <div style="background:#3a3a3c;border-radius:5px;padding:10px 12px;">
         <table class="fcast-table">
             <tr>
                 <td class="fcast-label">Gasto hasta hoy</td>
@@ -580,14 +580,14 @@ body {
                 <td class="fcast-val c-warn">+ $ {{ number_format($forecast['pending_installments'],0,',','.') }}</td>
             </tr>
             @endif
-            <tr style="border-top:1px solid #282834;">
-                <td style="padding-top:8px;font-size:10px;font-weight:700;color:#eeebe4;">Balance proyectado al cierre</td>
-                <td style="padding-top:8px;font-size:15px;font-weight:800;text-align:right;color:{{ $forecast['projected_balance']>=0 ? '#2dd870' : '#f04060' }};">
+            <tr style="border-top:1px solid #48484a;">
+                <td style="padding-top:8px;font-size:10px;font-weight:700;color:#f5f5f7;">Balance proyectado al cierre</td>
+                <td style="padding-top:8px;font-size:15px;font-weight:800;text-align:right;color:{{ $forecast['projected_balance']>=0 ? '#30d158' : '#ff453a' }};">
                     {{ $forecast['projected_balance']>=0 ? '+' : '' }}$ {{ number_format($forecast['projected_balance'],0,',','.') }}
                 </td>
             </tr>
         </table>
-        <div style="font-size:7.5px;color:#6a6676;margin-top:5px;">* Ingreso estimado en base al promedio de los últimos 3 meses: $ {{ number_format($forecast['avg_income'],0,',','.') }}</div>
+        <div style="font-size:7.5px;color:#98989f;margin-top:5px;">* Ingreso estimado en base al promedio de los últimos 3 meses: $ {{ number_format($forecast['avg_income'],0,',','.') }}</div>
     </div>
 </div>
 @endif
@@ -601,14 +601,14 @@ body {
         {{-- Cuentas --}}
         <td width="50%" style="vertical-align:top;">
             <div class="card">
-                <div style="font-size:10px;font-weight:800;color:#eeebe4;margin-bottom:8px;">Cuentas activas</div>
+                <div style="font-size:10px;font-weight:800;color:#f5f5f7;margin-bottom:8px;">Cuentas activas</div>
                 @foreach($allAccounts->groupBy('type') as $type => $accounts)
                 <div class="acc-type">{{ match($type) { 'cash'=>'Efectivo','digital'=>'Digital','credit'=>'Tarjetas','loan'=>'Préstamos',default=>$type } }}</div>
                 @foreach($accounts as $acc)
                 <table class="acc-table" style="margin-bottom:3px;">
                     <tr>
-                        <td style="font-size:9.5px;font-weight:600;color:#eeebe4;">{{ $acc->name }}</td>
-                        <td style="font-size:10px;font-weight:800;color:{{ $acc->isLiability() ? '#f04060' : '#2dd870' }};text-align:right;">
+                        <td style="font-size:9.5px;font-weight:600;color:#f5f5f7;">{{ $acc->name }}</td>
+                        <td style="font-size:10px;font-weight:800;color:{{ $acc->isLiability() ? '#ff453a' : '#30d158' }};text-align:right;">
                             {{ $acc->currency }} $ {{ number_format(abs($acc->balance),0,',','.') }}
                         </td>
                     </tr>
@@ -620,7 +620,7 @@ body {
         {{-- Patrimonio neto --}}
         <td width="50%" style="vertical-align:top;">
             <div class="card">
-                <div style="font-size:10px;font-weight:800;color:#eeebe4;margin-bottom:8px;">Patrimonio neto (ARS)</div>
+                <div style="font-size:10px;font-weight:800;color:#f5f5f7;margin-bottom:8px;">Patrimonio neto (ARS)</div>
                 <table class="nw-table">
                     <tr>
                         <td class="nw-label">Activos</td>
@@ -634,10 +634,10 @@ body {
                         <td>
                             <div class="nw-label">Patrimonio neto</div>
                             @if($exchangeRate)
-                                <div style="font-size:8px;color:#6a6676;margin-top:2px;">TC: 1 USD = $ {{ number_format($exchangeRate->rate,2,',','.') }}</div>
+                                <div style="font-size:8px;color:#98989f;margin-top:2px;">TC: 1 USD = $ {{ number_format($exchangeRate->rate,2,',','.') }}</div>
                             @endif
                         </td>
-                        <td class="nw-val" style="font-size:20px;color:{{ $netWorth>=0 ? '#f0a030' : '#f04060' }};">
+                        <td class="nw-val" style="font-size:20px;color:{{ $netWorth>=0 ? '#0a84ff' : '#ff453a' }};">
                             {{ $netWorth>=0 ? '+' : '' }}$ {{ number_format($netWorth,0,',','.') }}
                         </td>
                     </tr>

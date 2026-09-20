@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\InviteMemberRequest;
 use App\Http\Requests\StoreFamilyGroupRequest;
+use App\Mail\FamilyGroupInvitation;
 use App\Models\FamilyGroup;
 use App\Models\Invitation;
 use Illuminate\Http\Request;
@@ -23,13 +24,13 @@ class FamilyGroupController extends Controller
     public function store(StoreFamilyGroupRequest $request)
     {
         $group = FamilyGroup::create([
-            'name'     => $request->name,
+            'name' => $request->name,
             'owner_id' => auth()->id(),
         ]);
 
         // Agregar al creador como owner en la pivot
         $group->members()->attach(auth()->id(), [
-            'role'      => 'owner',
+            'role' => 'owner',
             'joined_at' => now(),
         ]);
 
@@ -44,9 +45,25 @@ class FamilyGroupController extends Controller
     {
         $familyGroup = $this->activeGroup();
 
-        $familyGroup->load(['members', 'invitations' => fn($q) => $q->where('status', 'pending')]);
+        $familyGroup->load(['members', 'invitations' => fn ($q) => $q->where('status', 'pending')]);
 
         return view('family-groups.show', compact('familyGroup'));
+    }
+
+    /**
+     * Actualiza preferencias del grupo (por ahora: umbral de gastos hormiga).
+     */
+    public function updateSettings(Request $request)
+    {
+        $familyGroup = $this->activeGroup();
+
+        $data = $request->validate([
+            'ant_threshold' => ['required', 'numeric', 'min:0', 'max:99999999'],
+        ]);
+
+        $familyGroup->update(['ant_threshold' => $data['ant_threshold']]);
+
+        return back()->with('success', 'Preferencias del grupo actualizadas.');
     }
 
     public function switchGroup(Request $request, FamilyGroup $familyGroup)
@@ -85,12 +102,12 @@ class FamilyGroupController extends Controller
 
         $invitation = Invitation::create([
             'family_group_id' => $familyGroup->id,
-            'invited_by'      => auth()->id(),
-            'email'           => $request->email,
+            'invited_by' => auth()->id(),
+            'email' => $request->email,
         ]);
 
         // Enviar email con el link de invitación
-        Mail::to($request->email)->send(new \App\Mail\FamilyGroupInvitation($invitation));
+        Mail::to($request->email)->send(new FamilyGroupInvitation($invitation));
 
         return back()->with('success', "Invitación enviada a {$request->email}.");
     }
@@ -103,6 +120,7 @@ class FamilyGroupController extends Controller
 
         if ($invitation->isExpired()) {
             $invitation->update(['status' => 'expired']);
+
             return redirect()->route('login')
                 ->withErrors(['invite' => 'La invitación expiró. Pedí una nueva.']);
         }
@@ -110,11 +128,12 @@ class FamilyGroupController extends Controller
         // Si el usuario no está logueado, guardar el token en sesión y mandarlo a login
         if (! auth()->check()) {
             session(['pending_invitation_token' => $token]);
+
             return redirect()->route('auth.google')
                 ->with('info', 'Iniciá sesión con Google para aceptar la invitación.');
         }
 
-        $user  = auth()->user();
+        $user = auth()->user();
         $group = $invitation->familyGroup;
 
         // Verificar que el email del usuario coincida con el de la invitación

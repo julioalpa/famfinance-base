@@ -20,6 +20,7 @@
 .rpt-chart { position:relative; height:240px; }
 .rpt-chart.h-220 { height:220px; }
 .rpt-chart.h-200 { height:200px; }
+.rpt-chart.h-280 { height:280px; }
 .rpt-tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 
 @media (max-width: 900px) {
@@ -161,6 +162,9 @@
     $jsCatValues    = $expensesByCategory->values()->toJson();
     $jsDailyLabels  = collect($dailySpending)->pluck('day')->map(fn($d) => "día $d")->toJson();
     $jsDailyValues  = collect($dailySpending)->pluck('total')->toJson();
+    $jsDailyCumul   = collect($dailySpending)->pluck('cumulative')->toJson();
+    $jsDailyIncome  = collect($dailySpending)->pluck('income_amount')->toJson();
+    $jsDailyIncCumul = collect($dailySpending)->pluck('income_cumulative')->toJson();
 @endphp
 
 {{-- ── Header ──────────────────────────────────────────────────────────────── --}}
@@ -334,10 +338,10 @@
     {{-- Daily spending --}}
     <div class="card">
         <div style="margin-bottom:20px;">
-            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gasto diario</h2>
-            <div style="font-size:12px; color:var(--muted); margin-top:2px;">{{ now()->locale('es')->isoFormat('MMMM YYYY') }}</div>
+            <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Gasto e ingreso diario</h2>
+            <div style="font-size:12px; color:var(--muted); margin-top:2px;">{{ now()->locale('es')->isoFormat('MMMM YYYY') }} · barras diarias y acumulado del mes</div>
         </div>
-        <div class="rpt-chart h-220">
+        <div class="rpt-chart h-280">
             <canvas id="dailyChart"></canvas>
         </div>
     </div>
@@ -420,7 +424,7 @@
             <canvas id="memberChart"></canvas>
         </div>
         @php
-            $memberColors = ['#f0a030','#4e9bff','#2dd870','#f04060','#e8b840','#a855f7'];
+            $memberColors = ['#0a84ff','#64d2ff','#30d158','#ff453a','#ffd60a','#bf5af2'];
         @endphp
         @foreach($byMember as $name => $m)
         <div style="padding:10px 0; border-bottom:1px solid rgba(40,40,52,0.5);">
@@ -464,6 +468,9 @@
                 <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Por grupo de etiquetas</h2>
                 <div style="font-size:12px; color:var(--muted); margin-top:2px;">
                     Últimos {{ $months }} meses · ingresos, egresos y neto
+                </div>
+                <div style="font-size:11px; color:var(--muted); margin-top:4px; font-style:italic;">
+                    Un gasto con varias etiquetas del mismo grupo se cuenta una sola vez. Los grupos pueden solaparse, por lo que la suma de todos puede superar el total etiquetado.
                 </div>
             </div>
             <a href="{{ route('tags.index') }}" style="font-size:12px; color:var(--accent); text-decoration:none; font-weight:600;">
@@ -629,6 +636,23 @@
 </div>
 @endif
 
+{{-- ── Evolución del patrimonio neto ─────────────────────────────────────── --}}
+@if($netWorthHistory->isNotEmpty())
+<div style="margin-bottom:20px;">
+    <div class="card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+            <div>
+                <h2 class="font-display" style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">Evolución del patrimonio neto</h2>
+                <div style="font-size:12px; color:var(--muted); margin-top:2px;">Activos − pasivos al cierre de cada mes · últimos {{ $months }} meses</div>
+            </div>
+        </div>
+        <div class="rpt-chart h-280">
+            <canvas id="netWorthChart"></canvas>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- ── Row 4: Patrimonio neto ─────────────────────────────────────────────── --}}
 <div class="rpt-row col-1-2">
 
@@ -741,7 +765,7 @@
                         <td style="text-align:right;">
                             @if($lastChange !== null)
                                 <span style="display:inline-block; padding:3px 8px; border-radius:5px; font-size:11px; font-weight:700;
-                                    background:{{ $lastChange > 5 ? 'rgba(240,64,96,0.12)' : ($lastChange < -5 ? 'rgba(45,216,112,0.12)' : 'rgba(106,102,118,0.15)') }};
+                                    background:{{ $lastChange > 5 ? 'rgba(255, 69, 58,0.12)' : ($lastChange < -5 ? 'rgba(48, 209, 88,0.12)' : 'rgba(106,102,118,0.15)') }};
                                     color:{{ $lastChange > 5 ? 'var(--expense)' : ($lastChange < -5 ? 'var(--income)' : 'var(--muted)') }};">
                                     {{ $lastChange > 0 ? '+' : '' }}{{ $lastChange }}%
                                 </span>
@@ -782,11 +806,11 @@
             </thead>
             <tbody>
                 @foreach($installmentForecast as $slot)
-                <tr style="{{ $slot['is_current'] ? 'background: rgba(240,160,48,0.04);' : '' }}">
+                <tr style="{{ $slot['is_current'] ? 'background: rgba(10, 132, 255,0.04);' : '' }}">
                     <td style="font-weight:700; font-size:13px; white-space:nowrap;">
                         {{ $slot['label'] }}
                         @if($slot['is_current'])
-                            <span style="margin-left:6px; font-size:10px; background:rgba(240,160,48,0.15); color:var(--accent); padding:2px 6px; border-radius:4px; font-weight:700;">HOY</span>
+                            <span style="margin-left:6px; font-size:10px; background:rgba(10, 132, 255,0.15); color:var(--accent); padding:2px 6px; border-radius:4px; font-weight:700;">HOY</span>
                         @endif
                     </td>
                     <td style="text-align:center; font-size:13px; color:var(--muted); font-weight:600;">{{ $slot['count'] }}</td>
@@ -824,21 +848,21 @@
 <script>
 (function () {
     // ── Global defaults ──────────────────────────────────────────────────────
-    Chart.defaults.color          = '#6a6676';
-    Chart.defaults.borderColor    = '#282834';
-    Chart.defaults.font.family    = "'Nunito', sans-serif";
+    Chart.defaults.color          = '#98989f';
+    Chart.defaults.borderColor    = '#48484a';
+    Chart.defaults.font.family    = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Nunito", system-ui, sans-serif';
     Chart.defaults.font.size      = 12;
 
     const C = {
-        income:  '#2dd870',
-        expense: '#f04060',
-        balance: '#4e9bff',
-        accent:  '#f0a030',
-        warn:    '#e8b840',
-        muted:   '#6a6676',
-        border:  '#282834',
-        surface: '#17171d',
-        cats: ['#f0a030','#f04060','#2dd870','#4e9bff','#e8b840','#a855f7','#06b6d4','#f97316','#84cc16','#ec4899'],
+        income:  '#30d158',
+        expense: '#ff453a',
+        balance: '#64d2ff',
+        accent:  '#0a84ff',
+        warn:    '#ffd60a',
+        muted:   '#98989f',
+        border:  '#48484a',
+        surface: '#3a3a3c',
+        cats: ['#0a84ff','#ff453a','#30d158','#64d2ff','#ffd60a','#bf5af2','#5ac8fa','#ff9f0a','#a2845e','#ff375f'],
     };
 
     const gridOpts = {
@@ -847,8 +871,8 @@
     };
 
     const tooltipOpts = {
-        backgroundColor: '#111115',
-        borderColor: '#282834',
+        backgroundColor: '#2c2c2e',
+        borderColor: '#48484a',
         borderWidth: 1,
         titleColor: '#eeebe4',
         bodyColor: '#6a6676',
@@ -868,14 +892,14 @@
                 {
                     label: 'Ingresos',
                     data: {!! $jsIncome !!},
-                    backgroundColor: 'rgba(45,216,112,0.75)',
+                    backgroundColor: 'rgba(48, 209, 88,0.75)',
                     borderRadius: 5,
                     borderSkipped: false,
                 },
                 {
                     label: 'Gastos',
                     data: {!! $jsExpense !!},
-                    backgroundColor: 'rgba(240,64,96,0.75)',
+                    backgroundColor: 'rgba(255, 69, 58,0.75)',
                     borderRadius: 5,
                     borderSkipped: false,
                 },
@@ -910,15 +934,15 @@
                 borderColor: C.balance,
                 backgroundColor: ctx => {
                     const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 240);
-                    g.addColorStop(0, 'rgba(78,155,255,0.25)');
-                    g.addColorStop(1, 'rgba(78,155,255,0)');
+                    g.addColorStop(0, 'rgba(100, 210, 255,0.25)');
+                    g.addColorStop(1, 'rgba(100, 210, 255,0)');
                     return g;
                 },
                 borderWidth: 2.5,
                 fill: true,
                 tension: 0.4,
                 pointBackgroundColor: balanceData.map(v => v >= 0 ? C.income : C.expense),
-                pointBorderColor: '#111115',
+                pointBorderColor: '#2c2c2e',
                 pointBorderWidth: 2,
                 pointRadius: 5,
             }],
@@ -961,7 +985,7 @@
             datasets: [{
                 data: catValues,
                 backgroundColor: catColors,
-                borderColor: '#111115',
+                borderColor: '#2c2c2e',
                 borderWidth: 3,
                 hoverOffset: 6,
             }],
@@ -973,8 +997,8 @@
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#111115',
-                    borderColor: '#282834',
+                    backgroundColor: '#2c2c2e',
+                    borderColor: '#48484a',
                     borderWidth: 1,
                     titleColor: '#eeebe4',
                     bodyColor: '#6a6676',
@@ -1001,39 +1025,99 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span style="color:#6a6676; font-size:11px;">${pct}%</span>
-                    <span style="color:#f04060; font-weight:700;">$ ${catValues[i].toLocaleString('es-AR', {minimumFractionDigits:0})}</span>
+                    <span style="color:#ff453a; font-weight:700;">$ ${catValues[i].toLocaleString('es-AR', {minimumFractionDigits:0})}</span>
                 </div>
             </div>`;
     });
     @endif
 
-    // ── Daily spending bars ──────────────────────────────────────────────────
-    const dailyData  = {!! $jsDailyValues !!};
+    // ── Daily spending + income (barras diarias + líneas acumuladas) ─────────
+    const dailyData      = {!! $jsDailyValues !!};
+    const dailyIncome    = {!! $jsDailyIncome !!};
+    const dailyCumul     = {!! $jsDailyCumul !!};
+    const dailyIncCumul  = {!! $jsDailyIncCumul !!};
     const todayIdx   = {{ now()->day - 1 }};
     new Chart(document.getElementById('dailyChart'), {
         type: 'bar',
         data: {
             labels: {!! $jsDailyLabels !!},
-            datasets: [{
-                label: 'Gasto',
-                data: dailyData,
-                backgroundColor: dailyData.map((_, i) => i === todayIdx ? C.accent : 'rgba(240,64,96,0.55)'),
-                borderRadius: 4,
-                borderSkipped: false,
-            }],
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Gasto',
+                    data: dailyData,
+                    backgroundColor: dailyData.map((_, i) => i === todayIdx ? C.accent : 'rgba(255, 69, 58,0.55)'),
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    order: 3,
+                    yAxisID: 'y',
+                },
+                {
+                    type: 'bar',
+                    label: 'Ingreso',
+                    data: dailyIncome,
+                    backgroundColor: 'rgba(48, 209, 88,0.45)',
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    order: 3,
+                    yAxisID: 'y',
+                },
+                {
+                    type: 'line',
+                    label: 'Gasto acumulado',
+                    data: dailyCumul,
+                    borderColor: C.expense || 'rgba(255, 69, 58,1)',
+                    backgroundColor: 'rgba(255, 69, 58,0.08)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.25,
+                    fill: true,
+                    order: 1,
+                    yAxisID: 'yCumul',
+                },
+                {
+                    type: 'line',
+                    label: 'Ingreso acumulado',
+                    data: dailyIncCumul,
+                    borderColor: C.income || 'rgba(48, 209, 88,1)',
+                    backgroundColor: 'rgba(48, 209, 88,0.06)',
+                    borderWidth: 2,
+                    borderDash: [4, 3],
+                    pointRadius: 0,
+                    tension: 0.25,
+                    fill: false,
+                    order: 2,
+                    yAxisID: 'yCumul',
+                },
+            ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: tooltipOpts },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 10, boxWidth: 10, boxHeight: 10, usePointStyle: true, font: { size: 11 }, color: C.muted } },
+                tooltip: {
+                    ...tooltipOpts,
+                    callbacks: { label: ctx => ` ${ctx.dataset.label}: $ ${ctx.parsed.y.toLocaleString('es-AR')}` },
+                },
+            },
             scales: {
                 x: {
                     grid: { display: false },
                     ticks: { color: C.muted, maxRotation: 0, font: { size: 10 } },
                 },
                 y: {
+                    position: 'left',
                     grid: gridOpts,
                     ticks: { color: C.muted, callback: v => '$ ' + v.toLocaleString('es-AR') },
+                    title: { display: true, text: 'Diario', color: C.muted, font: { size: 10 } },
+                },
+                yCumul: {
+                    position: 'right',
+                    grid: { display: false },
+                    ticks: { color: C.muted, callback: v => '$ ' + (v >= 1000 ? Math.round(v/1000) + 'k' : v) },
+                    title: { display: true, text: 'Acumulado', color: C.muted, font: { size: 10 } },
                 },
             },
         },
@@ -1049,14 +1133,14 @@
                 {
                     label: 'Ingresos',
                     data: {!! $byMember->pluck('income')->toJson() !!},
-                    backgroundColor: 'rgba(45,216,112,0.85)',
+                    backgroundColor: 'rgba(48, 209, 88,0.85)',
                     borderRadius: 5,
                     borderSkipped: false,
                 },
                 {
                     label: 'Egresos',
                     data: {!! $byMember->pluck('expense')->toJson() !!},
-                    backgroundColor: 'rgba(240,64,96,0.85)',
+                    backgroundColor: 'rgba(255, 69, 58,0.85)',
                     borderRadius: 5,
                     borderSkipped: false,
                 },
@@ -1068,8 +1152,8 @@
             plugins: {
                 legend: { position: 'bottom', labels: { padding: 10, boxWidth: 10, boxHeight: 10, usePointStyle: true, font: { size: 11 } } },
                 tooltip: {
-                    backgroundColor: '#111115',
-                    borderColor: '#282834',
+                    backgroundColor: '#2c2c2e',
+                    borderColor: '#48484a',
                     borderWidth: 1,
                     padding: 10,
                     cornerRadius: 8,
@@ -1100,11 +1184,11 @@
                 labels: data.map(m => m.label),
                 datasets: [{
                     data: numeric,
-                    borderColor: 'rgba(240,160,48,0.9)',
-                    backgroundColor: 'rgba(240,160,48,0.15)',
+                    borderColor: 'rgba(10, 132, 255,0.9)',
+                    backgroundColor: 'rgba(10, 132, 255,0.15)',
                     borderWidth: 1.8,
                     pointRadius: numeric.map((_, i) => i === numeric.length - 1 ? 3 : 0),
-                    pointBackgroundColor: 'rgba(240,160,48,1)',
+                    pointBackgroundColor: 'rgba(10, 132, 255,1)',
                     fill: true,
                     tension: 0.35,
                 }],
@@ -1124,6 +1208,75 @@
                 scales: {
                     x: { display: false },
                     y: { display: false, grace: '10%' },
+                },
+            },
+        });
+    })();
+
+    // ── Evolución del patrimonio neto (área + línea) ─────────────────────────
+    (function(){
+        const el = document.getElementById('netWorthChart');
+        if (!el) return;
+        const nw = @json($netWorthHistory->values());
+        if (!nw.length) return;
+        new Chart(el, {
+            type: 'line',
+            data: {
+                labels: nw.map(m => m.label),
+                datasets: [
+                    {
+                        label: 'Patrimonio neto',
+                        data: nw.map(m => m.net),
+                        borderColor: C.accent,
+                        backgroundColor: 'rgba(10, 132, 255, 0.12)',
+                        borderWidth: 2.4,
+                        pointRadius: nw.map((_, i) => i === nw.length - 1 ? 4 : 2),
+                        pointBackgroundColor: C.accent,
+                        tension: 0.3,
+                        fill: true,
+                        order: 1,
+                    },
+                    {
+                        label: 'Activos',
+                        data: nw.map(m => m.assets),
+                        borderColor: C.income,
+                        borderWidth: 1.4,
+                        borderDash: [4, 3],
+                        pointRadius: 0,
+                        tension: 0.3,
+                        fill: false,
+                        order: 2,
+                    },
+                    {
+                        label: 'Pasivos',
+                        data: nw.map(m => m.liabilities),
+                        borderColor: C.expense,
+                        borderWidth: 1.4,
+                        borderDash: [4, 3],
+                        pointRadius: 0,
+                        tension: 0.3,
+                        fill: false,
+                        order: 2,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 12, boxWidth: 10, boxHeight: 10, usePointStyle: true, font: { size: 11 }, color: C.muted } },
+                    tooltip: {
+                        ...tooltipOpts,
+                        callbacks: { label: ctx => ` ${ctx.dataset.label}: $ ${ctx.parsed.y.toLocaleString('es-AR')}` },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: C.muted, font: { size: 10 } } },
+                    y: {
+                        grid: gridOpts,
+                        ticks: { color: C.muted, callback: v => '$ ' + (Math.abs(v) >= 1000 ? Math.round(v/1000) + 'k' : v) },
+                    },
                 },
             },
         });

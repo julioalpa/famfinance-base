@@ -13,7 +13,7 @@
         align-items: center;
         gap: 10px;
         background: var(--accent-dim);
-        border: 1px solid rgba(240,160,48,0.28);
+        border: 1px solid rgba(10, 132, 255,0.28);
         border-radius: 10px;
         padding: 8px 12px;
         margin-bottom: 16px;

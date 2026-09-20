@@ -20,7 +20,7 @@
 
 {{-- Resumen total --}}
 @if($recurring->where('is_active', true)->isNotEmpty())
-<div style="background: var(--accent-dim); border: 1px solid rgba(240,160,48,0.25); border-radius: 14px; padding: 16px 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+<div style="background: var(--accent-dim); border: 1px solid rgba(10, 132, 255,0.25); border-radius: 14px; padding: 16px 22px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
     <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
         <div style="width:38px; height:38px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <svg width="18" height="18" fill="none" stroke="#0c0804" stroke-width="2.5" viewBox="0 0 24 24">
@@ -79,7 +79,7 @@
                         <div style="
                             width: 36px; height: 36px;
                             background: {{ $re->is_active ? 'var(--accent-dim)' : 'var(--surface2)' }};
-                            border: 1px solid {{ $re->is_active ? 'rgba(240,160,48,0.3)' : 'var(--border)' }};
+                            border: 1px solid {{ $re->is_active ? 'rgba(10, 132, 255,0.3)' : 'var(--border)' }};
                             border-radius: 9px;
                             display: flex; align-items: center; justify-content: center;
                             margin: 0 auto;

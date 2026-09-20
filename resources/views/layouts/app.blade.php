@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#09090b">
+    <meta name="theme-color" content="#1c1c1e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="FamFinance">
     <title>@yield('title', 'FamFinance') — FamFinance</title>
@@ -19,22 +19,26 @@
 
     <style>
         :root {
-            --bg:          #09090b;
-            --surface:     #111115;
-            --surface2:    #17171d;
-            --surface3:    #1e1e26;
-            --border:      #282834;
-            --accent:      #f0a030;
-            --accent-dim:  rgba(240, 160, 48, 0.12);
-            --accent-glow: rgba(240, 160, 48, 0.18);
-            --accent2:     #4e9bff;
-            --danger:      #f04060;
-            --warn:        #e8b840;
-            --text:        #eeebe4;
-            --muted:       #6a6676;
-            --income:      #2dd870;
-            --expense:     #f04060;
+            --bg:          #1c1c1e;
+            --surface:     #2c2c2e;
+            --surface2:    #3a3a3c;
+            --surface3:    #48484a;
+            --border:      rgba(255,255,255,0.08);
+            --border-strong: rgba(255,255,255,0.14);
+            --accent:      #0a84ff;
+            --accent-dim:  rgba(10, 132, 255, 0.16);
+            --accent-glow: rgba(10, 132, 255, 0.22);
+            --accent2:     #64d2ff;
+            --danger:      #ff453a;
+            --warn:        #ffd60a;
+            --text:        #f5f5f7;
+            --muted:       #98989f;
+            --income:      #30d158;
+            --expense:     #ff453a;
             --sidebar-w:   260px;
+            --shadow-sm:   0 1px 2px rgba(0,0,0,0.28);
+            --shadow-md:   0 6px 20px rgba(0,0,0,0.32);
+            --shadow-lg:   0 18px 50px rgba(0,0,0,0.42);
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,19 +46,25 @@
         body {
             background: var(--bg);
             color: var(--text);
-            font-family: 'Nunito', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', 'Nunito', 'Segoe UI', system-ui, sans-serif;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            letter-spacing: -0.01em;
             touch-action: manipulation;
         }
 
-        .font-display { font-family: 'Bricolage Grotesque', sans-serif; }
+        .font-display {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
+            letter-spacing: -0.02em;
+        }
 
         /* ── Sidebar ─────────────────────────────────────────────────────────── */
         .sidebar {
             width: var(--sidebar-w);
-            background: var(--surface);
+            background: rgba(30,30,32,0.72);
+            backdrop-filter: saturate(180%) blur(24px);
+            -webkit-backdrop-filter: saturate(180%) blur(24px);
             border-right: 1px solid var(--border);
             height: 100vh;
             height: 100dvh;
@@ -73,10 +83,10 @@
         }
 
         .logo-text {
-            font-family: 'Bricolage Grotesque', sans-serif;
-            font-size: 21px;
-            font-weight: 800;
-            letter-spacing: -0.04em;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.03em;
             color: var(--text);
             line-height: 1;
         }
@@ -87,52 +97,53 @@
             margin-top: 6px;
             font-size: 11px;
             color: var(--muted);
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            text-transform: none;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-weight: 600;
+            font-weight: 500;
         }
 
         .sidebar > nav { flex: 1; padding: 8px 0; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; overscroll-behavior: contain; }
 
         .nav-section {
-            padding: 14px 18px 6px;
-            font-size: 10px;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
+            padding: 16px 18px 6px;
+            font-size: 11px;
+            letter-spacing: 0.02em;
+            text-transform: none;
             color: var(--muted);
-            font-family: 'Bricolage Grotesque', sans-serif;
-            font-weight: 700;
+            font-family: inherit;
+            font-weight: 600;
         }
 
         .nav-link {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin: 2px 8px;
-            padding: 9px 12px;
-            color: var(--muted);
-            font-size: 14px;
-            font-weight: 600;
+            margin: 1px 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 13.5px;
+            font-weight: 500;
             text-decoration: none;
-            border-radius: 9px;
-            transition: all 0.15s;
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
         }
 
         .nav-link:hover {
             color: var(--text);
-            background: var(--surface2);
+            background: rgba(255,255,255,0.06);
         }
 
         .nav-link.active {
-            color: var(--accent);
-            background: var(--accent-dim);
+            color: #fff;
+            background: var(--accent);
         }
 
-        .nav-link svg { flex-shrink: 0; opacity: 0.75; }
-        .nav-link:hover svg, .nav-link.active svg { opacity: 1; }
+        .nav-link svg { flex-shrink: 0; opacity: 0.7; }
+        .nav-link:hover svg { opacity: 0.9; }
+        .nav-link.active svg { opacity: 1; }
 
         .sidebar-user {
             padding: 12px;
@@ -161,7 +172,7 @@
             width: 32px; height: 32px;
             border-radius: 50%;
             background: var(--accent-dim);
-            border: 1.5px solid rgba(240,160,48,0.3);
+            border: 1.5px solid rgba(10, 132, 255,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -185,7 +196,7 @@
         }
 
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(6px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
@@ -193,65 +204,68 @@
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 24px;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: var(--shadow-sm);
         }
 
         /* ── Stat cards ──────────────────────────────────────────────────────── */
         .stat-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 22px 24px;
+            border-radius: 12px;
+            padding: 20px 22px;
             position: relative;
             overflow: hidden;
-            transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+            box-shadow: var(--shadow-sm);
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .stat-card:hover {
-            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .stat-card::after {
             content: '';
             position: absolute;
-            bottom: -20px; right: -20px;
+            bottom: -24px; right: -24px;
             width: 110px; height: 110px;
             border-radius: 50%;
-            opacity: 0.07;
+            opacity: 0.06;
             pointer-events: none;
             transition: opacity 0.2s;
         }
 
-        .stat-card:hover::after { opacity: 0.12; }
+        .stat-card:hover::after { opacity: 0.1; }
 
         .stat-card.income::after  { background: var(--income); }
         .stat-card.expense::after { background: var(--expense); }
         .stat-card.balance::after { background: var(--accent2); }
         .stat-card.neutral::after { background: var(--warn); }
 
-        .stat-card.income  { border-color: rgba(45,216,112,0.2); }
-        .stat-card.expense { border-color: rgba(240,64,96,0.2); }
-        .stat-card.balance { border-color: rgba(78,155,255,0.2); }
-        .stat-card.neutral { border-color: rgba(232,184,64,0.2); }
+        .stat-card.income  { border-color: rgba(48,209,88,0.22); }
+        .stat-card.expense { border-color: rgba(255,69,58,0.22); }
+        .stat-card.balance { border-color: rgba(100,210,255,0.22); }
+        .stat-card.neutral { border-color: rgba(255,214,10,0.22); }
 
-        .stat-card.income:hover  { border-color: rgba(45,216,112,0.4); box-shadow: 0 8px 32px rgba(45,216,112,0.06); }
-        .stat-card.expense:hover { border-color: rgba(240,64,96,0.4);  box-shadow: 0 8px 32px rgba(240,64,96,0.06); }
-        .stat-card.balance:hover { border-color: rgba(78,155,255,0.4); box-shadow: 0 8px 32px rgba(78,155,255,0.06); }
-        .stat-card.neutral:hover { border-color: rgba(232,184,64,0.4); box-shadow: 0 8px 32px rgba(232,184,64,0.06); }
+        .stat-card.income:hover  { border-color: rgba(48,209,88,0.4); }
+        .stat-card.expense:hover { border-color: rgba(255,69,58,0.4); }
+        .stat-card.balance:hover { border-color: rgba(100,210,255,0.4); }
+        .stat-card.neutral:hover { border-color: rgba(255,214,10,0.4); }
 
         /* ── Buttons ─────────────────────────────────────────────────────────── */
         .btn {
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            padding: 9px 18px;
-            border-radius: 9px;
-            font-family: 'Nunito', sans-serif;
-            font-size: 14px;
-            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13.5px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: background 0.15s, box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
             border: none;
             text-decoration: none;
             white-space: nowrap;
@@ -259,66 +273,93 @@
 
         .btn-primary {
             background: var(--accent);
-            color: #0c0804;
+            color: #fff;
+            box-shadow: var(--shadow-sm);
         }
         .btn-primary:hover {
-            background: #f5b040;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(240,160,48,0.28);
+            background: #3395ff;
         }
-        .btn-primary:active { transform: translateY(0); box-shadow: none; }
+        .btn-primary:active { background: #0060df; box-shadow: none; }
 
         .btn-ghost {
-            background: transparent;
-            color: var(--muted);
+            background: var(--surface2);
+            color: var(--text);
             border: 1px solid var(--border);
         }
         .btn-ghost:hover {
-            color: var(--text);
-            border-color: var(--surface3);
-            background: var(--surface2);
+            background: var(--surface3);
+            border-color: var(--border-strong);
         }
+        .btn-ghost:active { opacity: 0.85; }
 
         .btn-danger {
-            background: rgba(240,64,96,0.1);
+            background: rgba(255,69,58,0.14);
             color: var(--danger);
-            border: 1px solid rgba(240,64,96,0.22);
+            border: 1px solid rgba(255,69,58,0.24);
         }
         .btn-danger:hover {
-            background: rgba(240,64,96,0.18);
-            transform: translateY(-1px);
+            background: rgba(255,69,58,0.22);
         }
 
         /* ── Forms ───────────────────────────────────────────────────────────── */
         .form-input, .form-select {
             width: 100%;
-            background: var(--surface2);
+            background: rgba(255,255,255,0.05);
             border: 1px solid var(--border);
-            border-radius: 9px;
-            padding: 10px 14px;
+            border-radius: 8px;
+            padding: 9px 13px;
             color: var(--text);
-            font-family: 'Nunito', sans-serif;
+            font-family: inherit;
             font-size: 14px;
-            font-weight: 500;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            font-weight: 400;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+        }
+
+        /* Select: fondo sólido para que el texto no quede claro-sobre-claro y
+           las opciones desplegadas sean legibles en dark mode. */
+        .form-select {
+            background-color: var(--surface2);
+            color: var(--text);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2398989f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 11px center;
+            padding-right: 32px;
+        }
+
+        /* Opciones del desplegable: fondo oscuro y texto claro (Chrome/Firefox). */
+        .form-select option,
+        select option {
+            background-color: var(--surface2);
+            color: var(--text);
+        }
+
+        /* Salvaguarda: cualquier <select> sin la clase .form-select también
+           debe tener contraste legible en dark mode. */
+        select {
+            color: var(--text);
+            background-color: var(--surface2);
         }
 
         .form-input:focus, .form-select:focus {
             outline: none;
+            background: rgba(255,255,255,0.07);
             border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(240,160,48,0.1);
+            box-shadow: 0 0 0 3.5px var(--accent-dim);
         }
 
         .form-input::placeholder { color: var(--muted); }
 
         .form-label {
             display: block;
-            font-size: 11px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0;
+            text-transform: none;
             color: var(--muted);
-            margin-bottom: 7px;
-            font-weight: 700;
+            margin-bottom: 6px;
+            font-weight: 500;
         }
 
         /* ── Table ───────────────────────────────────────────────────────────── */
@@ -331,25 +372,25 @@
         .data-table th {
             text-align: left;
             padding: 11px 16px;
-            font-size: 11px;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0;
+            text-transform: none;
             color: var(--muted);
             border-bottom: 1px solid var(--border);
-            font-weight: 700;
-            font-family: 'Bricolage Grotesque', sans-serif;
+            font-weight: 600;
+            font-family: inherit;
         }
 
         .data-table td {
             padding: 13px 16px;
-            border-bottom: 1px solid rgba(40,40,52,0.7);
+            border-bottom: 1px solid var(--border);
             vertical-align: middle;
         }
 
         .data-table tr:last-child td { border-bottom: none; }
 
         .data-table tbody tr { transition: background 0.1s; }
-        .data-table tbody tr:hover td { background: rgba(255,255,255,0.022); }
+        .data-table tbody tr:hover td { background: rgba(255,255,255,0.03); }
 
         /* ── Sortable table columns ───────────────────────────────────────── */
         .data-table th[data-sort] { cursor:pointer;user-select:none;white-space:nowrap;transition:color 0.15s; }
@@ -364,35 +405,35 @@
             display: inline-flex;
             align-items: center;
             padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: 0;
         }
 
-        .badge-income     { background: rgba(45,216,112,0.12);  color: var(--income); }
-        .badge-expense    { background: rgba(240,64,96,0.12);   color: var(--expense); }
-        .badge-transfer   { background: rgba(78,155,255,0.12);  color: var(--accent2); }
-        .badge-adjustment { background: rgba(160,120,255,0.12); color: #a078ff; }
-        .badge-credit     { background: rgba(232,184,64,0.12);  color: var(--warn); }
-        .badge-cash       { background: rgba(45,216,112,0.10);  color: var(--income); }
-        .badge-digital    { background: rgba(78,155,255,0.10);  color: var(--accent2); }
-        .badge-loan       { background: rgba(240,64,96,0.10);   color: var(--expense); }
+        .badge-income     { background: rgba(48,209,88,0.14);  color: var(--income); }
+        .badge-expense    { background: rgba(255,69,58,0.14);   color: var(--expense); }
+        .badge-transfer   { background: rgba(100,210,255,0.14);  color: var(--accent2); }
+        .badge-adjustment { background: rgba(191,90,242,0.16); color: #bf5af2; }
+        .badge-credit     { background: rgba(255,214,10,0.14);  color: var(--warn); }
+        .badge-cash       { background: rgba(48,209,88,0.12);  color: var(--income); }
+        .badge-digital    { background: rgba(100,210,255,0.12);  color: var(--accent2); }
+        .badge-loan       { background: rgba(255,69,58,0.12);   color: var(--expense); }
 
         /* ── Alerts ──────────────────────────────────────────────────────────── */
         .alert {
-            padding: 12px 18px;
+            padding: 12px 16px;
             border-radius: 10px;
             font-size: 14px;
             margin-bottom: 20px;
-            font-weight: 600;
+            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .alert-success { background: rgba(45,216,112,0.09);  border: 1px solid rgba(45,216,112,0.22);  color: var(--income); }
-        .alert-error   { background: rgba(240,64,96,0.09);   border: 1px solid rgba(240,64,96,0.22);   color: var(--danger); }
-        .alert-info    { background: rgba(78,155,255,0.09);  border: 1px solid rgba(78,155,255,0.22);  color: var(--accent2); }
+        .alert-success { background: rgba(48,209,88,0.12);  border: 1px solid rgba(48,209,88,0.24);  color: var(--income); }
+        .alert-error   { background: rgba(255,69,58,0.12);   border: 1px solid rgba(255,69,58,0.24);   color: var(--danger); }
+        .alert-info    { background: rgba(100,210,255,0.12);  border: 1px solid rgba(100,210,255,0.24);  color: var(--accent2); }
 
         /* ── Amount colors ───────────────────────────────────────────────────── */
         .amount-income  { color: var(--income); }
@@ -407,16 +448,19 @@
             left: 14px;
             z-index: 300;
             width: 40px; height: 40px;
-            background: var(--surface);
+            background: rgba(44,44,46,0.72);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
             border: 1px solid var(--border);
             border-radius: 10px;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             color: var(--text);
+            box-shadow: var(--shadow-sm);
             transition: background 0.15s;
         }
-        .mobile-toggle:hover { background: var(--surface2); }
+        .mobile-toggle:hover { background: rgba(58,58,60,0.8); }
 
         .sidebar-overlay {
             display: none;
@@ -429,9 +473,15 @@
         }
 
         /* ── Scrollbar ───────────────────────────────────────────────────────── */
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar { width: 9px; height: 9px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.18);
+            border-radius: 5px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); background-clip: padding-box; }
 
         /* ── Responsive ──────────────────────────────────────────────────────── */
         @media (max-width: 900px) {
@@ -556,12 +606,12 @@
             background: var(--accent);
             color: #0c0804;
             align-items: center; justify-content: center;
-            box-shadow: 0 4px 20px rgba(240,160,48,0.45), 0 1px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 20px rgba(10, 132, 255,0.45), 0 1px 4px rgba(0,0,0,0.3);
             z-index: 190;
             text-decoration: none;
             transition: transform 0.15s, box-shadow 0.15s;
         }
-        .fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(240,160,48,0.3); }
+        .fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(10, 132, 255,0.3); }
 
         /* ── PWA install banner ─────────────────────────────────────────────── */
         .pwa-install {
@@ -700,6 +750,18 @@
                 <rect x="14" y="14" width="7" height="7" rx="1.5"/>
             </svg>
             Categorías
+        </a>
+
+        <a href="{{ route('budgets.index') }}"
+           class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
+           title="Presupuestos mensuales por categoría">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M3 3v18h18"/>
+                <rect x="7" y="12" width="3" height="6" rx="0.5"/>
+                <rect x="12" y="8" width="3" height="10" rx="0.5"/>
+                <rect x="17" y="5" width="3" height="13" rx="0.5"/>
+            </svg>
+            Presupuestos
         </a>
 
         <a href="{{ route('tags.index') }}"

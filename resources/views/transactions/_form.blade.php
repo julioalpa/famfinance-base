@@ -45,7 +45,7 @@
     }
     .tx-amount-wrap:focus-within {
         border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(240,160,48,0.1);
+        box-shadow: 0 0 0 3px rgba(10, 132, 255,0.1);
     }
     .tx-amount-currency {
         background: transparent;
@@ -147,7 +147,7 @@
     /* Pendiente shortcut card */
     .tx-pending-shortcut {
         background: var(--accent-dim);
-        border: 1px solid rgba(240,160,48,0.28);
+        border: 1px solid rgba(10, 132, 255,0.28);
         border-radius: 12px;
         padding: 12px 14px;
         margin-bottom: 16px;

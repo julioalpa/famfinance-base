@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use App\Models\ExchangeRate;
+use App\Services\ExchangeRateResolver;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
@@ -39,13 +39,13 @@ class Transaction extends Model
     protected function casts(): array
     {
         return [
-            'date'              => 'date',
-            'has_installments'  => 'boolean',
-            'is_card_payment'   => 'boolean',
-            'is_avoidable'      => 'boolean',
-            'amount'            => 'decimal:2',
-            'installment_amount'=> 'decimal:2',
-            'balance_snapshot'  => 'decimal:2',
+            'date' => 'date',
+            'has_installments' => 'boolean',
+            'is_card_payment' => 'boolean',
+            'is_avoidable' => 'boolean',
+            'amount' => 'decimal:2',
+            'installment_amount' => 'decimal:2',
+            'balance_snapshot' => 'decimal:2',
         ];
     }
 
@@ -115,6 +115,19 @@ class Transaction extends Model
         if ($this->currency === 'ARS' || $rate === null) {
             return $amt;
         }
+
         return $rate->convert($amt, $this->currency);
+    }
+
+    /**
+     * Monto en ARS usando la tasa vigente a la fecha de la transacción.
+     *
+     * A diferencia de amountInArs(), que aplica una tasa fija (la más
+     * reciente), este método valoriza cada operación con la cotización
+     * vigente a su propia fecha, evitando distorsiones históricas.
+     */
+    public function amountInArsOn(ExchangeRateResolver $resolver): float
+    {
+        return $resolver->convert((float) $this->amount, $this->currency, $this->date);
     }
 }

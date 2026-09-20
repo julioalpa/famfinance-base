@@ -10,7 +10,12 @@ use Illuminate\Support\Str;
 
 class FamilyGroup extends Model
 {
-    protected $fillable = ['name', 'owner_id', 'invite_token'];
+    protected $fillable = ['name', 'owner_id', 'invite_token', 'ant_threshold'];
+
+    protected function casts(): array
+    {
+        return ['ant_threshold' => 'decimal:2'];
+    }
 
     protected static function booted(): void
     {
@@ -44,6 +49,11 @@ class FamilyGroup extends Model
     public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
+    }
+
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(Budget::class);
     }
 
     public function invitations(): HasMany

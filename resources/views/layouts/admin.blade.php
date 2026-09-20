@@ -16,24 +16,28 @@
 
     <style>
         :root {
-            --bg:          #09090b;
-            --surface:     #111115;
-            --surface2:    #17171d;
-            --surface3:    #1e1e26;
-            --border:      #282834;
-            --accent:      #f0a030;
-            --accent-dim:  rgba(240, 160, 48, 0.12);
-            --accent-glow: rgba(240, 160, 48, 0.18);
-            --accent2:     #4e9bff;
-            --admin:       #a078ff;
-            --admin-dim:   rgba(160, 120, 255, 0.12);
-            --danger:      #f04060;
-            --warn:        #e8b840;
-            --text:        #eeebe4;
-            --muted:       #6a6676;
-            --income:      #2dd870;
-            --expense:     #f04060;
+            --bg:          #1c1c1e;
+            --surface:     #2c2c2e;
+            --surface2:    #3a3a3c;
+            --surface3:    #48484a;
+            --border:      rgba(255,255,255,0.08);
+            --border-strong: rgba(255,255,255,0.14);
+            --accent:      #0a84ff;
+            --accent-dim:  rgba(10, 132, 255, 0.16);
+            --accent-glow: rgba(10, 132, 255, 0.22);
+            --accent2:     #64d2ff;
+            --admin:       #bf5af2;
+            --admin-dim:   rgba(191, 90, 242, 0.16);
+            --danger:      #ff453a;
+            --warn:        #ffd60a;
+            --text:        #f5f5f7;
+            --muted:       #98989f;
+            --income:      #30d158;
+            --expense:     #ff453a;
             --sidebar-w:   260px;
+            --shadow-sm:   0 1px 2px rgba(0,0,0,0.28);
+            --shadow-md:   0 6px 20px rgba(0,0,0,0.32);
+            --shadow-lg:   0 18px 50px rgba(0,0,0,0.42);
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -229,6 +233,8 @@
             box-shadow: 0 0 0 3px rgba(160,120,255,0.1);
         }
         .form-input::placeholder { color: var(--muted); }
+        .form-select option, select option { background-color: var(--surface2); color: var(--text); }
+        select { color: var(--text); background-color: var(--surface2); }
         .form-label {
             display: block;
             font-size: 11px;

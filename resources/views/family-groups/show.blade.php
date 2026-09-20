@@ -12,6 +12,28 @@
         </div>
     </div>
 
+    {{-- Preferencias del grupo --}}
+    <div class="card" style="margin-bottom: 20px;">
+        <h2 class="font-display" style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">Preferencias</h2>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px;">
+            Configuración que aplica a los reportes del grupo
+        </div>
+        <form method="POST" action="{{ route('family-groups.settings') }}" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+            @csrf
+            <div>
+                <label class="form-label">Umbral de gastos hormiga (ARS)</label>
+                <input type="number" name="ant_threshold" class="form-input" inputmode="decimal"
+                       step="0.01" min="0" style="width: 180px;"
+                       value="{{ old('ant_threshold', number_format((float) $familyGroup->ant_threshold, 2, '.', '')) }}">
+                @error('ant_threshold') <div style="font-size:11px;color:var(--danger);margin-top:3px;">{{ $message }}</div> @enderror
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </form>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 10px;">
+            Los gastos por debajo de este monto se cuentan como “gastos hormiga” en el balance mensual.
+        </div>
+    </div>
+
     {{-- Miembros --}}
     <div class="card" style="margin-bottom: 20px;">
         <h2 class="font-display" style="font-size: 14px; font-weight: 600; margin-bottom: 18px;">

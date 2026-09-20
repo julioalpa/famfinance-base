@@ -13,8 +13,7 @@ class TransactionService
      * Crea una transacción y, si tiene cuotas, genera los registros de installments.
      *
      * @param  array  $data  Datos validados del request
-     * @param  int    $familyGroupId
-     * @param  int    $userId  Quien la registra
+     * @param  int  $userId  Quien la registra
      */
     public function create(array $data, int $familyGroupId, int $userId): Transaction
     {
@@ -28,7 +27,7 @@ class TransactionService
             $transaction = Transaction::create([
                 ...$data,
                 'family_group_id' => $familyGroupId,
-                'user_id'         => $userId,
+                'user_id' => $userId,
             ]);
 
             if ($transaction->has_installments && $transaction->installments_count > 1) {
@@ -68,7 +67,9 @@ class TransactionService
      * Genera los registros de cuotas para una transacción en cuotas.
      * La cuota 1 cae en el mes del resumen al que pertenece la compra:
      * si se compró antes del cierre, en el mes de la compra; si fue después,
-     * en el mes siguiente.
+     * en el mes siguiente. El día de vencimiento de cada cuota es el `due_day`
+     * de la tarjeta (acotado al último día del mes cuando corresponda); si la
+     * tarjeta no tiene `due_day` configurado, se usa el día 1 como fallback.
      */
     private function generateInstallments(Transaction $transaction): void
     {
@@ -77,25 +78,34 @@ class TransactionService
         // Día de cierre de la tarjeta (default 1 si no está configurado)
         $closingDay = $account->closing_day ?? 1;
 
-        $purchaseDay  = $transaction->date->day;
-        $startDate    = $transaction->date->copy()->startOfMonth();
+        // Día de vencimiento del resumen (fecha de débito). Fallback: día 1.
+        $dueDay = $account->due_day ?: 1;
+
+        $purchaseDay = $transaction->date->day;
+        $startMonth = $transaction->date->copy()->startOfMonth();
 
         if ($purchaseDay > $closingDay) {
-            $startDate->addMonth();
+            $startMonth->addMonth();
         }
 
         $installments = [];
 
         for ($i = 1; $i <= $transaction->installments_count; $i++) {
+            $monthBase = $startMonth->copy()->addMonths($i - 1);
+            // Acotar el día de vencimiento al último día del mes (ej: due_day 31
+            // en febrero → 28/29) para no desbordar al mes siguiente.
+            $dueOnMonth = min($dueDay, $monthBase->daysInMonth);
+            $dueDate = $monthBase->copy()->day($dueOnMonth);
+
             $installments[] = [
-                'transaction_id'     => $transaction->id,
-                'account_id'         => $transaction->account_id,
+                'transaction_id' => $transaction->id,
+                'account_id' => $transaction->account_id,
                 'installment_number' => $i,
-                'amount'             => $transaction->installment_amount,
-                'due_date'           => $startDate->copy()->addMonths($i - 1)->format('Y-m-d'),
-                'is_paid'            => false,
-                'created_at'         => now(),
-                'updated_at'         => now(),
+                'amount' => $transaction->installment_amount,
+                'due_date' => $dueDate->format('Y-m-d'),
+                'is_paid' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
             ];
         }
 

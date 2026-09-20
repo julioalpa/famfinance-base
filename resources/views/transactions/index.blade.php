@@ -127,7 +127,7 @@
 .filter-chip {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 5px 10px; border-radius: 20px;
-    background: var(--accent-dim); border: 1px solid rgba(240,160,48,0.25);
+    background: var(--accent-dim); border: 1px solid rgba(10, 132, 255,0.25);
     color: var(--accent); font-size: 11px; font-weight: 700;
     text-decoration: none;
 }
@@ -146,9 +146,9 @@
 }
 .tx-desktop-table tr:hover .itag-trigger { opacity: 1; }
 .itag-trigger:hover {
-    border-color: rgba(240,160,48,0.5);
+    border-color: rgba(10, 132, 255,0.5);
     color: var(--accent);
-    background: rgba(240,160,48,0.08);
+    background: rgba(10, 132, 255,0.08);
 }
 .itag-trigger[data-state="saving"] { opacity: 0.6; animation: itag-spin 0.7s linear infinite; }
 .itag-trigger[data-state="saved"]  { border-color: var(--income); color: var(--income); background: rgba(45,216,112,0.08); opacity: 1; }
@@ -176,7 +176,7 @@
     font-family: 'Nunito', sans-serif;
     transition: background 0.15s, color 0.15s;
 }
-.itag-mobile-btn:hover, .itag-mobile-btn:active { color: var(--accent); background: rgba(240,160,48,0.08); }
+.itag-mobile-btn:hover, .itag-mobile-btn:active { color: var(--accent); background: rgba(10, 132, 255,0.08); }
 .itag-mobile-btn[data-state="saving"] { animation: itag-spin 0.7s linear infinite; opacity: 0.6; }
 .itag-mobile-btn[data-state="saved"]  { color: var(--income); }
 .itag-mobile-btn[data-state="error"]  { color: var(--danger); }
@@ -257,7 +257,14 @@
         'month'       => request('month') && request('month') !== now()->format('Y-m') ? request('month') : null,
         'type'        => request('type'),
         'account_id'  => request('account_id'),
+        'user_id'     => request('user_id'),
         'category_id' => request('category_id'),
+        'tag_id'      => request('tag_id'),
+        'q'           => request('q'),
+        'from'        => request('from'),
+        'to'          => request('to'),
+        'min'         => request('min'),
+        'max'         => request('max'),
     ]);
     $filterCount = count($activeFilters);
 @endphp
@@ -269,11 +276,17 @@
         </svg>
         Filtros
         @if($filterCount > 0)
-            <span style="position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--accent);color:#0c0804;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;">{{ $filterCount }}</span>
+            <span style="position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--accent);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;">{{ $filterCount }}</span>
         @endif
     </button>
 
     {{-- Active filter chips --}}
+    @if(request('q'))
+        <a href="{{ request()->fullUrlWithQuery(['q' => null]) }}" class="filter-chip">
+            “{{ \Illuminate\Support\Str::limit(request('q'), 18) }}”
+            <span class="filter-chip-x">×</span>
+        </a>
+    @endif
     @if(request('type'))
         <a href="{{ request()->fullUrlWithQuery(['type' => null]) }}" class="filter-chip">
             {{ match(request('type')) {
@@ -293,6 +306,25 @@
             <span class="filter-chip-x">×</span>
         </a>
     @endif
+    @if(request('user_id'))
+        <a href="{{ request()->fullUrlWithQuery(['user_id' => null]) }}" class="filter-chip">
+            {{ $members->find(request('user_id'))?->name ?? 'Integrante' }}
+            <span class="filter-chip-x">×</span>
+        </a>
+    @endif
+    @if(request('from') || request('to'))
+        <a href="{{ request()->fullUrlWithQuery(['from' => null, 'to' => null]) }}" class="filter-chip">
+            {{ request('from') ? \Illuminate\Support\Carbon::parse(request('from'))->format('d/m/y') : '…' }}
+            – {{ request('to') ? \Illuminate\Support\Carbon::parse(request('to'))->format('d/m/y') : '…' }}
+            <span class="filter-chip-x">×</span>
+        </a>
+    @endif
+    @if(request('min') || request('max'))
+        <a href="{{ request()->fullUrlWithQuery(['min' => null, 'max' => null]) }}" class="filter-chip">
+            $ {{ request('min') ?: '0' }} – {{ request('max') ?: '∞' }}
+            <span class="filter-chip-x">×</span>
+        </a>
+    @endif
     @if($filterCount > 0)
         <a href="{{ route('transactions.index') }}" style="font-size:12px;color:var(--muted);text-decoration:none;">Limpiar</a>
     @endif
@@ -303,13 +335,29 @@
     <form method="GET" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
         <input type="hidden" name="sort" value="{{ $sortBy }}">
         <input type="hidden" name="dir"  value="{{ $sortDir }}">
+
+        {{-- Búsqueda por texto (lo primero, ancho flexible) --}}
+        <div style="flex: 1 1 240px; min-width: 200px;">
+            <label class="form-label">Buscar</label>
+            <div style="position: relative;">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                     style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none;">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="search" name="q" value="{{ request('q') }}" class="form-input"
+                       placeholder="Descripción o notas…" autocomplete="off"
+                       style="padding-left: 34px;">
+            </div>
+        </div>
+
         <div>
             <label class="form-label">Mes</label>
-            <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}" class="form-input" style="width: 160px;">
+            <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}" class="form-input" style="width: 150px;"
+                   {{ $hasRange ? 'disabled title=El rango de fechas tiene prioridad' : '' }}>
         </div>
         <div>
             <label class="form-label">Tipo</label>
-            <select name="type" class="form-select" style="width: 160px;">
+            <select name="type" class="form-select" style="width: 150px;">
                 <option value="">Todos</option>
                 <option value="expense"     {{ request('type') === 'expense'     ? 'selected' : '' }}>Gastos</option>
                 <option value="income"      {{ request('type') === 'income'      ? 'selected' : '' }}>Ingresos</option>
@@ -320,16 +368,27 @@
         </div>
         <div>
             <label class="form-label">Cuenta</label>
-            <select name="account_id" class="form-select" style="width: 180px;">
+            <select name="account_id" class="form-select" style="width: 170px;">
                 <option value="">Todas</option>
                 @foreach($accounts as $account)
                     <option value="{{ $account->id }}" {{ request('account_id') == $account->id ? 'selected' : '' }}>{{ $account->name }}</option>
                 @endforeach
             </select>
         </div>
+        @if($members->count() > 1)
+        <div>
+            <label class="form-label">Integrante</label>
+            <select name="user_id" class="form-select" style="width: 160px;">
+                <option value="">Todos</option>
+                @foreach($members as $member)
+                    <option value="{{ $member->id }}" {{ request('user_id') == $member->id ? 'selected' : '' }}>{{ $member->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        @endif
         <div>
             <label class="form-label">Categoría</label>
-            <select name="category_id" class="form-select" style="width: 180px;">
+            <select name="category_id" class="form-select" style="width: 170px;">
                 <option value="">Todas</option>
                 @foreach($categories as $cat)
                     <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -339,7 +398,7 @@
         @if($allTags->isNotEmpty())
         <div>
             <label class="form-label">Etiqueta</label>
-            <select name="tag_id" class="form-select" style="width: 160px;">
+            <select name="tag_id" class="form-select" style="width: 150px;">
                 <option value="">Todas</option>
                 @foreach($allTags as $tag)
                     <option value="{{ $tag->id }}" {{ request('tag_id') == $tag->id ? 'selected' : '' }}>{{ $tag->name }}</option>
@@ -347,11 +406,37 @@
             </select>
         </div>
         @endif
+
+        {{-- Rango de fechas --}}
+        <div>
+            <label class="form-label">Desde</label>
+            <input type="date" name="from" value="{{ request('from') }}" class="form-input" style="width: 150px;">
+        </div>
+        <div>
+            <label class="form-label">Hasta</label>
+            <input type="date" name="to" value="{{ request('to') }}" class="form-input" style="width: 150px;">
+        </div>
+
+        {{-- Rango de montos --}}
+        <div>
+            <label class="form-label">Monto mín.</label>
+            <input type="number" name="min" value="{{ request('min') }}" class="form-input" inputmode="decimal" step="0.01" min="0" placeholder="0" style="width: 120px;">
+        </div>
+        <div>
+            <label class="form-label">Monto máx.</label>
+            <input type="number" name="max" value="{{ request('max') }}" class="form-input" inputmode="decimal" step="0.01" min="0" placeholder="—" style="width: 120px;">
+        </div>
+
         <div style="display:flex;gap:8px;">
-            <button type="submit" class="btn btn-ghost">Filtrar</button>
+            <button type="submit" class="btn btn-primary">Buscar</button>
             <a href="{{ route('transactions.index') }}" class="btn btn-ghost" style="color: var(--muted);">Limpiar</a>
         </div>
     </form>
+    @if($hasRange)
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;">
+            Buscando en todo el historial · <strong style="color:var(--text);">{{ number_format($filteredCount) }}</strong> resultado{{ $filteredCount === 1 ? '' : 's' }} · total $ {{ number_format($filteredTotal, 2, ',', '.') }}
+        </div>
+    @endif
 </div>
 
 {{-- ── Tabla + Cards ─────────────────────────────────────────────────────── --}}
@@ -559,8 +644,12 @@
             <input type="hidden" name="sort" value="{{ $sortBy }}">
             <input type="hidden" name="dir"  value="{{ $sortDir }}">
             <div>
+                <label class="form-label">Buscar</label>
+                <input type="search" name="q" value="{{ request('q') }}" class="form-input" placeholder="Descripción o notas…" autocomplete="off">
+            </div>
+            <div>
                 <label class="form-label">Mes</label>
-                <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}" class="form-input">
+                <input type="month" name="month" value="{{ request('month', now()->format('Y-m')) }}" class="form-input" {{ $hasRange ? 'disabled' : '' }}>
             </div>
             <div>
                 <label class="form-label">Tipo</label>
@@ -582,6 +671,17 @@
                     @endforeach
                 </select>
             </div>
+            @if($members->count() > 1)
+            <div>
+                <label class="form-label">Integrante</label>
+                <select name="user_id" class="form-select">
+                    <option value="">Todos</option>
+                    @foreach($members as $member)
+                        <option value="{{ $member->id }}" {{ request('user_id') == $member->id ? 'selected' : '' }}>{{ $member->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
             <div>
                 <label class="form-label">Categoría</label>
                 <select name="category_id" class="form-select">
@@ -602,6 +702,26 @@
                 </select>
             </div>
             @endif
+            <div style="display:flex;gap:10px;">
+                <div style="flex:1;">
+                    <label class="form-label">Desde</label>
+                    <input type="date" name="from" value="{{ request('from') }}" class="form-input">
+                </div>
+                <div style="flex:1;">
+                    <label class="form-label">Hasta</label>
+                    <input type="date" name="to" value="{{ request('to') }}" class="form-input">
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <div style="flex:1;">
+                    <label class="form-label">Monto mín.</label>
+                    <input type="number" name="min" value="{{ request('min') }}" class="form-input" inputmode="decimal" step="0.01" min="0" placeholder="0">
+                </div>
+                <div style="flex:1;">
+                    <label class="form-label">Monto máx.</label>
+                    <input type="number" name="max" value="{{ request('max') }}" class="form-input" inputmode="decimal" step="0.01" min="0" placeholder="—">
+                </div>
+            </div>
             <div style="display:flex;gap:10px;margin-top:4px;">
                 <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">Aplicar</button>
                 <a href="{{ route('transactions.index') }}" class="btn btn-ghost" style="flex:1;justify-content:center;">Limpiar</a>

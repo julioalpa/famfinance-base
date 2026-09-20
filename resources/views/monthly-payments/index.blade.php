@@ -262,9 +262,9 @@
                 </div>
             @elseif($isDirectDebit)
                 <div onclick="openPayModal({{ $mp->id }}, '{{ addslashes($item?->description) }}', '{{ $item?->amount ?? $lastAmt ?? '' }}', '{{ $item?->currency ?? 'ARS' }}', true)"
-                     style="width: 26px; height: 26px; border-radius: 8px; background: rgba(240,160,48,0.1); border: 2px solid rgba(240,160,48,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s;"
-                     onmouseenter="this.style.borderColor='rgba(240,160,48,0.7)'"
-                     onmouseleave="this.style.borderColor='rgba(240,160,48,0.4)'"
+                     style="width: 26px; height: 26px; border-radius: 8px; background: rgba(10, 132, 255,0.1); border: 2px solid rgba(10, 132, 255,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s;"
+                     onmouseenter="this.style.borderColor='rgba(10, 132, 255,0.7)'"
+                     onmouseleave="this.style.borderColor='rgba(10, 132, 255,0.4)'"
                      title="Confirmar débito directo">
                     <svg width="12" height="12" fill="none" stroke="var(--accent)" stroke-width="2.2" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                 </div>
@@ -288,7 +288,7 @@
                         <span class="badge" style="background: var(--surface2); color: var(--muted); font-size: 10px;">DESCARTADO</span>
                     @endif
                     @if($isDirectDebit && !$isDismissed)
-                        <span class="badge" style="background: rgba(240,160,48,0.1); color: var(--accent); font-size: 10px;">DÉBITO DIRECTO</span>
+                        <span class="badge" style="background: rgba(10, 132, 255,0.1); color: var(--accent); font-size: 10px;">DÉBITO DIRECTO</span>
                     @endif
                     @if($isDispensable && !$isDismissed)
                         <span class="badge" style="background: rgba(232,184,64,0.1); color: var(--warn); font-size: 10px;">PRESCINDIBLE</span>
@@ -434,7 +434,7 @@
             @csrf
 
             {{-- Hint para débitos directos --}}
-            <div id="modal-debit-hint" style="display:none; margin-bottom:14px; padding:8px 12px; background:rgba(240,160,48,0.08); border:1px solid rgba(240,160,48,0.25); border-radius:8px; font-size:11px; color:var(--accent); line-height:1.45;">
+            <div id="modal-debit-hint" style="display:none; margin-bottom:14px; padding:8px 12px; background:rgba(10, 132, 255,0.08); border:1px solid rgba(10, 132, 255,0.25); border-radius:8px; font-size:11px; color:var(--accent); line-height:1.45;">
                 <strong style="letter-spacing:0.04em; text-transform:uppercase; font-size:10px;">Débito directo</strong>
                 — verificá el monto, especialmente si hubo un aumento.
             </div>

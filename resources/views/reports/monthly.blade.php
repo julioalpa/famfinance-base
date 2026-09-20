@@ -77,9 +77,9 @@
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    background: rgba(240,160,48,0.12);
+    background: rgba(10, 132, 255,0.12);
     color: var(--accent);
-    border: 1px solid rgba(240,160,48,0.2);
+    border: 1px solid rgba(10, 132, 255,0.2);
 }
 
 .live-dot {
@@ -113,16 +113,16 @@
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    border: 1px solid rgba(240,64,96,0.25);
-    background: rgba(240,64,96,0.08);
+    border: 1px solid rgba(255, 69, 58,0.25);
+    background: rgba(255, 69, 58,0.08);
     color: var(--expense);
     transition: all 0.2s ease;
     white-space: nowrap;
 }
 
 .btn-pdf:hover {
-    background: rgba(240,64,96,0.16);
-    border-color: rgba(240,64,96,0.4);
+    background: rgba(255, 69, 58,0.16);
+    border-color: rgba(255, 69, 58,0.4);
     transform: translateY(-1px);
 }
 
@@ -179,10 +179,10 @@
 .stat-card-v2.balance::after { background: radial-gradient(ellipse at top left, var(--accent2), transparent 70%); }
 .stat-card-v2.savings::after { background: radial-gradient(ellipse at top left, var(--accent), transparent 70%); }
 
-.stat-card-v2.income:hover  { border-color: rgba(45,216,112,0.3); }
-.stat-card-v2.expense:hover { border-color: rgba(240,64,96,0.3); }
-.stat-card-v2.balance:hover { border-color: rgba(78,155,255,0.3); }
-.stat-card-v2.savings:hover { border-color: rgba(240,160,48,0.3); }
+.stat-card-v2.income:hover  { border-color: rgba(48, 209, 88,0.3); }
+.stat-card-v2.expense:hover { border-color: rgba(255, 69, 58,0.3); }
+.stat-card-v2.balance:hover { border-color: rgba(100, 210, 255,0.3); }
+.stat-card-v2.savings:hover { border-color: rgba(10, 132, 255,0.3); }
 
 .stat-top {
     display: flex;
@@ -201,10 +201,10 @@
     flex-shrink: 0;
 }
 
-.stat-card-v2.income  .stat-icon { background: rgba(45,216,112,0.12);  color: var(--income); }
-.stat-card-v2.expense .stat-icon { background: rgba(240,64,96,0.12);   color: var(--expense); }
-.stat-card-v2.balance .stat-icon { background: rgba(78,155,255,0.12);  color: var(--accent2); }
-.stat-card-v2.savings .stat-icon { background: rgba(240,160,48,0.12);  color: var(--accent); }
+.stat-card-v2.income  .stat-icon { background: rgba(48, 209, 88,0.12);  color: var(--income); }
+.stat-card-v2.expense .stat-icon { background: rgba(255, 69, 58,0.12);   color: var(--expense); }
+.stat-card-v2.balance .stat-icon { background: rgba(100, 210, 255,0.12);  color: var(--accent2); }
+.stat-card-v2.savings .stat-icon { background: rgba(10, 132, 255,0.12);  color: var(--accent); }
 
 .stat-label-v2 {
     font-size: 10px;
@@ -241,9 +241,9 @@
     width: fit-content;
 }
 
-.delta-bad  { background: rgba(240,64,96,0.12);  color: var(--expense); }
-.delta-good { background: rgba(45,216,112,0.12); color: var(--income); }
-.delta-neu  { background: rgba(78,155,255,0.12); color: var(--accent2); }
+.delta-bad  { background: rgba(255, 69, 58,0.12);  color: var(--expense); }
+.delta-good { background: rgba(48, 209, 88,0.12); color: var(--income); }
+.delta-neu  { background: rgba(100, 210, 255,0.12); color: var(--accent2); }
 
 .stat-sub {
     font-size: 11px;
@@ -586,9 +586,9 @@
     margin-bottom: 14px;
 }
 
-.ant-alert-danger { background: rgba(240,64,96,0.1);  border: 1px solid rgba(240,64,96,0.2);  color: var(--expense); }
-.ant-alert-warn   { background: rgba(232,184,64,0.1); border: 1px solid rgba(232,184,64,0.2); color: var(--warn); }
-.ant-alert-ok     { background: rgba(45,216,112,0.1); border: 1px solid rgba(45,216,112,0.2); color: var(--income); }
+.ant-alert-danger { background: rgba(255, 69, 58,0.1);  border: 1px solid rgba(255, 69, 58,0.2);  color: var(--expense); }
+.ant-alert-warn   { background: rgba(255, 214, 10,0.1); border: 1px solid rgba(255, 214, 10,0.2); color: var(--warn); }
+.ant-alert-ok     { background: rgba(48, 209, 88,0.1); border: 1px solid rgba(48, 209, 88,0.2); color: var(--income); }
 
 .ant-chips {
     display: flex;
@@ -607,7 +607,7 @@
     transition: border-color 0.15s;
 }
 
-.ant-chip:hover { border-color: rgba(240,160,48,0.3); }
+.ant-chip:hover { border-color: rgba(10, 132, 255,0.3); }
 
 .ant-chip-icon  { font-size: 13px; }
 .ant-chip-name  { font-size: 12px; font-weight: 700; color: var(--text); }
@@ -692,9 +692,9 @@
     padding: 2px 7px;
     border-radius: 20px;
 }
-.s-confirmed { background: rgba(45,216,112,0.1);  color: var(--income); }
-.s-skipped   { background: rgba(232,184,64,0.1);  color: var(--warn); }
-.s-pending   { background: rgba(78,155,255,0.1);  color: var(--accent2); }
+.s-confirmed { background: rgba(48, 209, 88,0.1);  color: var(--income); }
+.s-skipped   { background: rgba(255, 214, 10,0.1);  color: var(--warn); }
+.s-pending   { background: rgba(100, 210, 255,0.1);  color: var(--accent2); }
 
 .rec-amount-v2 {
     font-family: 'Bricolage Grotesque', sans-serif;
@@ -777,10 +777,10 @@
 /* ── Forecast section ────────────────────────────────────────────────────── */
 .forecast-card {
     background: var(--surface);
-    border: 1px solid rgba(240,160,48,0.2);
+    border: 1px solid rgba(10, 132, 255,0.2);
     border-radius: 14px;
     padding: 22px 24px;
-    background: linear-gradient(135deg, rgba(240,160,48,0.03) 0%, transparent 50%);
+    background: linear-gradient(135deg, rgba(10, 132, 255,0.03) 0%, transparent 50%);
 }
 
 .forecast-month-progress {
@@ -850,8 +850,8 @@
     border: 1px solid;
 }
 
-.forecast-result.positive { background: rgba(45,216,112,0.07); border-color: rgba(45,216,112,0.2); }
-.forecast-result.negative { background: rgba(240,64,96,0.07);  border-color: rgba(240,64,96,0.2); }
+.forecast-result.positive { background: rgba(48, 209, 88,0.07); border-color: rgba(48, 209, 88,0.2); }
+.forecast-result.negative { background: rgba(255, 69, 58,0.07);  border-color: rgba(255, 69, 58,0.2); }
 
 .fr-label { font-size: 12px; font-weight: 700; }
 .fr-val   { font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800; }
@@ -928,10 +928,10 @@
 /* ── Savings opportunity section ─────────────────────────────────────────── */
 .savings-opp-card {
     background: var(--surface);
-    border: 1px solid rgba(232,184,64,0.25);
+    border: 1px solid rgba(255, 214, 10,0.25);
     border-radius: 14px;
     padding: 22px 24px;
-    background: linear-gradient(135deg, rgba(232,184,64,0.04) 0%, transparent 60%);
+    background: linear-gradient(135deg, rgba(255, 214, 10,0.04) 0%, transparent 60%);
 }
 
 .savings-opp-header {
@@ -953,9 +953,9 @@
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    background: rgba(232,184,64,0.12);
+    background: rgba(255, 214, 10,0.12);
     color: var(--warn);
-    border: 1px solid rgba(232,184,64,0.2);
+    border: 1px solid rgba(255, 214, 10,0.2);
     margin-bottom: 10px;
     width: fit-content;
 }
@@ -999,14 +999,14 @@
     gap: 12px;
     padding: 10px 14px;
     border-radius: 10px;
-    background: rgba(232,184,64,0.04);
-    border: 1px solid rgba(232,184,64,0.1);
+    background: rgba(255, 214, 10,0.04);
+    border: 1px solid rgba(255, 214, 10,0.1);
     margin-bottom: 7px;
     transition: border-color 0.15s;
 }
 
 .dispensable-item:last-child { margin-bottom: 0; }
-.dispensable-item:hover { border-color: rgba(232,184,64,0.25); }
+.dispensable-item:hover { border-color: rgba(255, 214, 10,0.25); }
 
 .dispensable-item.paid {
     background: rgba(106,102,118,0.06);
@@ -1050,7 +1050,7 @@
     flex-shrink: 0;
 }
 
-.disp-status.pending { background: rgba(232,184,64,0.12); color: var(--warn); }
+.disp-status.pending { background: rgba(255, 214, 10,0.12); color: var(--warn); }
 .disp-status.paid    { background: rgba(106,102,118,0.15); color: var(--muted); }
 
 .disp-amount {
@@ -1069,7 +1069,7 @@
 .savings-opp-impact {
     margin-top: 18px;
     padding-top: 16px;
-    border-top: 1px solid rgba(232,184,64,0.15);
+    border-top: 1px solid rgba(255, 214, 10,0.15);
 }
 
 .savings-opp-impact-header {
@@ -1097,7 +1097,7 @@
 
 .savings-opp-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--warn), rgba(232,184,64,0.5));
+    background: linear-gradient(90deg, var(--warn), rgba(255, 214, 10,0.5));
     border-radius: 3px;
     transition: width 1s ease;
 }
@@ -1403,6 +1403,23 @@
                 @endif
             </div>
             <div class="chart-wrap"><canvas id="chartDaily"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     2b. COMPOSICIÓN DEL MES — waterfall Ingresos → Gastos → Saldo
+     ═══════════════════════════════════════════════════════════════════════ --}}
+<div class="report-section">
+    <div class="section-header">
+        <span class="section-label">Composición del mes</span>
+        <span style="font-size:10px;color:var(--muted);font-weight:600;">de dónde salió el saldo</span>
+        <div class="section-line"></div>
+    </div>
+    <div class="panel-card" style="padding:18px 20px;">
+        <div class="chart-wrap" style="height:260px;"><canvas id="chartWaterfall"></canvas></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">
+            Ingresos menos gastos evitables y no evitables = saldo del mes. Los gastos evitables son una oportunidad de ahorro.
         </div>
     </div>
 </div>
@@ -1794,6 +1811,10 @@
         <a href="{{ route('tags.index') }}" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:700;white-space:nowrap;">Gestionar →</a>
     </div>
 
+    <div style="font-size:11px;color:var(--muted);font-style:italic;margin:-6px 0 12px;">
+        Un gasto con varias etiquetas del mismo grupo se cuenta una sola vez. Los grupos pueden solaparse, por lo que la suma de todos puede superar el total etiquetado.
+    </div>
+
     <div class="panel-card">
         <div class="cmb-header">
             <div></div>
@@ -2005,7 +2026,7 @@
                     @if($entry['paid_at']) · <span style="color:var(--income);">{{ \Carbon\Carbon::parse($entry['paid_at'])->format('d/m') }}</span> @endif
                 </div>
             </div>
-            <span style="font-size:9px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;padding:2px 8px;border-radius:20px;white-space:nowrap;{{ $entry['is_paid'] ? 'background:rgba(45,216,112,0.1);color:var(--income)' : 'background:rgba(78,155,255,0.1);color:var(--accent2)' }};">
+            <span style="font-size:9px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;padding:2px 8px;border-radius:20px;white-space:nowrap;{{ $entry['is_paid'] ? 'background:rgba(48, 209, 88,0.1);color:var(--income)' : 'background:rgba(100, 210, 255,0.1);color:var(--accent2)' }};">
                 {{ $entry['is_paid'] ? 'Pagado' : 'Pendiente' }}
             </span>
             @if($entry['amount'] !== null)
@@ -2288,20 +2309,20 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 const C = {
-    income:  '#2dd870',
-    expense: '#f04060',
-    accent:  '#f0a030',
-    accent2: '#4e9bff',
-    warn:    '#e8b840',
-    muted:   '#6a6676',
-    border:  '#282834',
-    surface: '#17171d',
-    text:    '#eeebe4',
+    income:  '#30d158',
+    expense: '#ff453a',
+    accent:  '#0a84ff',
+    accent2: '#64d2ff',
+    warn:    '#ffd60a',
+    muted:   '#98989f',
+    border:  '#48484a',
+    surface: '#3a3a3c',
+    text:    '#f5f5f7',
 };
 
 Chart.defaults.color         = C.muted;
 Chart.defaults.borderColor   = C.border;
-Chart.defaults.font.family   = 'Nunito';
+Chart.defaults.font.family   = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Nunito", system-ui, sans-serif';
 Chart.defaults.font.size     = 11;
 
 // ── Barras mensuales ─────────────────────────────────────────────────────
@@ -2315,14 +2336,14 @@ const chartMonthly = new Chart(ctxMonthly, {
             {
                 label: 'Ingresos',
                 data: monthlyData.map(m => m.income),
-                backgroundColor: monthlyData.map(m => m.isCurrent ? C.income : 'rgba(45,216,112,0.3)'),
+                backgroundColor: monthlyData.map(m => m.isCurrent ? C.income : 'rgba(48, 209, 88,0.3)'),
                 borderRadius: 5,
                 borderSkipped: false,
             },
             {
                 label: 'Egresos',
                 data: monthlyData.map(m => m.expense),
-                backgroundColor: monthlyData.map(m => m.isCurrent ? C.expense : 'rgba(240,64,96,0.3)'),
+                backgroundColor: monthlyData.map(m => m.isCurrent ? C.expense : 'rgba(255, 69, 58,0.3)'),
                 borderRadius: 5,
                 borderSkipped: false,
             },
@@ -2353,12 +2374,12 @@ const isCurrent = {{ $isCurrentMonth ? 'true' : 'false' }};
 const ctxDaily = document.getElementById('chartDaily').getContext('2d');
 
 const gradBlue = ctxDaily.createLinearGradient(0, 0, 0, 200);
-gradBlue.addColorStop(0, 'rgba(78,155,255,0.22)');
-gradBlue.addColorStop(1, 'rgba(78,155,255,0)');
+gradBlue.addColorStop(0, 'rgba(100, 210, 255,0.22)');
+gradBlue.addColorStop(1, 'rgba(100, 210, 255,0)');
 
 const gradGreen = ctxDaily.createLinearGradient(0, 0, 0, 200);
-gradGreen.addColorStop(0, 'rgba(45,216,112,0.18)');
-gradGreen.addColorStop(1, 'rgba(45,216,112,0)');
+gradGreen.addColorStop(0, 'rgba(48, 209, 88,0.18)');
+gradGreen.addColorStop(1, 'rgba(48, 209, 88,0)');
 
 const chartDaily = new Chart(ctxDaily, {
     type: 'line',
@@ -2381,20 +2402,20 @@ const chartDaily = new Chart(ctxDaily, {
             {
                 label: 'Ingreso acumulado',
                 data: dailyData.map(d => d.income_cumulative),
-                borderColor: 'rgba(45,216,112,0.85)',
+                borderColor: 'rgba(48, 209, 88,0.85)',
                 backgroundColor: gradGreen,
                 borderWidth: 2,
                 fill: true,
                 tension: 0.4,
                 pointRadius: isCurrent ? dailyData.map((d, i) => i + 1 === today ? 5 : 0) : 0,
-                pointBackgroundColor: 'rgba(45,216,112,1)',
+                pointBackgroundColor: 'rgba(48, 209, 88,1)',
                 pointBorderColor: C.surface,
                 pointBorderWidth: 2,
             },
             {
                 label: 'Gasto diario',
                 data: dailyData.map(d => d.amount),
-                borderColor: 'rgba(240,64,96,0.5)',
+                borderColor: 'rgba(255, 69, 58,0.5)',
                 backgroundColor: 'transparent',
                 borderWidth: 1.5,
                 borderDash: [4, 4],
@@ -2404,7 +2425,7 @@ const chartDaily = new Chart(ctxDaily, {
             {
                 label: 'Ingreso diario',
                 data: dailyData.map(d => d.income_amount),
-                borderColor: 'rgba(45,216,112,0.45)',
+                borderColor: 'rgba(48, 209, 88,0.45)',
                 backgroundColor: 'transparent',
                 borderWidth: 1.5,
                 borderDash: [4, 4],
@@ -2441,7 +2462,7 @@ const chartCats = new Chart(ctxCats, {
             data: catData.map(c => c.total),
             backgroundColor: catData.map(c => c.color || C.muted),
             borderWidth: 2,
-            borderColor: '#111115',
+            borderColor: '#2c2c2e',
             hoverOffset: 6,
         }],
     },
@@ -2472,7 +2493,7 @@ if (ctxIncCats && incCatData.length) {
                 data: incCatData.map(c => c.income),
                 backgroundColor: incCatData.map(c => c.color || C.muted),
                 borderWidth: 2,
-                borderColor: '#111115',
+                borderColor: '#2c2c2e',
                 hoverOffset: 6,
             }],
         },
@@ -2527,7 +2548,7 @@ if (ctxIncCats && incCatData.length) {
             datasets: [{
                 data: numeric,
                 borderColor: C.accent,
-                backgroundColor: 'rgba(240,160,48,0.15)',
+                backgroundColor: 'rgba(10, 132, 255,0.15)',
                 borderWidth: 1.8,
                 pointRadius: numeric.map((_, i) => i === numeric.length - 1 ? 3 : 0),
                 pointBackgroundColor: C.accent,
@@ -2571,6 +2592,61 @@ if (ctxIncCats && incCatData.length) {
         if (progress < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+})();
+
+// ── Waterfall: composición del mes (Ingresos → gastos → saldo) ───────────
+(function(){
+    const el = document.getElementById('chartWaterfall');
+    if (!el) return;
+    const income    = {{ $totalIncome }};
+    const avoidable = {{ $avoidableTotal }};
+    const other     = Math.max({{ $totalExpense }} - {{ $avoidableTotal }}, 0);
+    const balance   = income - avoidable - other;
+
+    // Cada barra flotante: [base, top] para simular waterfall.
+    const steps = [
+        { label: 'Ingresos',        range: [0, income],                       color: C.income },
+        { label: 'Gastos evitables', range: [income - avoidable, income],      color: C.warn },
+        { label: 'Otros gastos',     range: [balance, income - avoidable],     color: C.expense },
+        { label: balance >= 0 ? 'Saldo' : 'Déficit', range: [Math.min(balance,0), Math.max(balance,0)], color: balance >= 0 ? C.accent : C.expense },
+    ];
+
+    new Chart(el.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: steps.map(s => s.label),
+            datasets: [{
+                data: steps.map(s => s.range),
+                backgroundColor: steps.map(s => s.color),
+                borderRadius: 5,
+                borderSkipped: false,
+                barPercentage: 0.6,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const r = ctx.raw;
+                            const val = Math.abs(r[1] - r[0]);
+                            return ` $ ${val.toLocaleString('es-AR')}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: C.muted, font: { size: 11 } } },
+                y: {
+                    grid: { color: C.border },
+                    ticks: { color: C.muted, callback: v => '$ ' + (Math.abs(v) >= 1000 ? Math.round(v/1000) + 'k' : v) },
+                },
+            },
+        },
+    });
 })();
 
 // ── Generar PDF ──────────────────────────────────────────────────────────
