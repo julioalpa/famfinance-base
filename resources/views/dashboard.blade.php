@@ -70,6 +70,134 @@
 .dash-delta-bad  { background: rgba(240,64,96,0.12);  color: var(--expense); }
 .dash-delta-neu  { background: rgba(78,155,255,0.12); color: var(--accent2); }
 .dash-delta-sub  { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+/* ── Campana de notificaciones ──────────────────────────────────────────── */
+.notif-wrap { position: relative; }
+
+.notif-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.notif-bell:hover { background: var(--surface3); border-color: var(--border-strong); }
+.notif-bell svg { opacity: 0.85; }
+
+.notif-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--expense);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--bg);
+}
+.notif-badge.warn-only { background: var(--warn); color: #1a1208; }
+
+.notif-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    z-index: 400;
+    display: none;
+    animation: notifIn 0.16s ease both;
+}
+.notif-panel.open { display: block; }
+
+@keyframes notifIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.notif-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+}
+.notif-panel-title { font-size: 14px; font-weight: 700; color: var(--text); }
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none;
+    transition: background 0.12s;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: rgba(255,255,255,0.03); }
+
+.notif-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+}
+.notif-icon.over  { background: rgba(255,69,58,0.14); }
+.notif-icon.warn  { background: rgba(255,214,10,0.14); }
+.notif-icon.promo { background: rgba(232,184,64,0.14); }
+
+.notif-body { flex: 1; min-width: 0; }
+.notif-item-title { font-size: 13px; font-weight: 700; line-height: 1.35; }
+.notif-item-title .cat { color: var(--text); font-weight: 600; }
+.notif-item-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+.notif-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+}
+.notif-empty svg { opacity: 0.4; margin-bottom: 10px; }
+
+.notif-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(100,210,255,0.14);
+    color: var(--accent2);
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+    .notif-panel { width: calc(100vw - 32px); position: fixed; right: 16px; left: 16px; }
+}
 </style>
 
 @php
@@ -105,82 +233,98 @@
                    onchange="this.form.submit()">
         </form>
 
+        {{-- Campana de notificaciones --}}
+        @php
+            $notifOverCount = $budgetAlerts->where('status', 'over')->count();
+            $notifTotalCount = $budgetAlerts->count() + $promotionAlerts->count();
+        @endphp
+        <div class="notif-wrap">
+            <button type="button" class="notif-bell" id="notif-bell" aria-label="Notificaciones" aria-expanded="false"
+                    onclick="toggleNotifPanel()">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                @if($notifTotalCount > 0)
+                    <span class="notif-badge {{ $notifOverCount === 0 ? 'warn-only' : '' }}">{{ $notifTotalCount > 99 ? '99+' : $notifTotalCount }}</span>
+                @endif
+            </button>
+
+            <div class="notif-panel" id="notif-panel" role="dialog" aria-label="Panel de notificaciones">
+                <div class="notif-panel-header">
+                    <span class="notif-panel-title">Notificaciones</span>
+                    @if($notifTotalCount > 0)
+                        <span style="font-size: 12px; color: var(--muted); font-weight: 600;">{{ $notifTotalCount }} sin resolver</span>
+                    @endif
+                </div>
+
+                @if($notifTotalCount === 0)
+                    <div class="notif-empty">
+                        <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <div>Todo en orden. No hay alertas.</div>
+                    </div>
+                @else
+                    {{-- Alertas de presupuesto --}}
+                    @foreach($budgetAlerts as $alert)
+                        @php
+                            $over = $alert['status'] === 'over';
+                            $col  = $over ? 'var(--expense)' : 'var(--warn)';
+                            $cat  = $alert['category'];
+                        @endphp
+                        <a href="{{ route('budgets.index') }}" class="notif-item">
+                            <div class="notif-icon {{ $over ? 'over' : 'warn' }}">
+                                <svg width="15" height="15" fill="none" stroke="{{ $col }}" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                            </div>
+                            <div class="notif-body">
+                                <div class="notif-item-title">
+                                    <span style="color: {{ $col }};">{{ $over ? 'Presupuesto excedido' : 'Cerca del límite' }}</span>
+                                    <span class="cat">· {{ $cat->name }}</span>
+                                    @if($alert['is_annual'])<span class="notif-tag">ANUAL</span>@endif
+                                </div>
+                                <div class="notif-item-sub">
+                                    Gastado $ {{ number_format($alert['spent'], 0, ',', '.') }} de $ {{ number_format($alert['limit'], 0, ',', '.') }}
+                                    ({{ $alert['pct'] }}%){{ $alert['is_annual'] ? ' este año' : ' este mes' }}
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
+
+                    {{-- Alertas de promociones --}}
+                    @foreach($promotionAlerts as $promo)
+                        @php $days = $promo->daysUntilExpiry(); @endphp
+                        <a href="{{ route('promotions.index') }}" class="notif-item">
+                            <div class="notif-icon promo">
+                                <svg width="15" height="15" fill="none" stroke="var(--warn)" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                            </div>
+                            <div class="notif-body">
+                                <div class="notif-item-title">
+                                    <span style="color: var(--warn);">Promoción por vencer</span>
+                                    <span class="cat">· {{ $promo->name }}</span>
+                                </div>
+                                <div class="notif-item-sub">
+                                    {{ $days === 0 ? 'Vence hoy' : "Vence en {$days} " . ($days === 1 ? 'día' : 'días') }}
+                                    ({{ $promo->expires_at->format('d/m/Y') }}) — {{ $promo->discountLabel() }}
+                                    @if($promo->provider) · {{ $promo->provider }} @endif
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
+                @endif
+            </div>
+        </div>
+
         <a href="{{ route('transactions.create') }}" class="btn btn-primary">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo movimiento
         </a>
     </div>
 </div>
-
-{{-- ── Alertas de promociones ───────────────────────────────────────────────── --}}
-@if($promotionAlerts->isNotEmpty())
-<div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px;">
-    @foreach($promotionAlerts as $promo)
-        @php $days = $promo->daysUntilExpiry(); @endphp
-        <div style="background: rgba(232,184,64,0.08); border: 1px solid rgba(232,184,64,0.35); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-            <svg width="18" height="18" fill="none" stroke="var(--warn)" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink: 0;">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <div style="flex: 1; min-width: 180px;">
-                <span style="font-size: 14px; font-weight: 700; color: var(--warn);">Promoción por vencer:</span>
-                <span style="font-size: 14px; color: var(--text); margin-left: 4px;">{{ $promo->name }}</span>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
-                    {{ $days === 0 ? 'Vence hoy' : "Vence en {$days} " . ($days === 1 ? 'día' : 'días') }}
-                    ({{ $promo->expires_at->format('d/m/Y') }}) — {{ $promo->discountLabel() }} de descuento
-                    @if($promo->provider) · {{ $promo->provider }} @endif
-                </div>
-            </div>
-            <div class="promo-actions" style="display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">
-                <a href="{{ route('promotions.index') }}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 12px;">
-                    Ver promociones
-                </a>
-                <form method="POST" action="{{ route('promotions.dismiss-alert', $promo) }}">
-                    @csrf
-                    <button type="submit" class="btn btn-ghost" style="padding: 6px 14px; font-size: 12px; border-color: rgba(232,184,64,0.3); color: var(--warn);">
-                        Marcar como leído
-                    </button>
-                </form>
-            </div>
-        </div>
-    @endforeach
-</div>
-@endif
-
-{{-- ── Alertas de presupuesto ───────────────────────────────────────────────── --}}
-@if($budgetAlerts->isNotEmpty())
-<div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 10px;">
-    @foreach($budgetAlerts as $alert)
-        @php
-            $over = $alert['status'] === 'over';
-            $col  = $over ? 'var(--expense)' : 'var(--warn)';
-            $bg   = $over ? 'rgba(255,69,58,0.08)' : 'rgba(255,214,10,0.08)';
-            $bd   = $over ? 'rgba(255,69,58,0.35)' : 'rgba(255,214,10,0.35)';
-            $cat  = $alert['category'];
-        @endphp
-        <div style="background: {{ $bg }}; border: 1px solid {{ $bd }}; border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-            <svg width="18" height="18" fill="none" stroke="{{ $col }}" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink: 0;">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <div style="flex: 1; min-width: 180px;">
-                <span style="font-size: 14px; font-weight: 700; color: {{ $col }};">
-                    {{ $over ? 'Presupuesto excedido:' : 'Cerca del límite:' }}
-                </span>
-                <span style="font-size: 14px; color: var(--text); margin-left: 4px;">{{ $cat->name }}</span>
-                @if($alert['is_annual'])
-                    <span style="font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; background: rgba(100,210,255,0.14); color: var(--accent2); margin-left: 4px;">ANUAL</span>
-                @endif
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
-                    Gastado $ {{ number_format($alert['spent'], 0, ',', '.') }} de $ {{ number_format($alert['limit'], 0, ',', '.') }}
-                    ({{ $alert['pct'] }}%){{ $alert['is_annual'] ? ' este año' : ' este mes' }}
-                </div>
-            </div>
-            <a href="{{ route('budgets.index') }}" class="btn btn-ghost" style="padding: 6px 14px; font-size: 12px; flex-shrink: 0;">Ver presupuestos</a>
-        </div>
-    @endforeach
-</div>
-@endif
 
 {{-- ── Stats Cards ──────────────────────────────────────────────────────────── --}}
 <div style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 10px;">
@@ -556,5 +700,34 @@
         </div>{{-- /.table-wrap --}}
     @endif
 </div>
+
+<script>
+    function toggleNotifPanel() {
+        const panel = document.getElementById('notif-panel');
+        const bell  = document.getElementById('notif-bell');
+        const open  = panel.classList.toggle('open');
+        bell.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    // Cerrar el panel al hacer clic fuera o con Escape.
+    document.addEventListener('click', function (e) {
+        const wrap  = e.target.closest('.notif-wrap');
+        const panel = document.getElementById('notif-panel');
+        if (!wrap && panel && panel.classList.contains('open')) {
+            panel.classList.remove('open');
+            document.getElementById('notif-bell')?.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            const panel = document.getElementById('notif-panel');
+            if (panel?.classList.contains('open')) {
+                panel.classList.remove('open');
+                document.getElementById('notif-bell')?.setAttribute('aria-expanded', 'false');
+            }
+        }
+    });
+</script>
 
 @endsection

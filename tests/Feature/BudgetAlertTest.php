@@ -71,8 +71,8 @@ class BudgetAlertTest extends TestCase
         $this->assertSame(1, $res->viewData('budgetOverCount'));
         $this->assertSame(1, $res->viewData('budgetWarnCount'));
 
-        $res->assertSee('Presupuesto excedido:', false);
-        $res->assertSee('Cerca del límite:', false);
+        $res->assertSee('Presupuesto excedido', false);
+        $res->assertSee('Cerca del límite', false);
     }
 
     public function test_no_alerts_when_all_within_budget(): void
@@ -82,7 +82,7 @@ class BudgetAlertTest extends TestCase
 
         $res = $this->dashboard();
         $this->assertTrue(collect($res->viewData('budgetAlerts'))->isEmpty());
-        $res->assertDontSee('Presupuesto excedido:', false);
+        $res->assertDontSee('Presupuesto excedido', false);
     }
 
     public function test_alerts_count_full_set_not_only_top_five(): void
