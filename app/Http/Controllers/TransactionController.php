@@ -8,6 +8,7 @@ use App\Models\MonthlyPayment;
 use App\Models\PaymentItem;
 use App\Models\Tag;
 use App\Models\Transaction;
+use App\Services\ExchangeRateResolver;
 use App\Services\TransactionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -95,15 +96,20 @@ class TransactionController extends Controller
             $query->orderBy('id', $sortDir);
         }
 
-        // Stats del mes seleccionado (independientes de los filtros de la grilla)
-        $baseMonth = fn () => Transaction::where('family_group_id', $groupId)
+        // Stats del mes seleccionado (independientes de los filtros de la grilla).
+        // Las sumas se valorizan en ARS usando la tasa vigente a la fecha de
+        // cada movimiento, para no mezclar ARS y USD sin convertir.
+        $rateResolver = ExchangeRateResolver::forGroup($groupId);
+
+        $monthTx = Transaction::where('family_group_id', $groupId)
             ->whereYear('date', $statsYear)
-            ->whereMonth('date', $statsMonth);
+            ->whereMonth('date', $statsMonth)
+            ->get(['amount', 'currency', 'date', 'type']);
 
         $monthStats = [
-            'expenses' => $baseMonth()->where('type', 'expense')->sum('amount'),
-            'income' => $baseMonth()->where('type', 'income')->sum('amount'),
-            'count' => $baseMonth()->count(),
+            'expenses' => round($monthTx->where('type', 'expense')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2),
+            'income' => round($monthTx->where('type', 'income')->sum(fn ($t) => $t->amountInArsOn($rateResolver)), 2),
+            'count' => $monthTx->count(),
         ];
         $monthStats['balance'] = $monthStats['income'] - $monthStats['expenses'];
 
@@ -111,9 +117,14 @@ class TransactionController extends Controller
             ->locale('es')
             ->isoFormat('MMMM YYYY');
 
-        // Sumatoria y conteo del filtro actual (todas las páginas)
+        // Sumatoria y conteo del filtro actual (todas las páginas), valorizado
+        // en ARS por fecha de cada movimiento.
         $filteredSumQuery = Transaction::where('family_group_id', $groupId)->tap($applyFilters);
-        $filteredTotal = (clone $filteredSumQuery)->sum('amount');
+        $filteredTotal = round(
+            (clone $filteredSumQuery)->get(['amount', 'currency', 'date'])
+                ->sum(fn ($t) => $t->amountInArsOn($rateResolver)),
+            2
+        );
         $filteredCount = (clone $filteredSumQuery)->count();
 
         $transactions = $query->paginate(50)->withQueryString();

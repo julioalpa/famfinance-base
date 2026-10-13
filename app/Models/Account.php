@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\ExchangeRateResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class Account extends Model
 {
@@ -172,25 +172,43 @@ class Account extends Model
             }
         };
 
-        $income = (float) $this->transactions()->where('type', 'income')->where($filter)->sum('amount');
-        $expense = (float) $this->transactions()->where('type', 'expense')->where($filter)->sum('amount');
-        $transferOut = (float) $this->transactions()->where('type', 'transfer')->where($filter)->sum('amount');
-        $transferIn = (float) DB::table('transactions')
-            ->where('target_account_id', $this->id)
-            ->where('type', 'transfer')
-            ->whereNull('deleted_at')
-            ->when($afterDate !== null, function ($q) use ($afterDate, $afterId) {
-                $q->where(function ($w) use ($afterDate, $afterId) {
-                    $w->where('date', '>', $afterDate)
-                        ->orWhere(function ($same) use ($afterDate, $afterId) {
-                            $same->where('date', $afterDate)->where('id', '>', $afterId);
-                        });
-                });
-            })
-            ->when($untilDate !== null, fn ($q) => $q->where('date', '<=', $untilDate))
-            ->sum('amount');
-        $adjIn = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'in')->where($filter)->sum('amount');
-        $adjOut = (float) $this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'out')->where($filter)->sum('amount');
+        // Suma los montos valorizados en la MONEDA NATIVA de esta cuenta.
+        // Una cuenta puede tener movimientos en otra moneda (p. ej. una cuenta
+        // ARS con un gasto en USD); cada fila se convierte a la moneda de la
+        // cuenta usando la tasa vigente a su fecha, evitando sumar peras con
+        // manzanas. Cuando la moneda coincide, no hay conversión.
+        $sumNative = function ($query): float {
+            $resolver = $this->rateResolver();
+            $native = $this->currency ?? 'ARS';
+
+            return (float) $query->get(['amount', 'currency', 'date'])
+                ->sum(fn ($row) => $resolver->convertBetween(
+                    (float) $row->amount,
+                    $row->currency ?? $native,
+                    $native,
+                    $row->date,
+                ));
+        };
+
+        $income = $sumNative($this->transactions()->where('type', 'income')->where($filter));
+        $expense = $sumNative($this->transactions()->where('type', 'expense')->where($filter));
+        $transferOut = $sumNative($this->transactions()->where('type', 'transfer')->where($filter));
+        $transferIn = $sumNative(
+            Transaction::query()
+                ->where('target_account_id', $this->id)
+                ->where('type', 'transfer')
+                ->when($afterDate !== null, function ($q) use ($afterDate, $afterId) {
+                    $q->where(function ($w) use ($afterDate, $afterId) {
+                        $w->where('date', '>', $afterDate)
+                            ->orWhere(function ($same) use ($afterDate, $afterId) {
+                                $same->where('date', $afterDate)->where('id', '>', $afterId);
+                            });
+                    });
+                })
+                ->when($untilDate !== null, fn ($q) => $q->where('date', '<=', $untilDate))
+        );
+        $adjIn = $sumNative($this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'in')->where($filter));
+        $adjOut = $sumNative($this->transactions()->where('type', 'adjustment')->where('adjustment_direction', 'out')->where($filter));
 
         return match ($this->type) {
             'credit' => $expense - $income + $transferOut - $transferIn + $adjOut - $adjIn,
@@ -198,6 +216,17 @@ class Account extends Model
                         + $expense - $income + $transferOut - $transferIn + $adjOut - $adjIn,
             default => $income - $expense + $transferIn - $transferOut + $adjIn - $adjOut,
         };
+    }
+
+    /**
+     * Resolver de tipos de cambio del grupo, cacheado por instancia para no
+     * recargar las tasas en cada subconsulta de balance.
+     */
+    private ?ExchangeRateResolver $cachedRateResolver = null;
+
+    private function rateResolver(): ExchangeRateResolver
+    {
+        return $this->cachedRateResolver ??= ExchangeRateResolver::forGroup((int) $this->family_group_id);
     }
 
     /**

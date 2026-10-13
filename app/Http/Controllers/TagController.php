@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Tag;
 use App\Models\TagGroup;
+use App\Services\ExchangeRateResolver;
 use Illuminate\Http\Request;
 
 class TagController extends Controller
@@ -12,16 +13,24 @@ class TagController extends Controller
     {
         $groupId = session('active_family_group_id');
 
+        $rateResolver = ExchangeRateResolver::forGroup($groupId);
+
         $tags = Tag::where('family_group_id', $groupId)
             ->with(['transactions', 'paymentItems'])
             ->orderBy('name')
             ->get();
 
-        $tags->each(function ($tag) {
+        $tags->each(function ($tag) use ($rateResolver) {
             $tag->tx_count     = $tag->transactions->count();
             $tag->py_count     = $tag->paymentItems->count();
-            $tag->tx_amount    = (float) $tag->transactions->where('currency', 'ARS')->where('type', 'expense')->sum('amount');
-            $tag->py_amount    = (float) $tag->paymentItems->where('currency', 'ARS')->sum('amount');
+            // Totales valorizados en ARS: las transacciones USD se convierten
+            // con la tasa vigente a su fecha; los ítems de pago (gastos fijos,
+            // sin fecha puntual) con la tasa vigente al día de hoy.
+            $tag->tx_amount    = (float) $tag->transactions
+                ->where('type', 'expense')
+                ->sum(fn ($t) => $t->amountInArsOn($rateResolver));
+            $tag->py_amount    = (float) $tag->paymentItems
+                ->sum(fn ($p) => $rateResolver->convert((float) $p->amount, $p->currency ?? 'ARS', now()));
             $tag->total_amount = $tag->tx_amount + $tag->py_amount;
         });
 

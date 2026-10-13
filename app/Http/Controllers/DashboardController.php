@@ -30,9 +30,8 @@ class DashboardController extends Controller
         // ── Tipo de cambio vigente (necesario antes de cualquier cálculo) ────
         $exchangeRate = $group->latestExchangeRate();
         $rateResolver = ExchangeRateResolver::forGroup($groupId);
-        // Tasa vigente al mes visualizado (para totales del mes en USD→ARS).
+        // Tasa vigente al mes visualizado (fin de mes) para presupuestos.
         $monthEnd = Carbon::create($year, $mon, 1)->endOfMonth();
-        $monthRate = $rateResolver->rateOn($monthEnd);
 
         // ── Patrimonio neto (convertido a ARS) ───────────────────────────────
         $totalAssets = $accounts->filter(fn ($a) => ! $a->isLiability())
@@ -46,8 +45,8 @@ class DashboardController extends Controller
             ->whereYear('date', $year)
             ->whereMonth('date', $mon);
 
-        $totalIncome = $this->sumConverted(clone $baseQuery, 'income', $monthRate);
-        $totalExpense = $this->sumConverted(clone $baseQuery, 'expense', $monthRate);
+        $totalIncome = $this->sumConverted(clone $baseQuery, 'income', $rateResolver);
+        $totalExpense = $this->sumConverted(clone $baseQuery, 'expense', $rateResolver);
         $balance = $totalIncome - $totalExpense;
 
         // ── Comparativas: mes anterior y promedio 3 meses previos ────────────
@@ -269,20 +268,13 @@ class DashboardController extends Controller
         ));
     }
 
-    private function sumConverted(Builder $query, string $type, ?float $rate): float
+    private function sumConverted(Builder $query, string $type, ExchangeRateResolver $resolver): float
     {
-        $q = (clone $query)->where('type', $type);
-
-        $ars = (float) (clone $q)->where('currency', 'ARS')->sum('amount');
-        $usd = (float) (clone $q)->where('currency', 'USD')->sum('amount');
-
-        if ($usd === 0.0) {
-            return $ars;
-        }
-        if ($rate === null) {
-            return $ars + $usd;
-        }
-
-        return $ars + ($usd * $rate);
+        return round(
+            (clone $query)->where('type', $type)
+                ->get(['amount', 'currency', 'date'])
+                ->sum(fn ($t) => $t->amountInArsOn($resolver)),
+            2
+        );
     }
 }

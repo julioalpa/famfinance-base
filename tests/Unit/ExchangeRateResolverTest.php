@@ -84,4 +84,45 @@ class ExchangeRateResolverTest extends TestCase
 
         $this->assertSame(1500.0, $resolver->rateOn(Carbon::parse('2026-08-01')));
     }
+
+    public function test_convert_between_usd_to_ars_by_date(): void
+    {
+        $resolver = new ExchangeRateResolver([
+            $this->rate('2026-01-01', 1000),
+            $this->rate('2026-06-01', 1500),
+        ]);
+
+        $this->assertSame(10000.0, $resolver->convertBetween(10, 'USD', 'ARS', '2026-01-15'));
+        $this->assertSame(15000.0, $resolver->convertBetween(10, 'USD', 'ARS', '2026-07-15'));
+    }
+
+    public function test_convert_between_ars_to_usd_by_date(): void
+    {
+        $resolver = new ExchangeRateResolver([
+            $this->rate('2026-01-01', 1000),
+            $this->rate('2026-06-01', 1500),
+        ]);
+
+        // 10.000 ARS en enero → 10 USD; en julio → 6,667 USD aprox.
+        $this->assertSame(10.0, $resolver->convertBetween(10000, 'ARS', 'USD', '2026-01-15'));
+        $this->assertEqualsWithDelta(6.6667, $resolver->convertBetween(10000, 'ARS', 'USD', '2026-07-15'), 0.0001);
+    }
+
+    public function test_convert_between_same_currency_is_noop(): void
+    {
+        $resolver = new ExchangeRateResolver([
+            $this->rate('2026-01-01', 1000),
+        ]);
+
+        $this->assertSame(500.0, $resolver->convertBetween(500, 'ARS', 'ARS', '2026-05-01'));
+        $this->assertSame(7.0, $resolver->convertBetween(7, 'USD', 'USD', '2026-05-01'));
+    }
+
+    public function test_convert_between_without_rates_returns_amount(): void
+    {
+        $resolver = new ExchangeRateResolver([]);
+
+        $this->assertSame(42.0, $resolver->convertBetween(42, 'USD', 'ARS', '2026-01-01'));
+        $this->assertSame(42.0, $resolver->convertBetween(42, 'ARS', 'USD', '2026-01-01'));
+    }
 }

@@ -113,6 +113,38 @@ class ExchangeRateResolver
         return $amount;
     }
 
+    /**
+     * Convierte un monto entre dos monedas cualesquiera (ARS/USD) usando la
+     * tasa vigente a la fecha. Útil para valorizar en la moneda nativa de una
+     * cuenta (p. ej. un movimiento USD dentro de una cuenta ARS, o un
+     * movimiento ARS dentro de una cuenta USD).
+     *
+     * Si origen y destino coinciden, o no hay tasas cargadas, devuelve el monto
+     * sin modificar.
+     */
+    public function convertBetween(float $amount, string $from, string $to, Carbon|string|null $date): float
+    {
+        if ($from === $to) {
+            return $amount;
+        }
+
+        $rate = $this->rateOn($date);
+        if ($rate === null || $rate == 0.0) {
+            return $amount;
+        }
+
+        // Tasas almacenadas como USD→ARS (1 USD = rate ARS).
+        if ($from === 'USD' && $to === 'ARS') {
+            return $amount * $rate;
+        }
+        if ($from === 'ARS' && $to === 'USD') {
+            return $amount / $rate;
+        }
+
+        // Par de monedas no soportado: no convertir.
+        return $amount;
+    }
+
     private function normalizeDate(Carbon|string|null $date): string
     {
         if ($date === null) {
